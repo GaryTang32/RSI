@@ -1,4 +1,5 @@
 """LocalStore: an agent's content-addressed asset store with quarantine zone, audit and archive export (spec §5.10)."""
+
 from __future__ import annotations
 
 import copy
@@ -8,7 +9,6 @@ import json
 import tarfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from .assets import Capsule, Clock, EvolutionEvent, Gene, ValidationReport
 from .hashing import SCHEMA_VERSION, sha256_text, verify_asset_id
@@ -39,8 +39,9 @@ def _lines(text: str | bytes):
 class LocalStore:
     """Asset store under ``root`` (``None`` = in memory): genes.json, *.jsonl logs, failed_capsules.json, state.json."""
 
-    def __init__(self, root: Optional[str | Path] = None, *, node_id: str = "node_local",
-                 clock: Optional[Clock] = None) -> None:
+    def __init__(
+        self, root: str | Path | None = None, *, node_id: str = "node_local", clock: Clock | None = None
+    ) -> None:
         self.root = Path(root) if root else None
         self.node_id = node_id
         self.clock = clock or Clock()
@@ -77,9 +78,12 @@ class LocalStore:
             for d in json.loads((r / "genes.json").read_text()).get("genes", []):
                 g = Gene.from_dict(d)
                 self.genes[g.id] = g
-        for name, handler in (("capsules.jsonl", self._load_capsule), ("events.jsonl", self._load_event),
-                              ("external_candidates.jsonl", self.external.append),
-                              ("distiller_log.jsonl", self.distiller_log.append)):
+        for name, handler in (
+            ("capsules.jsonl", self._load_capsule),
+            ("events.jsonl", self._load_event),
+            ("external_candidates.jsonl", self.external.append),
+            ("distiller_log.jsonl", self.distiller_log.append),
+        ):
             if (r / name).exists():
                 for d in _lines((r / name).read_text()):
                     handler(d)
@@ -101,8 +105,9 @@ class LocalStore:
 
     def _save_state(self) -> None:
         if self.root:
-            (self.root / "state.json").write_text(json.dumps({"counter": self._counter,
-                                                              "solidify_count": self.solidify_count}))
+            (self.root / "state.json").write_text(
+                json.dumps({"counter": self._counter, "solidify_count": self.solidify_count})
+            )
 
     def has_gene(self, gid: str) -> bool:
         return gid in self.genes
@@ -125,13 +130,14 @@ class LocalStore:
             (self.root / "failed_capsules.json").write_text(json.dumps(self.failed_capsules[-500:], default=str))
 
     def genes_json(self) -> str:
-        return json.dumps({"version": SCHEMA_VERSION, "genes": [self.genes[k].to_dict() for k in sorted(self.genes)]},
-                          sort_keys=True)
+        return json.dumps(
+            {"version": SCHEMA_VERSION, "genes": [self.genes[k].to_dict() for k in sorted(self.genes)]}, sort_keys=True
+        )
 
     def gene_library_version(self) -> str:
         return "glib_" + sha256_text(self.genes_json())[:16]
 
-    def last_event_id(self) -> Optional[str]:
+    def last_event_id(self) -> str | None:
         return self.events[-1].id if self.events else None
 
     def append_event(self, e: EvolutionEvent) -> EvolutionEvent:
@@ -174,21 +180,33 @@ class LocalStore:
             cur = by[cur].parent
         return list(reversed(out))
 
-    def stage_external(self, asset: dict, source: str, *, hub_report_id: Optional[str] = None) -> dict:
+    def stage_external(self, asset: dict, source: str, *, hub_report_id: str | None = None) -> dict:
         """Stage a fetched asset (never executed): verify its id, scale Capsule confidence, record provenance."""
         if "asset_id" in asset and not verify_asset_id(asset):
             raise ValueError("asset_id integrity check failed")
         staged = copy.deepcopy(asset)
         if staged.get("type") == "Capsule" and isinstance(staged.get("confidence"), (int, float)):
             staged["confidence"] = round(staged["confidence"] * EXTERNAL_CONFIDENCE_FACTOR, 4)
-        rec = {"asset": staged, "a2a": {"status": "external_candidate", "source": source,
-                                        "received_at": self.clock.iso(),
-                                        "confidence_factor": EXTERNAL_CONFIDENCE_FACTOR},
-               "original_asset_id": asset.get("asset_id"), "hub_report_id": hub_report_id}
+        rec = {
+            "asset": staged,
+            "a2a": {
+                "status": "external_candidate",
+                "source": source,
+                "received_at": self.clock.iso(),
+                "confidence_factor": EXTERNAL_CONFIDENCE_FACTOR,
+            },
+            "original_asset_id": asset.get("asset_id"),
+            "hub_report_id": hub_report_id,
+        }
         self.external.append(rec)
         self._append("external_candidates.jsonl", rec)
-        self.memory.record("external_candidate", asset_id=asset.get("asset_id"), source=source,
-                           asset_type=asset.get("type"), hub_report_id=hub_report_id)
+        self.memory.record(
+            "external_candidate",
+            asset_id=asset.get("asset_id"),
+            source=source,
+            asset_type=asset.get("type"),
+            hub_report_id=hub_report_id,
+        )
         return rec
 
     def resolve_external(self, original_asset_id: str, status: str, reason: str = "") -> None:
@@ -198,7 +216,7 @@ class LocalStore:
                 rec["a2a"]["reason"] = reason
                 self._append("external_candidates.jsonl", {**rec, "_update": True})
 
-    def promote_external(self, original_asset_id: str, *, validated: bool) -> Optional[Gene]:
+    def promote_external(self, original_asset_id: str, *, validated: bool) -> Gene | None:
         """a2a_promote: requires local validation; never overwrites a local gene id; records provenance."""
         if not validated:
             raise PermissionError("Refusing to promote without --validated (local verification must be done first)")
@@ -208,8 +226,12 @@ class LocalStore:
                 g = Gene.from_dict(a)
                 if g.id in self.genes:
                     g.id = g.id + "_ext"
-                g.provenance = {**(g.provenance or {}), "kind": "external", "source": rec["a2a"]["source"],
-                                "parent_asset_id": original_asset_id}
+                g.provenance = {
+                    **(g.provenance or {}),
+                    "kind": "external",
+                    "source": rec["a2a"]["source"],
+                    "parent_asset_id": original_asset_id,
+                }
                 g.parent = original_asset_id
                 self.upsert_gene(g)
                 self.resolve_external(original_asset_id, "promoted")
@@ -248,8 +270,9 @@ class LocalStore:
             if not vr.verify():
                 problems.append(f"validation report {vr.id}: asset_id mismatch")
         caps_in_events = {e.capsule_id for e in self.events if e.capsule_id}
-        problems += [f"capsule {c.id}: no event references it" for c in self.capsules.values()
-                     if c.id not in caps_in_events]
+        problems += [
+            f"capsule {c.id}: no event references it" for c in self.capsules.values() if c.id not in caps_in_events
+        ]
         return AuditReport(not problems, problems, n)
 
     def _archive_members(self) -> dict[str, bytes]:
@@ -262,15 +285,23 @@ class LocalStore:
         }
         n_ev = len(self.events)
         succ = sum(1 for e in self.events if e.outcome.get("status") == "success")
-        manifest = {"gep_version": "1.0.0", "schema_version": SCHEMA_VERSION, "created_at": self.clock.iso(),
-                    "head_event_asset_id": self.events[-1].asset_id if self.events else None,
-                    "gene_library_version": self.gene_library_version(),
-                    "agent_id": self.node_id, "agent_name": self.node_id,
-                    "statistics": {"total_events": n_ev, "total_genes": len(self.genes),
-                                   "total_capsules": len(self.capsules),
-                                   "success_rate": succ / n_ev if n_ev else 0.0,
-                                   "memory_graph_entries": len(self.memory.events)},
-                    "source": {"platform": "rsi.evomap", "version": "1"}}
+        manifest = {
+            "gep_version": "1.0.0",
+            "schema_version": SCHEMA_VERSION,
+            "created_at": self.clock.iso(),
+            "head_event_asset_id": self.events[-1].asset_id if self.events else None,
+            "gene_library_version": self.gene_library_version(),
+            "agent_id": self.node_id,
+            "agent_name": self.node_id,
+            "statistics": {
+                "total_events": n_ev,
+                "total_genes": len(self.genes),
+                "total_capsules": len(self.capsules),
+                "success_rate": succ / n_ev if n_ev else 0.0,
+                "memory_graph_entries": len(self.memory.events),
+            },
+            "source": {"platform": "rsi.evomap", "version": "1"},
+        }
         mem["manifest.json"] = json.dumps(manifest, sort_keys=True, indent=1).encode()
         mem["checksum.sha256"] = "".join(f"{hashlib.sha256(mem[k]).hexdigest()}  {k}\n" for k in sorted(mem)).encode()
         return mem
@@ -288,8 +319,7 @@ class LocalStore:
         return path
 
     @classmethod
-    def import_archive(cls, path: str | Path, root: Optional[str | Path] = None, *,
-                       verify: bool = True) -> "LocalStore":
+    def import_archive(cls, path: str | Path, root: str | Path | None = None, *, verify: bool = True) -> LocalStore:
         with tarfile.open(path, "r:gz") as tar:
             mem = {m.name: tar.extractfile(m).read() for m in tar.getmembers() if m.isfile()}
         if verify:

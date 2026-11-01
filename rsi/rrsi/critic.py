@@ -1,10 +1,11 @@
 """Leakage critic: a deterministic precheck (task ids, domain and generic patterns), then an LLM review."""
+
 from __future__ import annotations
 
 import hashlib
 import json
 import re
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from ..core.critic import LeakageCritic
 from ..core.llm import LLM, extract_json
@@ -12,12 +13,16 @@ from ..core.llm import LLM, extract_json
 GENERIC_PATTERNS: list[tuple[str, str]] = [
     (r"AIza[0-9A-Za-z_-]{35}|sk-[A-Za-z0-9]{20,}|api_key\s*=\s*[\"\'][^\"\']{8,}", "credential in diff"),
     # extension: harness code runs in the evaluator's process, so it could reach the grader
-    (r"(?m)^\s*(?:import|from)\s+rsi\b|__import__\(\s*[\"']rsi\b|import_module\(\s*[\"']rsi\b",
-     "harness imports the evaluation framework (grader tampering)"),
+    (
+        r"(?m)^\s*(?:import|from)\s+rsi\b|__import__\(\s*[\"']rsi\b|import_module\(\s*[\"']rsi\b",
+        "harness imports the evaluation framework (grader tampering)",
+    ),
     (r"\bsys\.modules\b", "harness reaches into loaded modules (possible grader tampering)"),
-    (r"\bsys\._getframe\b|\binspect\.(?:currentframe|stack|getouterframes)\b|\.f_back\b|\.f_globals\b"
-     r"|\bgc\.get_(?:objects|referrers)\b|\b__globals__\b",
-     "harness walks the call stack / object graph (possible grader tampering)"),
+    (
+        r"\bsys\._getframe\b|\binspect\.(?:currentframe|stack|getouterframes)\b|\.f_back\b|\.f_globals\b"
+        r"|\bgc\.get_(?:objects|referrers)\b|\b__globals__\b",
+        "harness walks the call stack / object graph (possible grader tampering)",
+    ),
 ]
 
 SYSTEM_TMPL = """You are a strict reviewer of harness (agent scaffold) code changes
@@ -77,10 +82,20 @@ EDITS_CAP = 20_000
 class RRSICritic:
     """Denylist/regex precheck, then an optional LLM review that fails closed on unparseable output."""
 
-    def __init__(self, domain=None, llm: Optional[LLM] = None, *, terms: Optional[Sequence[str]] = None,
-                 patterns: Sequence[tuple[str, str]] = (), domain_brief: Optional[str] = None,
-                 leakage_split: str = "evolve", parse_attempts: int = 3, min_term_len: int = 4,
-                 precheck_answers: bool = False, scope: str = "added") -> None:
+    def __init__(
+        self,
+        domain=None,
+        llm: LLM | None = None,
+        *,
+        terms: Sequence[str] | None = None,
+        patterns: Sequence[tuple[str, str]] = (),
+        domain_brief: str | None = None,
+        leakage_split: str = "evolve",
+        parse_attempts: int = 3,
+        min_term_len: int = 4,
+        precheck_answers: bool = False,
+        scope: str = "added",
+    ) -> None:
         if scope not in ("added", "diff"):
             raise ValueError(f"precheck scope must be 'added' or 'diff', not {scope!r}")
         self.llm = llm
@@ -95,8 +110,9 @@ class RRSICritic:
         dom_pats = list(getattr(domain, "critic_patterns", []) or []) if domain is not None else []
         self.patterns = list(GENERIC_PATTERNS) + dom_pats + list(patterns)
         self._why = {p: why for p, why in self.patterns}
-        self.denylist = LeakageCritic(terms=list(terms or []) + dom_terms, patterns=[p for p, _ in self.patterns],
-                                      min_term_len=min_term_len)
+        self.denylist = LeakageCritic(
+            terms=list(terms or []) + dom_terms, patterns=[p for p, _ in self.patterns], min_term_len=min_term_len
+        )
         brief = domain_brief
         if brief is None and domain is not None:
             brief = getattr(domain, "critic_brief", None) or domain.describe()
@@ -105,7 +121,7 @@ class RRSICritic:
         self.n_reviews = 0
         self.n_precheck_rejects = 0
         self.n_llm_rejects = 0
-        self.last_exchange: dict = {}          # latest LLM payload and replies, for the run trace
+        self.last_exchange: dict = {}  # latest LLM payload and replies, for the run trace
 
     def _hits(self, diff: str) -> list[str]:
         if self.scope == "added":
@@ -113,38 +129,65 @@ class RRSICritic:
         hay = diff or ""
         cs = self.denylist.case_sensitive
         low = hay if cs else hay.lower()
-        hits = [t for t in self.denylist.terms
-                if re.search(r"(?<![\w.])" + re.escape(t if cs else t.lower()) + r"(?!\w)(?!\.\d)", low)]
+        hits = [
+            t
+            for t in self.denylist.terms
+            if re.search(r"(?<![\w.])" + re.escape(t if cs else t.lower()) + r"(?!\w)(?!\.\d)", low)
+        ]
         return hits + [f"/{p.pattern}/" for p in self.denylist.patterns if p.search(hay)]
 
     def precheck(self, diff: str) -> list[str]:
-        return [self._why[h[1:-1]] if h.startswith("/") and h.endswith("/") and h[1:-1] in self._why
-                else f"hard-coded evaluation data {h!r}" for h in self._hits(diff)]
+        return [
+            self._why[h[1:-1]]
+            if h.startswith("/") and h.endswith("/") and h[1:-1] in self._why
+            else f"hard-coded evaluation data {h!r}"
+            for h in self._hits(diff)
+        ]
 
-    def review(self, diff: str, summary: str = "", targets_mode: str = "", edits: Optional[list] = None,
-               state_files: str = "", seed: int = 0) -> dict:
+    def review(
+        self,
+        diff: str,
+        summary: str = "",
+        targets_mode: str = "",
+        edits: list | None = None,
+        state_files: str = "",
+        seed: int = 0,
+    ) -> dict:
         """``{"verdict": "accept"|"reject", "reasons", "risk_notes", "stage"}``."""
         self.n_reviews += 1
         self.last_exchange = {}
         hard = self.precheck(diff)
         if hard:
             self.n_precheck_rejects += 1
-            return {"verdict": "reject", "reasons": [f"precheck: {h}" for h in hard[:10]], "risk_notes": [],
-                    "stage": "precheck"}
+            return {
+                "verdict": "reject",
+                "reasons": [f"precheck: {h}" for h in hard[:10]],
+                "risk_notes": [],
+                "stage": "precheck",
+            }
         if not (diff or "").strip():
             return {"verdict": "reject", "reasons": ["empty diff"], "risk_notes": [], "stage": "precheck"}
         if self.llm is None:
-            return {"verdict": "accept", "reasons": [], "risk_notes": ["no LLM reviewer configured"],
-                    "stage": "precheck"}
+            return {
+                "verdict": "accept",
+                "reasons": [],
+                "risk_notes": ["no LLM reviewer configured"],
+                "stage": "precheck",
+            }
         system = SYSTEM_TMPL.format(domain_brief=self.domain_brief)
-        payload = (f"CANDIDATE SUMMARY: {summary}\nTARGETS: {targets_mode}\n\n"
-                   f"=== DECLARED EDITS (independent changes in this candidate) ===\n"
-                   f"{json.dumps(edits or [], ensure_ascii=False, indent=1, default=str)[:EDITS_CAP]}\n\n"
-                   f"=== DIFF ===\n{diff[:DIFF_CAP]}\n\n"
-                   f"=== STATE FILES (if a mechanism persists state) ===\n{state_files[:20_000]}")
+        payload = (
+            f"CANDIDATE SUMMARY: {summary}\nTARGETS: {targets_mode}\n\n"
+            f"=== DECLARED EDITS (independent changes in this candidate) ===\n"
+            f"{json.dumps(edits or [], ensure_ascii=False, indent=1, default=str)[:EDITS_CAP]}\n\n"
+            f"=== DIFF ===\n{diff[:DIFF_CAP]}\n\n"
+            f"=== STATE FILES (if a mechanism persists state) ===\n{state_files[:20_000]}"
+        )
         last = ""
-        self.last_exchange = {"system_sha": hashlib.sha256(system.encode()).hexdigest()[:12], "payload": payload,
-                              "replies": []}
+        self.last_exchange = {
+            "system_sha": hashlib.sha256(system.encode()).hexdigest()[:12],
+            "payload": payload,
+            "replies": [],
+        }
         for attempt in range(self.parse_attempts):
             resp = self.llm.complete(payload, system=system, seed=seed * 10 + attempt, role="critic")
             self.last_exchange["replies"].append({"text": resp.text, "error": resp.error})
@@ -164,5 +207,9 @@ class RRSICritic:
                     self.n_llm_rejects += 1
                 return v
         self.n_llm_rejects += 1
-        return {"verdict": "reject", "reasons": [f"critic output unparseable after {self.parse_attempts} attempts: "
-                                                 f"{last[:200]}"], "risk_notes": [], "stage": "llm"}
+        return {
+            "verdict": "reject",
+            "reasons": [f"critic output unparseable after {self.parse_attempts} attempts: {last[:200]}"],
+            "risk_notes": [],
+            "stage": "llm",
+        }

@@ -1,5 +1,6 @@
 """rsi.core.domain + rsi.core.evaluate: Domain.run error handling, Trial serialization, and Evaluator aggregation
 as RRSI's ``aggregate``: missing trials score 0 over the full denominator k, C averages trials that report tokens."""
+
 from __future__ import annotations
 
 import json
@@ -8,20 +9,32 @@ import threading
 import numpy as np
 import pytest
 
-from rsi.core import (Artifact, Domain, EvalResult, Evaluator, Execution, FunctionDomain, MockLLM, SealedSplitError,
-                      Task, TaskSuite, Trial)
+from rsi.core import (
+    Artifact,
+    Domain,
+    EvalResult,
+    Evaluator,
+    Execution,
+    FunctionDomain,
+    MockLLM,
+    SealedSplitError,
+    Task,
+    TaskSuite,
+    Trial,
+)
 
 ART = Artifact({"f": "1"})
 
 
 def _suite(n=4, fams=("x", "y")):
     ts = [Task(f"t{i}", i, i, fams[i % len(fams)], {"entities": [f"Name{i}"]}) for i in range(n)]
-    return TaskSuite(ts, {"evolve": [t.id for t in ts[: n // 2]], "holdout": [t.id for t in ts[n // 2:]]})
+    return TaskSuite(ts, {"evolve": [t.id for t in ts[: n // 2]], "holdout": [t.id for t in ts[n // 2 :]]})
 
 
 def _raise(exc_type: type[BaseException], *args):
     def execute(a, t, s, l):
         raise exc_type(*args)
+
     return execute
 
 
@@ -42,8 +55,9 @@ class _Dom(Domain):
 
 
 def test_run_success_carries_execution_fields():
-    d = _Dom(_suite(), lambda a, t, s, l: Execution(output="o", trace="tr", tokens=7, cost_usd=0.1, steps=2,
-                                                     meta={"m": 1}))
+    d = _Dom(
+        _suite(), lambda a, t, s, l: Execution(output="o", trace="tr", tokens=7, cost_usd=0.1, steps=2, meta={"m": 1})
+    )
     tr = d.run(ART, d.tasks.get("t1"), seed=5)
     assert (tr.task_id, tr.seed, tr.score, tr.feedback, tr.output) == ("t1", 5, 1.0, "ok", "o")
     assert (tr.trace, tr.tokens, tr.cost_usd, tr.steps, tr.meta, tr.family) == ("tr", 7, 0.1, 2, {"m": 1}, "y")
@@ -56,7 +70,7 @@ def test_run_execute_exception_is_graded_failure():
     tr = d.run(ART, d.tasks.get("t0"))
     assert tr.score == 0.0 and not tr.ok and tr.error.startswith("KeyError")
     assert "execution error" in tr.feedback and "Traceback" in tr.trace
-    assert graded == []                                  # the grader is not called on failed executions
+    assert graded == []  # the grader is not called on failed executions
 
 
 def test_run_execution_with_error_field_is_not_graded():
@@ -72,7 +86,7 @@ def test_run_grader_exception_and_bad_scores():
     tr = _Dom(_suite(), lambda a, t, s, l: Execution(output=1), bad_grade).run(ART, _suite().get("t0"))
     assert tr.score == 0.0 and tr.feedback.startswith("grader error: ValueError") and tr.error is None
     tr = _Dom(_suite(), lambda a, t, s, l: Execution(output=1), lambda t, ex: (None, "")).run(ART, _suite().get("t0"))
-    assert tr.score == 0.0 and tr.feedback.startswith("grader error")     # a non-number score
+    assert tr.score == 0.0 and tr.feedback.startswith("grader error")  # a non-number score
 
 
 def test_run_system_exit_from_artifact_code_is_contained():
@@ -86,8 +100,13 @@ def test_run_accepts_bare_output_from_execute():
 
 
 def test_function_domain_wrappers_and_describe():
-    fd = FunctionDomain(_suite(), lambda a, t, s, l: t.input * 2, lambda t, out: float(out == t.target * 2),
-                        name="fd", description="doubles")
+    fd = FunctionDomain(
+        _suite(),
+        lambda a, t, s, l: t.input * 2,
+        lambda t, out: float(out == t.target * 2),
+        name="fd",
+        description="doubles",
+    )
     tr = fd.run(ART, fd.tasks.get("t1"))
     assert tr.score == 1.0 and tr.feedback == "" and tr.output == 2
     assert fd.describe() == "doubles" and fd.name == "fd"
@@ -108,9 +127,9 @@ def test_leakage_terms_and_smoke():
     fd = FunctionDomain(s, lambda a, t, st, l: t.input, lambda t, o: 1.0)
     terms = fd.leakage_terms("evolve")
     assert {"t0", "t1", "t2", "answer-long", "Alice", "Name0"} <= set(terms)
-    assert "0" not in terms and "2" not in terms           # targets shorter than 3 chars are not terms
+    assert "0" not in terms and "2" not in terms  # targets shorter than 3 chars are not terms
     assert terms == sorted(set(terms))
-    assert "t3" in fd.leakage_terms("holdout")             # reads sealed splits explicitly
+    assert "t3" in fd.leakage_terms("holdout")  # reads sealed splits explicitly
     assert fd.smoke(ART) is None
     assert "dead" in FunctionDomain(s, _raise(RuntimeError, "dead"), lambda t, o: 1.0).smoke(ART)
 
@@ -121,7 +140,7 @@ def test_trial_to_json_roundtrip_and_truncation():
     assert d["trace"] == "x" * 10 + "...[truncated]"
     assert Trial(**d).output == {"a": [1, 2]}
     json.dumps(d)
-    d["meta"]["k"] = "mutated"                              # to_json returns a copy
+    d["meta"]["k"] = "mutated"  # to_json returns a copy
     assert tr.meta == {"k": (1, 2)}
 
 
@@ -151,19 +170,25 @@ class _Scripted(Domain):
 
 
 def test_aggregation_missing_trials_count_zero_full_denominator():
-    table = {("t0", 0): (1.0, 100, None), ("t0", 1): (1.0, 0, "infra: backend down"), ("t0", 2): (0.0, 50, None),
-             ("t1", 0): (1.0, 0, None), ("t1", 1): (1.0, 30, None), ("t1", 2): (0.5, 20, None)}
+    table = {
+        ("t0", 0): (1.0, 100, None),
+        ("t0", 1): (1.0, 0, "infra: backend down"),
+        ("t0", 2): (0.0, 50, None),
+        ("t1", 0): (1.0, 0, None),
+        ("t1", 1): (1.0, 30, None),
+        ("t1", 2): (0.5, 20, None),
+    }
     ev = Evaluator(_Scripted(_suite(4), table), workers=1).evaluate(ART, "evolve", k=3)
     assert ev.k == 3 and ev.n_missing == 1 and ev.n_trials == 6
     ts = ev.task_scores()
     assert ts["t0"] == pytest.approx(1 / 3) and ts["t1"] == pytest.approx(2.5 / 3)
     assert ev.score == ev.S == pytest.approx((1 / 3 + 2.5 / 3) / 2)
-    assert ev.cost == ev.C == pytest.approx(50.0)          # tokens 100, 50, 30, 20: zero-token trials excluded
+    assert ev.cost == ev.C == pytest.approx(50.0)  # tokens 100, 50, 30, 20: zero-token trials excluded
     assert ev.error_rate == pytest.approx(1 / 6)
     assert ev.trials["t0"][1].error.startswith("infra:") and ev.trials["t0"][1].score == 0.0
     np.testing.assert_allclose(ev.trial_matrix(), [[1, 0, 0], [1, 1, 0.5]])
     assert ev.family_scores() == {"x": pytest.approx(1 / 3), "y": pytest.approx(2.5 / 3)}
-    assert ev.dollars == pytest.approx(0.05)               # the missing trial carries no cost
+    assert ev.dollars == pytest.approx(0.05)  # the missing trial carries no cost
     summ = ev.summary()
     assert summ["missing"] == 1 and summ["k"] == 3 and summ["n_tasks"] == 2
 
@@ -203,9 +228,9 @@ def test_memory_cache_and_n_rollouts():
     ev = Evaluator(dom, workers=1)
     ev.evaluate(ART, "evolve", k=2)
     assert ev.n_rollouts == 4 and dom.calls == 4
-    ev.evaluate(ART, "evolve", k=3)                    # seeds 0,1 cached; seed 2 fresh
+    ev.evaluate(ART, "evolve", k=3)  # seeds 0,1 cached; seed 2 fresh
     assert ev.n_rollouts == 6 and dom.calls == 6
-    ev.evaluate(Artifact({"f": "2"}), "evolve", k=1)    # another artifact id: fresh
+    ev.evaluate(Artifact({"f": "2"}), "evolve", k=1)  # another artifact id: fresh
     assert ev.n_rollouts == 8
 
 
@@ -215,7 +240,7 @@ def test_infra_failures_are_not_cached_and_retry(tmp_path):
     ev = Evaluator(dom, workers=1, cache_dir=tmp_path)
     r1 = ev.evaluate(ART, "evolve")
     assert r1.n_missing == 1 and r1.score == 0.0
-    del table[("t0", 0)]                                # backend recovers
+    del table[("t0", 0)]  # backend recovers
     r2 = ev.evaluate(ART, "evolve")
     assert r2.n_missing == 0 and r2.score == 1.0 and dom.calls == 2
 
@@ -223,7 +248,7 @@ def test_infra_failures_are_not_cached_and_retry(tmp_path):
 def test_disk_cache_persists_across_evaluators(tmp_path):
     dom1 = _Scripted(_suite(4), {("t1", 0): (0.25, 5, None)})
     r1 = Evaluator(dom1, workers=2, cache_dir=tmp_path).evaluate(ART, "evolve")
-    dom2 = _Scripted(_suite(4), {})                     # would score 1.0 if actually run
+    dom2 = _Scripted(_suite(4), {})  # would score 1.0 if actually run
     ev2 = Evaluator(dom2, workers=2, cache_dir=tmp_path)
     r2 = ev2.evaluate(ART, "evolve")
     assert dom2.calls == 0 and ev2.n_rollouts == 0
@@ -236,12 +261,12 @@ def test_disk_cache_corrupt_or_foreign_entries_rerun(tmp_path):
     Evaluator(dom, workers=1, cache_dir=tmp_path).evaluate(ART, "evolve")
     files = sorted(tmp_path.rglob("*.json"))
     assert len(files) == 2
-    files[0].write_text('{"task_id": "t0", "se')                     # torn write
+    files[0].write_text('{"task_id": "t0", "se')  # torn write
     d = json.loads(files[1].read_text())
     d["field_from_a_newer_version"] = 1
     files[1].write_text(json.dumps(d))
     ev = Evaluator(dom, workers=1, cache_dir=tmp_path)
-    assert ev.evaluate(ART, "evolve").score == 1.0 and ev.n_rollouts == 1   # only the corrupt one re-runs
+    assert ev.evaluate(ART, "evolve").score == 1.0 and ev.n_rollouts == 1  # only the corrupt one re-runs
 
 
 def test_seed_offset_and_explicit_seeds():
@@ -279,8 +304,9 @@ def test_on_trial_callbacks_only_for_fresh_rollouts():
 
 def test_evaluate_many_and_llm_passthrough():
     llm = MockLLM(lambda p, s, seed, i: "7")
-    fd = FunctionDomain(_suite(2), lambda a, t, s, l: l.complete("q", seed=s, role="task").text,
-                        lambda t, o: float(o == "7"))
+    fd = FunctionDomain(
+        _suite(2), lambda a, t, s, l: l.complete("q", seed=s, role="task").text, lambda t, o: float(o == "7")
+    )
     res = Evaluator(fd, llm, workers=1).evaluate_many([ART, Artifact({"f": "2"})], "evolve", k=1)
     assert [r.score for r in res] == [1.0, 1.0]
     assert llm.meter.snapshot()["task"]["calls"] == 2

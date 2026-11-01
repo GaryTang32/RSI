@@ -1,4 +1,5 @@
 """The autoresearch, SoL-Pi, Dream-RSI and EvoMap arms of experiments/bbeh, offline; answer length in merge.py."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -10,8 +11,26 @@ import pytest
 from rsi.domains.bbeh import make_pilot_suite, make_suite
 
 ROOT = Path(__file__).resolve().parents[2]
-SMALL = ["--evolve", "2", "--holdout", "2", "--ood", "2", "--workers", "2", "--ar-experiments", "2",
-         "--solpi-lineages", "2", "--dream-rounds", "2", "--dream-branches", "1", "--evomap-cycles", "4"]
+SMALL = [
+    "--evolve",
+    "2",
+    "--holdout",
+    "2",
+    "--ood",
+    "2",
+    "--workers",
+    "2",
+    "--ar-experiments",
+    "2",
+    "--solpi-lineages",
+    "2",
+    "--dream-rounds",
+    "2",
+    "--dream-branches",
+    "1",
+    "--evomap-cycles",
+    "4",
+]
 
 
 def _load(name: str, rel: str):
@@ -23,8 +42,11 @@ def _load(name: str, rel: str):
 
 @pytest.fixture
 def exp(bbeh_offline):
-    return (_load("bbeh_cl_later", "experiments/bbeh/compare_live.py"), _load("bbeh_merge_later", "experiments/bbeh/merge.py"),
-            _load("bbh_rescore_later", "experiments/bbh/rescore_tokens.py"))
+    return (
+        _load("bbeh_cl_later", "experiments/bbeh/compare_live.py"),
+        _load("bbeh_merge_later", "experiments/bbeh/merge.py"),
+        _load("bbh_rescore_later", "experiments/bbh/rescore_tokens.py"),
+    )
 
 
 @pytest.mark.parametrize("arm", ["autoresearch", "solpi", "dream", "evomap"])
@@ -35,7 +57,7 @@ def test_each_later_arm_runs_offline_and_is_scored_like_the_searched_arms(exp, t
     assert o["leak_check"]["passed"] and Path(o["final_harness"]["dir"]).is_dir()
     assert len(o["per_task"]) == 24 and o["k"] == 2 and {p["phase"] for p in o["phases"]} >= {"search", "eval_ood"}
     assert all(v is not None and v >= 0 for v in o["per_task_out_tokens"].values())
-    assert "firewall" not in o["suite"]["summary"]          # comparable with every other arm in merge.py
+    assert "firewall" not in o["suite"]["summary"]  # comparable with every other arm in merge.py
     s = o["search"]
     if arm == "autoresearch":
         assert s["keep_rule"].startswith("gain > delta") and s["noise_delta_k2"] > 0 and s["k"] == 2
@@ -61,8 +83,9 @@ def test_firewall_split_is_sealed_disjoint_and_leaves_the_other_splits_unchanged
 
 def test_cap_stops_a_later_arm_before_its_search(exp, tmp_path):
     cl, _, _ = exp
-    o = cl.run_arm(cl.parse_args(["--arm", "dream", "--offline", "--cap", "0", "--out-dir", str(tmp_path), *SMALL]),
-                   "dream")
+    o = cl.run_arm(
+        cl.parse_args(["--arm", "dream", "--offline", "--cap", "0", "--out-dir", str(tmp_path), *SMALL]), "dream"
+    )
     assert o["status"] == "cap_reached" and "before search" in o["stop"]
 
 
@@ -78,10 +101,26 @@ def test_merge_shows_tokens_and_rescore_fills_older_arms_from_the_cache_only(exp
     seed.pop("per_task_usd")
     (tmp_path / "seed.json").write_text(json.dumps(seed))
     before = (tmp_path / "seed.json").read_text()
-    assert rescore.main(["--benchmark", "bbeh", "--arm", "seed", "--dir", str(tmp_path), "--cache-dir", str(cache), "--workers", "2"]) == 0
+    assert (
+        rescore.main(
+            [
+                "--benchmark",
+                "bbeh",
+                "--arm",
+                "seed",
+                "--dir",
+                str(tmp_path),
+                "--cache-dir",
+                str(cache),
+                "--workers",
+                "2",
+            ]
+        )
+        == 0
+    )
     side = json.loads((tmp_path / "seed.tokens.json").read_text())
     assert side["per_task_out_tokens"] == want and side["cache_misses"] == 0
-    assert (tmp_path / "seed.json").read_text() == before                   # the arm's own file is untouched
+    assert (tmp_path / "seed.json").read_text() == before  # the arm's own file is untouched
     assert merge.main(["--dir", str(tmp_path), "--reps", "200"]) == 0
     m = json.loads((tmp_path / "merged.json").read_text())
     assert m["arms"]["seed"]["out_tokens_per_example"] > 0 and m["arms"]["solpi"]["out_tokens_vs_seed"]["n"] == 24

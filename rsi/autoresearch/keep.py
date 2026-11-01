@@ -1,8 +1,9 @@
 """Keep rules: decide whether a candidate advances the branch."""
+
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Optional, Sequence
 
 import numpy as np
 
@@ -16,7 +17,7 @@ class Samples:
 
     values: list[float]
     memory_gb: float = 0.0
-    loc: int = 0                    # code lines in the editable files
+    loc: int = 0  # code lines in the editable files
     artifact_id: str = ""
     meta: dict = field(default_factory=dict)
 
@@ -28,8 +29,8 @@ class Samples:
 @dataclass
 class KeepContext:
     direction: str = "min"
-    best: Optional[float] = None               # running best (direction-aware)
-    delta: float = 0.0                         # noise band in metric units
+    best: float | None = None  # running best (direction-aware)
+    delta: float = 0.0  # noise band in metric units
     experiment: int = 0
     lines_added: int = 0
     lines_removed: int = 0
@@ -44,7 +45,7 @@ class KeepRule:
     vary_seed: bool = False
     never_repeat: bool = False
 
-    def early_reject(self, first: float, best: Optional[Samples], direction: str) -> bool:
+    def early_reject(self, first: float, best: Samples | None, direction: str) -> bool:
         return False
 
     def decide(self, cand: Samples, inc: Samples, ctx: KeepContext) -> Verdict:  # pragma: no cover
@@ -59,8 +60,12 @@ class KeepRule:
 
 def _scored(s: Samples, direction: str, cost: float = 0.0) -> Scored:
     sign = -1.0 if direction == "min" else 1.0
-    return Scored(score=sign * s.mean, cost=cost, samples=[sign * v for v in s.values],
-                  metrics={"memory_gb": s.memory_gb, "loc": float(s.loc)})
+    return Scored(
+        score=sign * s.mean,
+        cost=cost,
+        samples=[sign * v for v in s.values],
+        metrics={"memory_gb": s.memory_gb, "loc": float(s.loc)},
+    )
 
 
 def _gain(cand: Samples, inc: Samples, direction: str) -> float:
@@ -84,8 +89,15 @@ class BootstrapRigorKeep(KeepRule):
 
     name = "rigor"
 
-    def __init__(self, repeats: int = 3, confidence: float = 0.95, reps: int = 20000, vary_seed: bool = True,
-                 early: bool = True, never_repeat: bool = True) -> None:
+    def __init__(
+        self,
+        repeats: int = 3,
+        confidence: float = 0.95,
+        reps: int = 20000,
+        vary_seed: bool = True,
+        early: bool = True,
+        never_repeat: bool = True,
+    ) -> None:
         self.repeats = repeats
         self.confidence = confidence
         self.vary_seed = vary_seed
@@ -130,8 +142,11 @@ class SimplicityWeighted(KeepRule):
             why = f"gain {gain:+.6f} vs complexity cost {need:.6f} (+{net} lines)"
         elif net < 0:
             ok = gain >= -self.eps
-            why = (f"simplification ({net} lines): gain {gain:+.6f} >= -eps {self.eps}" if ok
-                   else f"simplification ({net} lines) but gain {gain:+.6f} < -eps {self.eps}")
+            why = (
+                f"simplification ({net} lines): gain {gain:+.6f} >= -eps {self.eps}"
+                if ok
+                else f"simplification ({net} lines) but gain {gain:+.6f} < -eps {self.eps}"
+            )
         else:
             ok = gain > 0
             why = f"gain {gain:+.6f} {'>' if ok else '<='} 0"
@@ -146,8 +161,15 @@ class UpstreamKeep(KeepRule):
 
     name = "upstream"
 
-    def __init__(self, eps: float = 0.001, lines_per_eps: float = 20.0, mem_tol: float = 0.10,
-                 mem_blowup: float = 2.0, simplicity: bool = True, memory: bool = True) -> None:
+    def __init__(
+        self,
+        eps: float = 0.001,
+        lines_per_eps: float = 20.0,
+        mem_tol: float = 0.10,
+        mem_blowup: float = 2.0,
+        simplicity: bool = True,
+        memory: bool = True,
+    ) -> None:
         self.eps = eps
         self.lines_per_eps = lines_per_eps
         self.mem_tol = mem_tol
@@ -174,8 +196,10 @@ class UpstreamKeep(KeepRule):
             ratio = cand.memory_gb / inc.memory_gb
             details["memory_ratio"] = ratio
             if ratio > self.mem_blowup:
-                why = (f"memory blew up {inc.memory_gb:g} -> {cand.memory_gb:g} GB (x{ratio:.2f} > "
-                       f"x{self.mem_blowup:g}); gain {gain:+.6f}")
+                why = (
+                    f"memory blew up {inc.memory_gb:g} -> {cand.memory_gb:g} GB (x{ratio:.2f} > "
+                    f"x{self.mem_blowup:g}); gain {gain:+.6f}"
+                )
                 return Verdict(False, why, {**details, "threshold": None, "memory_blowup": True})
             if ratio > 1.0 + self.mem_tol:
                 thr = max(thr, 0.0) + self.eps
@@ -190,15 +214,23 @@ class UpstreamKeep(KeepRule):
         return Verdict(ok, why, details)
 
     def to_json(self):
-        return {**super().to_json(), "eps": self.eps, "lines_per_eps": self.lines_per_eps, "mem_tol": self.mem_tol,
-                "mem_blowup": self.mem_blowup, "simplicity": self.simplicity, "memory": self.memory}
+        return {
+            **super().to_json(),
+            "eps": self.eps,
+            "lines_per_eps": self.lines_per_eps,
+            "mem_tol": self.mem_tol,
+            "mem_blowup": self.mem_blowup,
+            "simplicity": self.simplicity,
+            "memory": self.memory,
+        }
 
 
 class GateKeep(KeepRule):
     """Adapter for any core :class:`Gate`; cost defaults to peak memory, ``delta`` comes from the context."""
 
-    def __init__(self, gate: Gate, *, repeats: int = 1, vary_seed: bool = False, cost: str = "memory_gb",
-                 name: Optional[str] = None) -> None:
+    def __init__(
+        self, gate: Gate, *, repeats: int = 1, vary_seed: bool = False, cost: str = "memory_gb", name: str | None = None
+    ) -> None:
         self.gate = gate
         self.repeats = repeats
         self.vary_seed = vary_seed
@@ -210,10 +242,12 @@ class GateKeep(KeepRule):
 
     def decide(self, cand, inc, ctx):
         sign = -1.0 if ctx.direction == "min" else 1.0
-        gctx = GateContext(best_score=None if ctx.best is None else sign * ctx.best, delta=ctx.delta,
-                           round=ctx.experiment)
-        return self.gate.check(_scored(cand, ctx.direction, self._cost(cand)),
-                               _scored(inc, ctx.direction, self._cost(inc)), gctx)
+        gctx = GateContext(
+            best_score=None if ctx.best is None else sign * ctx.best, delta=ctx.delta, round=ctx.experiment
+        )
+        return self.gate.check(
+            _scored(cand, ctx.direction, self._cost(cand)), _scored(inc, ctx.direction, self._cost(inc)), gctx
+        )
 
 
 def make_keep_rule(spec, **kw) -> KeepRule:
@@ -224,8 +258,12 @@ def make_keep_rule(spec, **kw) -> KeepRule:
         return GateKeep(spec, **kw)
     if spec == "rrsi":
         return GateKeep(RRSIGate(**kw), name="rrsi")
-    rules = {"upstream": UpstreamKeep, "strict": StrictKeep, "rigor": BootstrapRigorKeep,
-             "simplicity": SimplicityWeighted}
+    rules = {
+        "upstream": UpstreamKeep,
+        "strict": StrictKeep,
+        "rigor": BootstrapRigorKeep,
+        "simplicity": SimplicityWeighted,
+    }
     rule = rules.get(spec) if isinstance(spec, str) else None
     if rule is None:
         raise ValueError(f"unknown keep rule {spec!r}")

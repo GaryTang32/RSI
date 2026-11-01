@@ -1,7 +1,8 @@
 """Analysis of GEPA runs: search-tree shape, best-so-far curves in rollouts, minibatch-gate error rates."""
+
 from __future__ import annotations
 
-from typing import Callable, Optional, Sequence
+from collections.abc import Callable, Sequence
 
 import numpy as np
 
@@ -26,11 +27,14 @@ def tree_metrics(state) -> dict:
         prev_best = e.get("best_idx", prev_best)
     parents_used = {e["selected_program_candidate"] for e in state.trace if "selected_program_candidate" in e}
     return {
-        "n_candidates": n, "max_depth": max(depths) if depths else 0,
+        "n_candidates": n,
+        "max_depth": max(depths) if depths else 0,
         "mean_depth": float(np.mean(depths)) if depths else 0.0,
         "mean_branching": float(np.mean([len(children[k]) for k in internal])) if internal else 0.0,
-        "n_leaves": n - len(internal), "root_children": len(children.get(0, [])),
-        "frac_selected_top": top / sel if sel else float("nan"), "distinct_parents": len(parents_used),
+        "n_leaves": n - len(internal),
+        "root_children": len(children.get(0, [])),
+        "frac_selected_top": top / sel if sel else float("nan"),
+        "distinct_parents": len(parents_used),
         "frontier_size": len(state.frontier.members()),
     }
 
@@ -65,7 +69,7 @@ def curve_at(curve: Sequence[tuple[int, float]], budgets: Sequence[int]) -> list
     return out
 
 
-def rollouts_to_target(curve: Sequence[tuple[int, float]], target: float) -> Optional[int]:
+def rollouts_to_target(curve: Sequence[tuple[int, float]], target: float) -> int | None:
     return next((int(r) for r, v in curve if v >= target), None)
 
 
@@ -75,6 +79,10 @@ def gate_errors(events: Sequence[dict]) -> dict:
     rej = [e for e in events if not e["accepted"]]
     fa = sum(1 for e in acc if e["true_gain"] <= 0)
     fr = sum(1 for e in rej if e["true_gain"] > 0)
-    return {"n": len(events), "n_accepted": len(acc), "false_accept_rate": fa / len(acc) if acc else float("nan"),
-            "false_reject_rate": fr / len(rej) if rej else float("nan"),
-            "accept_rate": len(acc) / len(events) if events else float("nan")}
+    return {
+        "n": len(events),
+        "n_accepted": len(acc),
+        "false_accept_rate": fa / len(acc) if acc else float("nan"),
+        "false_reject_rate": fr / len(rej) if rej else float("nan"),
+        "accept_rate": len(acc) / len(events) if events else float("nan"),
+    }

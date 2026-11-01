@@ -1,9 +1,10 @@
 """Token traffic and API cost with a simulated prefix cache: ``total_tokens = cache_read + cache_write + output``."""
+
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
-from typing import Iterable, Optional, Sequence
 
 
 @dataclass(frozen=True)
@@ -15,7 +16,7 @@ class PriceTable:
     write: float
     output: float
     #: input sent with ``cacheRetention: "none"``; ``None`` = the ``write`` price
-    uncached: Optional[float] = None
+    uncached: float | None = None
 
     @property
     def ratio(self) -> float:
@@ -93,8 +94,9 @@ class TokenMeter:
         t.cost += u.cost
         return u
 
-    def request(self, keys: Sequence[str], tokens: Sequence[int], *, role: str = "main",
-                scope: Optional[str] = None) -> RequestUsage:
+    def request(
+        self, keys: Sequence[str], tokens: Sequence[int], *, role: str = "main", scope: str | None = None
+    ) -> RequestUsage:
         """Bill one request: the prefix of ``keys`` shared with the scope's last request is a cache read."""
         scope = scope or role
         n = 0
@@ -105,8 +107,9 @@ class TokenMeter:
         read, write = int(sum(tokens[:n])), int(sum(tokens[n:]))
         p = self.price(role)
         self._last[scope] = list(keys)
-        return self._bill(RequestUsage(role, read + write, read, write, 0, (read * p.read + write * p.write) / 1e6,
-                                       len(keys)))
+        return self._bill(
+            RequestUsage(role, read + write, read, write, 0, (read * p.read + write * p.write) / 1e6, len(keys))
+        )
 
     def add_output(self, n: int, *, role: str = "main") -> None:
         c = n * self.price(role).output / 1e6
@@ -119,8 +122,9 @@ class TokenMeter:
 
     def simple(self, input_tokens: int, output_tokens: int, *, role: str) -> RequestUsage:
         """A standalone request with no reusable prefix (e.g. a reducer call)."""
-        u = self.request([f"{role}-standalone-{len(self.requests)}"], [input_tokens], role=role,
-                         scope=f"{role}-standalone")
+        u = self.request(
+            [f"{role}-standalone-{len(self.requests)}"], [input_tokens], role=role, scope=f"{role}-standalone"
+        )
         self.add_output(output_tokens, role=role)
         return u
 
@@ -132,7 +136,7 @@ class TokenMeter:
     def reset_cache(self, scope: str = "main") -> None:
         self._last.pop(scope, None)
 
-    def total(self, roles: Optional[Iterable[str]] = None) -> RoleTotals:
+    def total(self, roles: Iterable[str] | None = None) -> RoleTotals:
         out = RoleTotals()
         for r, t in self.by_role.items():
             if roles is None or r in roles:
@@ -159,5 +163,10 @@ class CostModel:
     @staticmethod
     def summarize(costs: Sequence[float], scores: Sequence[float], tokens: Sequence[float]) -> dict:
         c, s, t = float(sum(costs)), float(sum(scores)), float(sum(tokens))
-        return {"cost": c, "score": s, "tokens": t, "eta": CostModel.efficiency(c, s),
-                "tokens_per_score": t / s if s > 0 else float("inf")}
+        return {
+            "cost": c,
+            "score": s,
+            "tokens": t,
+            "eta": CostModel.efficiency(c, s),
+            "tokens_per_score": t / s if s > 0 else float("inf"),
+        }

@@ -1,11 +1,11 @@
 """HarnessWorld as an :class:`rsi.core.Domain`: simulated frozen policy, rubric grader and split discipline."""
+
 from __future__ import annotations
 
 import hashlib
 import math
 import random
 import threading
-from typing import Optional
 
 from ...core.artifact import Artifact
 from ...core.domain import Domain, Execution
@@ -16,26 +16,41 @@ from .world import COMPONENT_PATH, STRONG, STRUCTURAL, WEAK, Policy, World, Worl
 
 class HarnessWorldDomain(Domain):
     name = "harnessworld"
-    components = {"prompt": ["prompts/*"], "control_flow": ["control/*", "harness.md"], "config": ["config/*"],
-                  "output_plumbing": ["output/*"], "context_mgmt": ["context/*"], "client_tool": ["tools/*"],
-                  "skill": ["skills/*"], "memory": ["memory/*"], "subagent": ["agents/*"]}
+    components = {
+        "prompt": ["prompts/*"],
+        "control_flow": ["control/*", "harness.md"],
+        "config": ["config/*"],
+        "output_plumbing": ["output/*"],
+        "context_mgmt": ["context/*"],
+        "client_tool": ["tools/*"],
+        "skill": ["skills/*"],
+        "memory": ["memory/*"],
+        "subagent": ["agents/*"],
+    }
     structural_components = STRUCTURAL
     critic_patterns = [(r"hw-e-\d{3}", "evolve task id pattern")]
 
-    def __init__(self, world: Optional[World] = None, *, policy: Policy = STRONG, config: Optional[WorldConfig] = None,
-                 show_catalog: bool = True) -> None:
+    def __init__(
+        self,
+        world: World | None = None,
+        *,
+        policy: Policy = STRONG,
+        config: WorldConfig | None = None,
+        show_catalog: bool = True,
+    ) -> None:
         self.world = world or World(config)
         self.policy = policy
         self.show_catalog = show_catalog
-        tasks = [Task(t.id, t.text, t.target, t.family, {"surface": t.surface, "entities": []})
-                 for t in self.world.tasks]
+        tasks = [
+            Task(t.id, t.text, t.target, t.family, {"surface": t.surface, "entities": []}) for t in self.world.tasks
+        ]
         splits = {s: self.world.split_ids(s) for s in ("evolve", "holdout", "ood")}
         splits["smoke"] = splits["evolve"][:2]
         super().__init__(TaskSuite(tasks, splits, name=f"harnessworld-s{self.world.cfg.seed}"))
         self._cache: dict[str, tuple] = {}
         self._lock = threading.Lock()
 
-    def with_policy(self, policy: Policy) -> "HarnessWorldDomain":
+    def with_policy(self, policy: Policy) -> HarnessWorldDomain:
         """Same world and tasks, a different frozen policy (cross-policy transfer)."""
         return HarnessWorldDomain(self.world, policy=policy, show_catalog=self.show_catalog)
 
@@ -65,7 +80,7 @@ class HarnessWorldDomain(Domain):
                 self._cache[key] = st
         return st
 
-    def expected(self, artifact: Artifact, split: str, policy: Optional[Policy] = None) -> dict:
+    def expected(self, artifact: Artifact, split: str, policy: Policy | None = None) -> dict:
         """Noise-free E[S], E[C] (ground truth; report-only)."""
         return self.world.expected(artifact.files, split, policy or self.policy)
 
@@ -76,33 +91,45 @@ class HarnessWorldDomain(Domain):
         """Report-only ground truth for traces: E[S] per split, E[C], and each active mechanism's kind."""
         mechs, payload, extra = self.world.active(artifact.files)
         exp = {s: self.world.expected(artifact.files, s, self.policy) for s in ("evolve", "holdout", "ood")}
-        return {"E_S": {s: round(v["S"], 5) for s, v in exp.items()}, "E_C": round(exp["evolve"]["C"], 1),
-                "mechanisms": [{"id": m.id, "kind": m.kind, "component": m.component,
-                                "payload_live": m.id in payload} for m in mechs],
-                "free_text_cost": round(extra, 4)}
+        return {
+            "E_S": {s: round(v["S"], 5) for s, v in exp.items()},
+            "E_C": round(exp["evolve"]["C"], 1),
+            "mechanisms": [
+                {"id": m.id, "kind": m.kind, "component": m.component, "payload_live": m.id in payload} for m in mechs
+            ],
+            "free_text_cost": round(extra, 4),
+        }
 
     def regression_threshold(self, k: int) -> float:
         return 0.25
 
-    def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: Optional[LLM]) -> Execution:
+    def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: LLM | None) -> Execution:
         if "harness.md" not in artifact:
             return Execution(error="harness.md missing: the harness entry point was deleted")
         p_map, cost, ids, syntax_error = self._state(artifact)
         if syntax_error:
             return Execution(error=syntax_error)
         p = p_map[task.id]
-        rng = random.Random(int(hashlib.sha256(f"{artifact.id}|{task.id}|{seed}|{self.policy.name}".encode())
-                                .hexdigest()[:16], 16))
+        rng = random.Random(
+            int(hashlib.sha256(f"{artifact.id}|{task.id}|{seed}|{self.policy.name}".encode()).hexdigest()[:16], 16)
+        )
         n = self.world.cfg.n_criteria
         passed = sum(1 for _ in range(n) if rng.random() < p)
         s = self.world.cfg.token_noise_sd
         tokens = self.world.cfg.base_tokens * cost * math.exp(rng.gauss(0.0, s) - 0.5 * s * s)
         fam, surf = task.family, task.meta.get("surface")
-        trace = (f"[harness] {len(ids)} mechanisms active: {', '.join(ids) or '(none)'}\n"
-                 f"[policy:{self.policy.name}] worked on a {fam} task ({surf} surface) for {int(tokens)} tokens\n"
-                 f"[rubric] passed {passed}/{n} criteria")
-        return Execution(output={"passed": passed, "total": n}, trace=trace, tokens=int(tokens), steps=1 + len(ids),
-                         meta={"n_mechanisms": len(ids)})
+        trace = (
+            f"[harness] {len(ids)} mechanisms active: {', '.join(ids) or '(none)'}\n"
+            f"[policy:{self.policy.name}] worked on a {fam} task ({surf} surface) for {int(tokens)} tokens\n"
+            f"[rubric] passed {passed}/{n} criteria"
+        )
+        return Execution(
+            output={"passed": passed, "total": n},
+            trace=trace,
+            tokens=int(tokens),
+            steps=1 + len(ids),
+            meta={"n_mechanisms": len(ids)},
+        )
 
     def grade(self, task: Task, execution: Execution) -> tuple[float, str]:
         out = execution.output or {}
@@ -122,10 +149,14 @@ class HarnessWorldDomain(Domain):
             f"({len(w.cfg.ood_families)} of them), so improvements must be general. Every mechanism costs policy "
             "tokens. To add a mechanism, create its file at the listed path with the header lines "
             "`# mechanism: <id>`, `# component: <component>`, `# title: <title>`, a docstring line, and the line "
-            "`enable(\"<id>\")`; to remove one, delete its file. Python files must compile.")
+            '`enable("<id>")`; to remove one, delete its file. Python files must compile.'
+        )
         if self.show_catalog:
-            rows = "\n".join(f"- {m.id} [{m.component}] {m.path}: {m.title} - {m.description}"
-                             for m in w.catalog.values() if m.kind not in ("leak", "obfuscated_leak"))
+            rows = "\n".join(
+                f"- {m.id} [{m.component}] {m.path}: {m.title} - {m.description}"
+                for m in w.catalog.values()
+                if m.kind not in ("leak", "obfuscated_leak")
+            )
             text += "\n\nMechanism catalog (true effects unknown):\n" + rows
         return text
 

@@ -1,11 +1,19 @@
 """Discovery domains: locked evaluators, typed failures, mock agents and generic ``rsi.core`` domains."""
+
 import json
 
 import pytest
 
 from rsi.core import Artifact, Execution, FunctionDomain, Task, TaskSuite, transfer_report
-from rsi.domains.discovery import (CirclePackingDomain, LassoPathDomain, SumDiffDomain, SyntheticConfig,
-                                   SyntheticDomain, gamma, solver_code)
+from rsi.domains.discovery import (
+    CirclePackingDomain,
+    LassoPathDomain,
+    SumDiffDomain,
+    SyntheticConfig,
+    SyntheticDomain,
+    gamma,
+    solver_code,
+)
 from rsi.domains.discovery.lasso import SEED_KNOBS
 from rsi.dream import AttemptContext, Config, DomainTask, run, workspace_of
 
@@ -19,8 +27,11 @@ def test_sumdiff_evaluator():
     dom = SumDiffDomain(sandboxed=False)
     ev = dom.evaluate_program(dom.seed_artifact())
     assert ev.fail_class == "ok" and 0.9 < ev.score < 1.0
-    for body, fail_class in (("return [1, 1, 2]", "constraint"), ("return 'abc'", "correctness"),
-                             ("raise ValueError('x')", "compile_other")):
+    for body, fail_class in (
+        ("return [1, 1, 2]", "constraint"),
+        ("return 'abc'", "correctness"),
+        ("raise ValueError('x')", "compile_other"),
+    ):
         bad = Artifact({"construct.py": f"def construct():\n    {body}\n"})
         assert dom.evaluate_program(bad).fail_class == fail_class
     child = dom.mock_agent().attempt(ctx_for(dom.seed_artifact(), "window"), seed=1)
@@ -57,8 +68,9 @@ def test_lasso_gate_and_holdout():
     loose = Artifact({"solver.py": solver_code({**SEED_KNOBS, "ALGO": "fista", "TOL": 1e-3, "WARM": True})})
     bad = dom.evaluate_program(loose)
     assert bad.fail_class == "correctness" and bad.score == 0.0
-    rep = transfer_report(dom, None, {"seed": dom.seed_artifact(), "fast": fast}, splits=("evolve", "holdout"),
-                          workers=1)
+    rep = transfer_report(
+        dom, None, {"seed": dom.seed_artifact(), "fast": fast}, splits=("evolve", "holdout"), workers=1
+    )
     assert rep["splits"]["holdout"]["fast"]["S"] > rep["splits"]["holdout"]["seed"]["S"] > 0
 
 
@@ -68,7 +80,7 @@ def test_synthetic_world_common_random_numbers_and_truth():
     a1 = agent.attempt(ctx_for(root, "d1", branch=2), seed=0)
     assert a1.artifact == agent.attempt(ctx_for(root, "d1", branch=2), seed=999).artifact  # CRN: seed is irrelevant
     assert dom.world.ground_truth(json.loads(a1.artifact["state.json"])["branch"], 4) >= 0.0
-    assert dom.world.r_eff("d1", {"d1": 2}) == pytest.approx(dom.world.richness["d1"] * dom.cfg.depletion ** 2)
+    assert dom.world.r_eff("d1", {"d1": 2}) == pytest.approx(dom.world.richness["d1"] * dom.cfg.depletion**2)
     res = run(dom, config=Config(rounds=1, W=3, branch_count=3, refine_count=2, dream=False, sandbox="inprocess"))
     tree = res.meta["worlds"][0]
     assert set(dom.truth_for_tree(tree)) == set(tree.branches())

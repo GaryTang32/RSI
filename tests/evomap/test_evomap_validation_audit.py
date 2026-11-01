@@ -1,10 +1,11 @@
 """Audit regressions: spot-check headroom, soft keep-rule failures, writer history, no re-publish, gate math."""
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from evomap_helpers import HINT, ShallowWriter, honest_bundle, safe_hub
+
 from rsi.core import noise_from_trials
 from rsi.domains.katas import KatasDomain, KataSimSolver, seed_harness
 from rsi.domains.katas.genes import CLASS_GENES
@@ -48,8 +49,16 @@ def test_writer_prompt_history_block():
     args = (["task:dates", "dates"], "def f(): ...", "trace")
     base = gene_writer_prompt(*args, validation_hint=HINT)
     assert gene_writer_prompt(*args, validation_hint=HINT, history=()) == base
-    hist = [{"id": "gene_old", "outcome": "FAILED", "why": "task_check_failed", "summary": "use lower()",
-             "strategy": ["Lowercase both strings."], "avoid": ["casefold"]}]
+    hist = [
+        {
+            "id": "gene_old",
+            "outcome": "FAILED",
+            "why": "task_check_failed",
+            "summary": "use lower()",
+            "strategy": ["Lowercase both strings."],
+            "avoid": ["casefold"],
+        }
+    ]
     p = gene_writer_prompt(*args, validation_hint=HINT, history=hist)
     assert "do NOT repeat a card that failed" in p and "gene_old: FAILED (task_check_failed)" in p
     assert "Lowercase both strings" in p and p.index("gene_old") < p.index("Rules:")
@@ -58,8 +67,14 @@ def test_writer_prompt_history_block():
 def test_writer_sees_its_earlier_failed_gene_for_the_same_signals():
     dom = KatasDomain(scheme="audit")
     writer = ShallowWriter(name="rec-writer")
-    ag = AgentNode("a", dom, seed_harness(), llm_task=KataSimSolver(0.0, name="s"), llm_propose=writer,
-                   config=Config(mode="safe", seed=0, validation_hint=HINT, trace=False))
+    ag = AgentNode(
+        "a",
+        dom,
+        seed_harness(),
+        llm_task=KataSimSolver(0.0, name="s"),
+        llm_propose=writer,
+        config=Config(mode="safe", seed=0, validation_hint=HINT, trace=False),
+    )
     task = next(t for t in dom.tasks.split("evolve") if t.family == "dates")
     for _ in range(8):
         ag.cycle(task)
@@ -113,8 +128,7 @@ def _check_solidify(m, accept, candidate, n_sig):
     smp = m.get("new_gene_sample")
     if smp:  # a new gene is judged on its retry sample, not on one trial
         w = sum(x >= thr for x in smp["with"])
-        solved = w > len(smp["with"]) / 2 and (smp["check"] != "paired" or
-                                              w > sum(x >= thr for x in smp["without"]))
+        solved = w > len(smp["with"]) / 2 and (smp["check"] != "paired" or w > sum(x >= thr for x in smp["without"]))
         assert solved == m["task_solved"]
     else:
         solved = m["task_score"] >= thr
@@ -123,8 +137,16 @@ def _check_solidify(m, accept, candidate, n_sig):
     files = cons["blast"]["files"]
     bc = 0.4 if files == 0 else (1.0 if files <= 6 else 0.7)
     v = (val["n_passed"] / val["n_run"]) if val["n_run"] else (0.5 if val["ok"] else 0.0)
-    comp = js_round2(.05 * min(1, .4 + .1 * n_sig) + .1 * sel + .05 * .5 + .15 * bc
-                     + .25 * max(0, 1 - .25 * len(cons["violations"])) + .25 * v + .1 + .05)
+    comp = js_round2(
+        0.05 * min(1, 0.4 + 0.1 * n_sig)
+        + 0.1 * sel
+        + 0.05 * 0.5
+        + 0.15 * bc
+        + 0.25 * max(0, 1 - 0.25 * len(cons["violations"]))
+        + 0.25 * v
+        + 0.1
+        + 0.05
+    )
     assert comp == m["composite_score"]
 
 

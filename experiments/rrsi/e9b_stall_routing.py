@@ -2,6 +2,7 @@
 
 Run: python experiments/rrsi/e9b_stall_routing.py [--seeds 60] [--workers 2] [--T 20]
 """
+
 import json
 import shutil
 from pathlib import Path
@@ -13,8 +14,10 @@ from rsi.domains.harnessworld.world import K
 from rsi.rrsi import RegularizerSwitches
 from rsi.rrsi.history import stall_flag
 
-ARMS = {"on": RegularizerSwitches.full(),
-        "off": RegularizerSwitches.full().but(stall_exploration=False, name="no_explore")}
+ARMS = {
+    "on": RegularizerSwitches.full(),
+    "off": RegularizerSwitches.full().but(stall_exploration=False, name="no_explore"),
+}
 
 
 def stall_routing(out: Path, w: int = 3) -> dict:
@@ -31,11 +34,15 @@ def stall_routing(out: Path, w: int = 3) -> dict:
         if not (sigma and untried):
             continue
         n_stall += 1
-        comps = {r.get("component") for r in recs if r.get("t") == t and r.get("edit_id")
-                 and r.get("delta_S") is not None}
+        comps = {
+            r.get("component") for r in recs if r.get("t") == t and r.get("edit_id") and r.get("delta_S") is not None
+        }
         n_routed += bool(comps & set(untried))
-    return {"stalled_rounds": n_stall, "routed_rounds": n_routed,
-            "routed_share": (n_routed / n_stall) if n_stall else None}
+    return {
+        "stalled_rounds": n_stall,
+        "routed_rounds": n_routed,
+        "routed_share": (n_routed / n_stall) if n_stall else None,
+    }
 
 
 def one(job: dict) -> dict:
@@ -49,8 +56,12 @@ def one(job: dict) -> dict:
 
 def main():
     a = retry_args("E9b: where does budget go when the run stalls?", seeds=60)
-    jobs = [{"seed": s, "arm": sw, "label": f"{setup}|{lab}", "cfg": {"T": a.T}, "world": world, "proposer": prop}
-            for setup, (world, prop) in SETUPS.items() for s in range(a.seeds) for lab, sw in ARMS.items()]
+    jobs = [
+        {"seed": s, "arm": sw, "label": f"{setup}|{lab}", "cfg": {"T": a.T}, "world": world, "proposer": prop}
+        for setup, (world, prop) in SETUPS.items()
+        for s in range(a.seeds)
+        for lab, sw in ARMS.items()
+    ]
     rows = pmap(one, jobs, a.workers)
     metrics = ("routed_share", "stalled_rounds", "coverage", "accepted_structural", "evolve_gain", "ood_gain")
     summ = summarize(rows, metrics=metrics)
@@ -61,18 +72,27 @@ def main():
         off = {r["seed"]: r for r in rows if r["label"] == f"{setup}|off"}
         both = [s for s in on if on[s]["routed_share"] is not None and off[s]["routed_share"] is not None]
         sub = [dict(on[s], label="on") for s in both] + [dict(off[s], label="off") for s in both]
-        pd[setup] = {"routed_share": {**paired(sub, "off", "on", "routed_share"), "n_paired_seeds": len(both)},
-                     **pairs(rows, f"{setup}|off", f"{setup}|on",
-                             ("coverage", "evolve_gain", "ood_gain", "accepted_structural"))}
+        pd[setup] = {
+            "routed_share": {**paired(sub, "off", "on", "routed_share"), "n_paired_seeds": len(both)},
+            **pairs(
+                rows, f"{setup}|off", f"{setup}|on", ("coverage", "evolve_gain", "ood_gain", "accepted_structural")
+            ),
+        }
         checks[f"{setup}: on-arm routed share >= 80%"] = summ[f"{setup}|on"]["routed_share"]["mean"] >= 0.80
         checks[f"{setup}: routed share on - off CI > 0"] = pd[setup]["routed_share"]["lo"] > 0
     strict = "strict (the spec's premise): true evolve on - off CI > 0"
     checks[strict] = pd["strict"]["evolve_gain"]["lo"] > 0
     routing = all(v for k, v in checks.items() if "routed" in k)
     verdict = "REPRODUCED" if routing and checks[strict] else "PARTIAL" if routing else "NOT REPRODUCED"
-    out = {"experiment": "E9b stall routing (retry round 2: P9)", "config": {"seeds": a.seeds, "T": a.T,
-                                                                          "setups": SETUPS},
-           "summary": summ, "paired_on_minus_off": pd, "checks": checks, "verdict": verdict, "rows": rows}
+    out = {
+        "experiment": "E9b stall routing (retry round 2: P9)",
+        "config": {"seeds": a.seeds, "T": a.T, "setups": SETUPS},
+        "summary": summ,
+        "paired_on_minus_off": pd,
+        "checks": checks,
+        "verdict": verdict,
+        "rows": rows,
+    }
     save("e9b_stall_routing", out)
     for lab, s in summ.items():
         print(lab, {m: round(s[m]["mean"], 3) for m in metrics if s[m]["n"]})

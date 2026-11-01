@@ -1,7 +1,10 @@
 """Trace events, and the write-only shadow monitor: runs with and without it make identical decisions."""
+
 import json
 
+import pytest
 from autoresearch_helpers import context, quiet
+
 from rsi.autoresearch import Config, LandscapeTask, LLMResearchAgent, MockResearchAgent, run
 from rsi.autoresearch.pools import harness_edit_pool
 from rsi.core import Artifact, MockLLM, RewriteEditor
@@ -10,14 +13,17 @@ from rsi.trace import load_trace, render_markdown
 
 
 def _decisions(res):
-    return [(n.round, n.kind, n.status, None if n.score is None else round(n.score, 12), n.change, n.artifact_id)
-            for n in res.ledger.nodes()]
+    return [
+        (n.round, n.kind, n.status, None if n.score is None else round(n.score, 12), n.change, n.artifact_id)
+        for n in res.ledger.nodes()
+    ]
 
 
 def _landscape(tmp_path, name, monitor):
     cfg = Config(max_experiments=14, plot=False, shadow_monitor=monitor, hidden_audit=True)
-    return run(LandscapeTask(seed=3), config=cfg, out_dir=tmp_path / name,
-               mock={"crash_rate": 0.15, "exploit_rate": 0.15})
+    return run(
+        LandscapeTask(seed=3), config=cfg, out_dir=tmp_path / name, mock={"crash_rate": 0.15, "exploit_rate": 0.15}
+    )
 
 
 def _monitors(res) -> list:
@@ -26,8 +32,20 @@ def _monitors(res) -> list:
 
 def test_trace_has_uniform_events(tmp_path):
     ev = load_trace(_landscape(tmp_path, "a", True).out_dir)
-    assert {"run_start", "baseline", "round_start", "analysis", "proposal", "critic", "eval", "gate", "decision",
-            "state", "monitor", "run_end"} <= {e["kind"] for e in ev}
+    assert {
+        "run_start",
+        "baseline",
+        "round_start",
+        "analysis",
+        "proposal",
+        "critic",
+        "eval",
+        "gate",
+        "decision",
+        "state",
+        "monitor",
+        "run_end",
+    } <= {e["kind"] for e in ev}
     rounds = {e["round"] for e in ev if e["kind"] == "round_start"}
     assert rounds == set(range(1, 15))
     assert all(sum(e["round"] == r and e["kind"] == "decision" for e in ev) == 1 for r in rounds)
@@ -62,9 +80,15 @@ def test_monitor_is_write_only_landscape(tmp_path):
 def test_monitor_is_write_only_domain_shadowmonitor(tmp_path):
     def go(name, monitor):
         dom = AgentQADomain()
-        return run(dom, dom.seed_artifact(), llm_task=SimModel(dom.tasks),
-                   agent=MockResearchAgent(harness_edit_pool(), seed=1), task_kwargs={"k": 1},
-                   config=quiet(max_experiments=5, shadow_monitor=monitor), out_dir=tmp_path / name)
+        return run(
+            dom,
+            dom.seed_artifact(),
+            llm_task=SimModel(dom.tasks),
+            agent=MockResearchAgent(harness_edit_pool(), seed=1),
+            task_kwargs={"k": 1},
+            config=quiet(max_experiments=5, shadow_monitor=monitor),
+            out_dir=tmp_path / name,
+        )
 
     a, b = go("with", True), go("without", False)
     assert _decisions(a) == _decisions(b)
@@ -75,10 +99,12 @@ def test_monitor_is_write_only_domain_shadowmonitor(tmp_path):
     assert any(e["kind"] == "eval" and e["data"]["per_task"] for e in ev)  # per-task scores of each experiment
 
 
+@pytest.mark.slow
 def test_monitor_is_write_only_tinylm(tmp_path, tinylm_tokens_6k):
     def go(name, monitor):
-        return run(tinylm_tokens_6k, config=quiet(max_experiments=4, shadow_monitor=monitor, seed=2),
-                   out_dir=tmp_path / name)
+        return run(
+            tinylm_tokens_6k, config=quiet(max_experiments=4, shadow_monitor=monitor, seed=2), out_dir=tmp_path / name
+        )
 
     a, b = go("with", True), go("without", False)
     assert _decisions(a) == _decisions(b)
@@ -89,9 +115,11 @@ def test_monitor_is_write_only_tinylm(tmp_path, tinylm_tokens_6k):
 def test_llm_agent_strips_reply_debris_seen_live():
     """Commit trailers and a stray closing fence after a file block are stripped from changed files."""
     base = Artifact({"train.py": "LR = 0.1\nprint('val_bpb: 1.0')\n", "notes.md": "x\n"})
-    reply = ('```json\n{"change": "LR 0.1 -> 0.2"}\n```\n=== FILE: train.py ===\nLR = 0.2\nprint(\'val_bpb: 1.0\')\n'
-             '\nCo-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>\nClaude-Session: https://example/s\n'
-             '=== FILE: notes.md ===\nexample:\n```\ncode\n```\n')
+    reply = (
+        '```json\n{"change": "LR 0.1 -> 0.2"}\n```\n=== FILE: train.py ===\nLR = 0.2\nprint(\'val_bpb: 1.0\')\n'
+        "\nCo-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>\nClaude-Session: https://example/s\n"
+        "=== FILE: notes.md ===\nexample:\n```\ncode\n```\n"
+    )
     ctx = context(base, program="p")
     prop = LLMResearchAgent(RewriteEditor(MockLLM(lambda *a: reply))).propose(ctx)
     assert prop.artifact["train.py"] == "LR = 0.2\nprint('val_bpb: 1.0')\n"
@@ -99,7 +127,8 @@ def test_llm_agent_strips_reply_debris_seen_live():
     assert "Co-Authored-By" in prop.meta["sanitized"]["train.py"][0]
     fix_reply = '{"change": "fix"}\n=== FILE: train.py ===\nLR = 0.2\nx = 2\n```\n'
     fixed = LLMResearchAgent(RewriteEditor(MockLLM(lambda *a: fix_reply))).fix_crash(
-        ctx, Artifact({"train.py": "LR = 0.2\nx = 1 +\n"}), "d", "SyntaxError")
+        ctx, Artifact({"train.py": "LR = 0.2\nx = 1 +\n"}), "d", "SyntaxError"
+    )
     assert fixed.artifact["train.py"] == "LR = 0.2\nx = 2\n"
     raw = LLMResearchAgent(RewriteEditor(MockLLM(lambda *a: reply)), sanitize=False).propose(ctx)
     assert "Co-Authored-By" in raw.artifact["train.py"]

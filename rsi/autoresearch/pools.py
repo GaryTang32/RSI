@@ -1,4 +1,5 @@
 """Scripted edit pool for the AgentQA-style harness layout (``harness.py`` + ``prompts/``)."""
+
 from __future__ import annotations
 
 from .agent import ScriptedEdit, text_edit
@@ -31,17 +32,48 @@ def _replace_file(name: str, kind: str, path: str, text: str, desc: str) -> Scri
 
 def harness_edit_pool() -> list[ScriptedEdit]:
     return [
-        text_edit("step_by_step", "helpful", "prompts/system.md", "", "\nThink step by step before answering.\n",
-                  "system prompt: think step by step"),
-        text_edit("answer_format", "helpful", "prompts/task.md", "", "\nEnd with a line 'ANSWER: <value>'.\n",
-                  "task prompt: state the ANSWER: format"),
-        text_edit("verify", "helpful", "prompts/system.md", "", "\nVerify and double-check your result.\n",
-                  "system prompt: verify the result"),
-        _replace_file("python_tool", "helpful", "harness.py", TOOL_HARNESS,
-                      "harness: compute answers with the Python tool"),
-        text_edit("polite", "neutral", "prompts/system.md", "You are a helpful assistant.",
-                  "You are a friendly and helpful assistant.", "system prompt: friendlier wording"),
-        text_edit("broken_return", "crash", "harness.py", "    return lines[-1] if lines else \"\"\n",
-                  "    return lines[-1] if lines else \"\"\n    retrun None\n", "harness: return cleanup (typo)",
-                  fix=lambda f: {"harness.py": f["harness.py"].replace("    retrun None\n", "", 1)}),
+        text_edit(
+            "step_by_step",
+            "helpful",
+            "prompts/system.md",
+            "",
+            "\nThink step by step before answering.\n",
+            "system prompt: think step by step",
+        ),
+        text_edit(
+            "answer_format",
+            "helpful",
+            "prompts/task.md",
+            "",
+            "\nEnd with a line 'ANSWER: <value>'.\n",
+            "task prompt: state the ANSWER: format",
+        ),
+        text_edit(
+            "verify",
+            "helpful",
+            "prompts/system.md",
+            "",
+            "\nVerify and double-check your result.\n",
+            "system prompt: verify the result",
+        ),
+        _replace_file(
+            "python_tool", "helpful", "harness.py", TOOL_HARNESS, "harness: compute answers with the Python tool"
+        ),
+        text_edit(
+            "polite",
+            "neutral",
+            "prompts/system.md",
+            "You are a helpful assistant.",
+            "You are a friendly and helpful assistant.",
+            "system prompt: friendlier wording",
+        ),
+        text_edit(
+            "broken_return",
+            "crash",
+            "harness.py",
+            '    return lines[-1] if lines else ""\n',
+            '    return lines[-1] if lines else ""\n    retrun None\n',
+            "harness: return cleanup (typo)",
+            fix=lambda f: {"harness.py": f["harness.py"].replace("    retrun None\n", "", 1)},
+        ),
     ]

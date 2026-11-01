@@ -1,4 +1,5 @@
 """Executors for experiment runs: a local process pool and a fake SLURM cluster."""
+
 from __future__ import annotations
 
 import itertools
@@ -8,7 +9,6 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from ..core.artifact import Artifact
 from .task import RunOutcome
@@ -25,9 +25,9 @@ class Job:
     meta: dict = field(default_factory=dict)
     state: str = "PENDING"
     submitted: float = field(default_factory=time.time)
-    started: Optional[float] = None
-    finished: Optional[float] = None
-    outcome: Optional[RunOutcome] = None
+    started: float | None = None
+    finished: float | None = None
+    outcome: RunOutcome | None = None
     log: str = ""
 
 
@@ -45,8 +45,9 @@ def state_of(outcome: RunOutcome) -> str:
 class Executor:
     name = "executor"
 
-    def run(self, task, artifact: Artifact, *, seed: int = 0, mode: str = "hardened", log_path=None,
-            val_epoch: int = 0) -> RunOutcome:
+    def run(
+        self, task, artifact: Artifact, *, seed: int = 0, mode: str = "hardened", log_path=None, val_epoch: int = 0
+    ) -> RunOutcome:
         return self.wait(self.submit(task, artifact, seed=seed, mode=mode, log_path=log_path, val_epoch=val_epoch))
 
     def submit(self, task, artifact, *, seed=0, mode="hardened", log_path=None, val_epoch=0, meta=None) -> str:
@@ -55,7 +56,7 @@ class Executor:
     def status(self, job_id: str) -> str:
         raise NotImplementedError
 
-    def wait(self, job_id: str, timeout: Optional[float] = None, poll_s: float = 0.05) -> RunOutcome:
+    def wait(self, job_id: str, timeout: float | None = None, poll_s: float = 0.05) -> RunOutcome:
         raise NotImplementedError
 
     def cancel(self, job_id: str) -> None:
@@ -132,10 +133,21 @@ class FakeSlurmExecutor(Executor):
 
     name = "fake-slurm"
 
-    def __init__(self, nodes: int = 2, *, spool_dir: Optional[str | Path] = None, queue_delay_s: float = 0.0,
-                 time_limit_s: Optional[float] = None, partition: str = "cpu", gres: str = "gpu:1",
-                 container_image: Optional[str] = None, container_mounts: Optional[str] = None,
-                 poll_s: float = 0.05, pending_limit_s: float = 600.0, running_limit_s: Optional[float] = None) -> None:
+    def __init__(
+        self,
+        nodes: int = 2,
+        *,
+        spool_dir: str | Path | None = None,
+        queue_delay_s: float = 0.0,
+        time_limit_s: float | None = None,
+        partition: str = "cpu",
+        gres: str = "gpu:1",
+        container_image: str | None = None,
+        container_mounts: str | None = None,
+        poll_s: float = 0.05,
+        pending_limit_s: float = 600.0,
+        running_limit_s: float | None = None,
+    ) -> None:
         self.nodes = nodes
         self.spool = Path(spool_dir or tempfile.mkdtemp(prefix="rsi_fakeslurm_"))
         self.spool.mkdir(parents=True, exist_ok=True)
@@ -152,7 +164,7 @@ class FakeSlurmExecutor(Executor):
         self._ids = itertools.count(1000)
         self._lock = threading.Lock()
         self._free = threading.Semaphore(nodes)
-        self.events: list[tuple[float, str, str]] = []    # (t, job, state) transitions
+        self.events: list[tuple[float, str, str]] = []  # (t, job, state) transitions
         self.warnings: list[str] = []
         self._stop = False
         self._dispatcher = threading.Thread(target=self._dispatch, daemon=True)
@@ -166,10 +178,15 @@ class FakeSlurmExecutor(Executor):
                 lines += f"#SBATCH --container-mounts={self.container_mounts}\n"
             lines += "#SBATCH --container-writable\n"
         tl = self.time_limit_s or task.budget.hard_timeout()
-        return SBATCH_TEMPLATE.format(tag=tag, partition=self.partition, gres=self.gres,
-                                      time_limit=time.strftime("%H:%M:%S", time.gmtime(tl)),
-                                      container_lines=lines, workdir=str(self.spool / f"exp_{job_id}"),
-                                      run_cmd=getattr(task, "run_command", "python train.py"))
+        return SBATCH_TEMPLATE.format(
+            tag=tag,
+            partition=self.partition,
+            gres=self.gres,
+            time_limit=time.strftime("%H:%M:%S", time.gmtime(tl)),
+            container_lines=lines,
+            workdir=str(self.spool / f"exp_{job_id}"),
+            run_cmd=getattr(task, "run_command", "python train.py"),
+        )
 
     def _event(self, jid: str, state: str) -> None:
         with self._lock:
@@ -179,8 +196,14 @@ class FakeSlurmExecutor(Executor):
     def _dispatch(self) -> None:
         while not self._stop:
             with self._lock:
-                pending = next((jid for jid, job in self.jobs.items()
-                                if job.state == "PENDING" and time.time() - job.submitted >= self.queue_delay_s), None)
+                pending = next(
+                    (
+                        jid
+                        for jid, job in self.jobs.items()
+                        if job.state == "PENDING" and time.time() - job.submitted >= self.queue_delay_s
+                    ),
+                    None,
+                )
             if pending is None or not self._free.acquire(timeout=self.poll_s):
                 time.sleep(self.poll_s / 2)
                 continue
@@ -209,8 +232,19 @@ class FakeSlurmExecutor(Executor):
             self._event(jid, state_of(out))
         self._free.release()
 
-    def sbatch(self, script: str, task, artifact: Artifact, *, seed=0, mode="hardened", log_path=None, val_epoch=0,
-               meta=None, job_id: Optional[str] = None) -> str:
+    def sbatch(
+        self,
+        script: str,
+        task,
+        artifact: Artifact,
+        *,
+        seed=0,
+        mode="hardened",
+        log_path=None,
+        val_epoch=0,
+        meta=None,
+        job_id: str | None = None,
+    ) -> str:
         with self._lock:
             jid = job_id or str(next(self._ids))
             self.jobs[jid] = Job(jid, artifact, seed, mode, dict(meta or {}))
@@ -236,8 +270,9 @@ class FakeSlurmExecutor(Executor):
         with self._lock:
             jid = str(next(self._ids))
         script = self.render_sbatch(jid, task, (meta or {}).get("tag", "exp"))
-        return self.sbatch(script, task, artifact, seed=seed, mode=mode, log_path=log_path, val_epoch=val_epoch,
-                           meta=meta, job_id=jid)
+        return self.sbatch(
+            script, task, artifact, seed=seed, mode=mode, log_path=log_path, val_epoch=val_epoch, meta=meta, job_id=jid
+        )
 
     def status(self, job_id):
         return self.jobs[job_id].state
@@ -254,11 +289,19 @@ class FakeSlurmExecutor(Executor):
             if q == "PENDING" and time.time() - job.submitted > self.pending_limit_s and not warned:
                 self.warnings.append(f"job {job_id} PENDING for more than {self.pending_limit_s:.0f}s; waiting")
                 warned = True
-            if q == "RUNNING" and self.running_limit_s is not None and job.started and \
-                    time.time() - job.started > self.running_limit_s:
+            if (
+                q == "RUNNING"
+                and self.running_limit_s is not None
+                and job.started
+                and time.time() - job.started > self.running_limit_s
+            ):
                 self.scancel(job_id)
-                return RunOutcome(None, log="", killed=True, crash_reason=
-                                  f"killed: RUNNING longer than {self.running_limit_s:.0f}s (scancel)")
+                return RunOutcome(
+                    None,
+                    log="",
+                    killed=True,
+                    crash_reason=f"killed: RUNNING longer than {self.running_limit_s:.0f}s (scancel)",
+                )
             if timeout is not None and time.time() - t0 > timeout:
                 self.scancel(job_id)
                 return RunOutcome(None, log="", killed=True, crash_reason="killed: wait timeout (scancel)")
@@ -267,7 +310,7 @@ class FakeSlurmExecutor(Executor):
         out = self.jobs[job_id].outcome
         if state == "CANCELLED":
             return RunOutcome(None, log=out.log if out else "", crash_reason="CANCELLED")
-        while out is None:            # the terminal state can be set just before the outcome is stored
+        while out is None:  # the terminal state can be set just before the outcome is stored
             time.sleep(0.001)
             out = self.jobs[job_id].outcome
         if state == "TIMEOUT" and out.metric is not None:

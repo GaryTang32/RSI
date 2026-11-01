@@ -1,7 +1,8 @@
 """Build demo/index.html, the interactive page of the live demo runs, from plot_demo.py's and spend.py's output.
 
-    python experiments/demo/spend.py && python experiments/demo/plot_demo.py && python experiments/demo/build_page.py
+python experiments/demo/spend.py && python experiments/demo/plot_demo.py && python experiments/demo/build_page.py
 """
+
 from __future__ import annotations
 
 import json
@@ -25,24 +26,34 @@ def _files(run: str) -> dict:
 
 def _tool_calls(run: Path) -> int:
     """Sandboxed tool calls the replayed run made (0: its replay never exercised the sandbox)."""
-    return sum(int(n) for p in (run / "store" / "candidates").glob("*/eval/search/per_task/*.json")
-               for n in re.findall(r'"tool_calls": (\d+)', p.read_text()))
+    return sum(
+        int(n)
+        for p in (run / "store" / "candidates").glob("*/eval/search/per_task/*.json")
+        for n in re.findall(r'"tool_calls": (\d+)', p.read_text())
+    )
 
 
 def _trace_lines(run: Path) -> dict:
     """Practice-trace lines that show a sandbox timeout or name the stable sandbox path."""
-    lines = [ln for p in (run / "store" / "candidates").glob("*/eval/search/traces/*")
-             for ln in p.read_text(errors="replace").splitlines()]
-    return {"timeouts": sum("[killed: timeout]" in ln for ln in lines),
-            "sandbox_path": sum("/tmp/rsi_sandbox" in ln for ln in lines)}
+    lines = [
+        ln
+        for p in (run / "store" / "candidates").glob("*/eval/search/traces/*")
+        for ln in p.read_text(errors="replace").splitlines()
+    ]
+    return {
+        "timeouts": sum("[killed: timeout]" in ln for ln in lines),
+        "sandbox_path": sum("/tmp/rsi_sandbox" in ln for ln in lines),
+    }
 
 
 def _replay(rc: Path) -> dict:
     replay = rc.parent
     t = traces_identical(replay.parent / replay.name.removesuffix("_replay"), replay)
-    return json.loads(rc.read_text()) | {"tool_calls": _tool_calls(replay),
-                                         "traces": {"files": t["files"], "identical": t["identical"]},
-                                         "trace_lines": _trace_lines(replay)}
+    return json.loads(rc.read_text()) | {
+        "tool_calls": _tool_calls(replay),
+        "traces": {"files": t["files"], "identical": t["identical"]},
+        "trace_lines": _trace_lines(replay),
+    }
 
 
 def main() -> None:
@@ -57,8 +68,14 @@ def main() -> None:
     extra = {"spend": json.loads((DEMO / "spend.json").read_text())}
     if (DEMO / "replicates.json").exists():
         extra["replicates"] = json.loads((DEMO / "replicates.json").read_text())
-    extra["replay"] = [_replay(rc) for rc in (RUNS / "metaharness_replay" / "replay_check.json",
-                                              RUNS / "metaharness_hard_replay" / "replay_check.json") if rc.exists()]
+    extra["replay"] = [
+        _replay(rc)
+        for rc in (
+            RUNS / "metaharness_replay" / "replay_check.json",
+            RUNS / "metaharness_hard_replay" / "replay_check.json",
+        )
+        if rc.exists()
+    ]
     tpl = tpl.replace("/*__EXTRA__*/null", json.dumps(extra).replace("</", "<\\/"))
     (DEMO / "index.html").write_text(tpl.replace("/*__DATA__*/null", data))
     print("wrote", DEMO / "index.html", round(len(data) / 1024), "KB of data")

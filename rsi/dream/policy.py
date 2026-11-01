@@ -1,9 +1,9 @@
 """Exploration policies as content-addressed code artifacts holding one ``method.py`` [paper:App.B.2]."""
+
 from __future__ import annotations
 
 import ast
 from pathlib import Path
-from typing import Optional
 
 from ..core.artifact import Artifact
 
@@ -26,9 +26,15 @@ def code_of(policy: Artifact | str) -> str:
     return policy if isinstance(policy, str) else policy[POLICY_FILE]
 
 
-def _params_node(tree: ast.Module) -> Optional[ast.Assign]:
-    return next((node for node in tree.body if isinstance(node, ast.Assign)
-                 and any(isinstance(t, ast.Name) and t.id == "PARAMS" for t in node.targets)), None)
+def _params_node(tree: ast.Module) -> ast.Assign | None:
+    return next(
+        (
+            node
+            for node in tree.body
+            if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "PARAMS" for t in node.targets)
+        ),
+        None,
+    )
 
 
 def get_params(code: str) -> dict:
@@ -48,7 +54,7 @@ def set_params(code: str, updates: dict) -> str:
     params = {**dict(ast.literal_eval(node.value)), **updates}
     lines = code.splitlines(keepends=True)
     items = "".join(f"    {k!r}: {round(v, 6) if isinstance(v, float) else v!r},\n" for k, v in params.items())
-    return "".join(lines[:node.lineno - 1]) + "PARAMS = {\n" + items + "}\n" + "".join(lines[node.end_lineno:])
+    return "".join(lines[: node.lineno - 1]) + "PARAMS = {\n" + items + "}\n" + "".join(lines[node.end_lineno :])
 
 
 def make_policy(name: str, **params) -> Artifact:

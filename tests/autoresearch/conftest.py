@@ -1,4 +1,5 @@
 """Shared tinylm and tabular fixtures; each dataset is built once per session."""
+
 import pytest
 
 from rsi.domains.tabular import TabularTask

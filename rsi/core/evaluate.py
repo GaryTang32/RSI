@@ -1,14 +1,15 @@
 """Parallel, cached evaluation of artifacts on task splits (aggregated as in RRSI ``rrsi/evaluate.py``)."""
+
 from __future__ import annotations
 
 import hashlib
 import json
 import os
 import threading
+from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable, Optional, Sequence, Union
 
 import numpy as np
 
@@ -22,7 +23,7 @@ from .tasks import Task
 class EvalResult:
     artifact_id: str
     split: str
-    trials: dict[str, list[Trial]]           # task_id -> trials (seed order)
+    trials: dict[str, list[Trial]]  # task_id -> trials (seed order)
     k: int
     n_missing: int = 0
     meta: dict = field(default_factory=dict)
@@ -96,14 +97,29 @@ class EvalResult:
         return [max(self.trials[i], key=lambda t: t.score) for i in ids if self.trials[i]]
 
     def summary(self) -> dict:
-        return {"artifact": self.artifact_id[:10], "split": self.split, "k": self.k, "S": round(self.score, 4),
-                "C": round(self.cost, 1), "steps": round(self.steps, 2), "n_tasks": len(self.trials),
-                "missing": self.n_missing, "errors": round(self.error_rate, 3), "usd": round(self.dollars, 4)}
+        return {
+            "artifact": self.artifact_id[:10],
+            "split": self.split,
+            "k": self.k,
+            "S": round(self.score, 4),
+            "C": round(self.cost, 1),
+            "steps": round(self.steps, 2),
+            "n_tasks": len(self.trials),
+            "missing": self.n_missing,
+            "errors": round(self.error_rate, 3),
+            "usd": round(self.dollars, 4),
+        }
 
     def to_json(self, max_trace: int = 2000) -> dict:
-        return {"artifact_id": self.artifact_id, "split": self.split, "k": self.k, "n_missing": self.n_missing,
-                "meta": self.meta, "summary": self.summary(),
-                "trials": {tid: [t.to_json(max_trace) for t in trs] for tid, trs in self.trials.items()}}
+        return {
+            "artifact_id": self.artifact_id,
+            "split": self.split,
+            "k": self.k,
+            "n_missing": self.n_missing,
+            "meta": self.meta,
+            "summary": self.summary(),
+            "trials": {tid: [t.to_json(max_trace) for t in trs] for tid, trs in self.trials.items()},
+        }
 
 
 def _stable_repr(o) -> str:
@@ -120,9 +136,16 @@ def _stable_repr(o) -> str:
 class Evaluator:
     """Thread-pool evaluation of a Domain with trials cached by (artifact, task, seed); sealed splits need opt-in."""
 
-    def __init__(self, domain: Domain, llm: Optional[LLM] = None, *, workers: int = 8,
-                 cache_dir: Optional[Union[str, Path]] = None, allow_sealed: bool = False,
-                 seed_offset: int = 0) -> None:
+    def __init__(
+        self,
+        domain: Domain,
+        llm: LLM | None = None,
+        *,
+        workers: int = 8,
+        cache_dir: str | Path | None = None,
+        allow_sealed: bool = False,
+        seed_offset: int = 0,
+    ) -> None:
         self.domain = domain
         self.llm = llm
         self.workers = workers
@@ -131,10 +154,10 @@ class Evaluator:
         self.seed_offset = seed_offset
         self._mem: dict[tuple, Trial] = {}
         self._lock = threading.Lock()
-        self.n_rollouts = 0            # fresh (uncached) rollouts: the budget unit of GEPA / autoresearch
+        self.n_rollouts = 0  # fresh (uncached) rollouts: the budget unit of GEPA / autoresearch
         self.on_trial: list[Callable[[Artifact, Trial], None]] = []
 
-    def _cache_path(self, aid: str, tid: str, seed: int) -> Optional[Path]:
+    def _cache_path(self, aid: str, tid: str, seed: int) -> Path | None:
         if not self.cache_dir:
             return None
         safe = "".join(c if c.isalnum() or c in "-_." else "_" for c in tid)
@@ -144,12 +167,15 @@ class Evaluator:
         """What a disk-cache entry depends on besides (artifact, task id, seed)."""
         name = getattr(self.llm, "name", None) if self.llm is not None else None
         while isinstance(name, str) and name.startswith("cached:"):
-            name = name[len("cached:"):]   # a CachedLLM replays the same model: its trials are interchangeable
+            name = name[len("cached:") :]  # a CachedLLM replays the same model: its trials are interchangeable
         blob = json.dumps([task.input, task.target, task.family], sort_keys=True, default=_stable_repr)
-        return {"llm": name, "domain": getattr(self.domain, "name", None),
-                "task": hashlib.sha256(blob.encode()).hexdigest()[:16]}
+        return {
+            "llm": name,
+            "domain": getattr(self.domain, "name", None),
+            "task": hashlib.sha256(blob.encode()).hexdigest()[:16],
+        }
 
-    def _get_cached(self, aid, tid, seed, ident: Optional[dict] = None) -> Optional[Trial]:
+    def _get_cached(self, aid, tid, seed, ident: dict | None = None) -> Trial | None:
         key = (aid, tid, seed)
         with self._lock:
             if key in self._mem:
@@ -168,7 +194,7 @@ class Evaluator:
             self._mem[key] = tr
         return tr
 
-    def _put(self, aid, tr: Trial, ident: Optional[dict] = None) -> None:
+    def _put(self, aid, tr: Trial, ident: dict | None = None) -> None:
         with self._lock:
             self._mem[(aid, tr.task_id, tr.seed)] = tr
         p = self._cache_path(aid, tr.task_id, tr.seed)
@@ -190,14 +216,21 @@ class Evaluator:
         tr = self.domain.run(artifact, task, seed=s, llm=self.llm)
         with self._lock:
             self.n_rollouts += 1
-        if not (tr.error and tr.error.startswith("infra:")):   # infrastructure failures are retried, never cached
+        if not (tr.error and tr.error.startswith("infra:")):  # infrastructure failures are retried, never cached
             self._put(artifact.id, tr, ident)
         for cb in self.on_trial:
             cb(artifact, tr)
         return tr
 
-    def evaluate(self, artifact: Artifact, split: Union[str, Sequence[Task]] = "evolve", k: int = 1, *,
-                 seeds: Optional[Sequence[int]] = None, label: Optional[str] = None) -> EvalResult:
+    def evaluate(
+        self,
+        artifact: Artifact,
+        split: str | Sequence[Task] = "evolve",
+        k: int = 1,
+        *,
+        seeds: Sequence[int] | None = None,
+        label: str | None = None,
+    ) -> EvalResult:
         """Run each task of ``split`` (a name, or tasks reported as ``label``) once per seed and aggregate."""
         if isinstance(split, str):
             tasks, split_name = self.domain.tasks.split(split, allow_sealed=self.allow_sealed), split
@@ -218,11 +251,16 @@ class Evaluator:
                 outs = list(ex.map(work, jobs))
         trials: dict[str, list[Trial]] = {t.id: [] for t in tasks}
         n_missing = 0
-        for tid, s, tr in outs:   # in job order, so each task's trials come in seed order
-            if tr.error and tr.error.startswith("infra:"):   # missing: the failure score over the full denominator
+        for tid, s, tr in outs:  # in job order, so each task's trials come in seed order
+            if tr.error and tr.error.startswith("infra:"):  # missing: the failure score over the full denominator
                 n_missing += 1
-                tr = Trial(task_id=tid, seed=s, score=float(getattr(self.domain, "failure_score", 0.0)),
-                           error=tr.error, family=tr.family)
+                tr = Trial(
+                    task_id=tid,
+                    seed=s,
+                    score=float(getattr(self.domain, "failure_score", 0.0)),
+                    error=tr.error,
+                    family=tr.family,
+                )
             trials[tid].append(tr)
         return EvalResult(artifact.id, split_name, trials, k=len(seeds), n_missing=n_missing)
 

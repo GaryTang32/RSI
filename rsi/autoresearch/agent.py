@@ -1,37 +1,41 @@
 """Research agents: the LLM agent (an Editor over program.md + results.tsv) and scripted offline agents."""
+
 from __future__ import annotations
 
 import ast
 import random
 import re
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, Sequence
+from typing import Any
 
 from ..core.artifact import Artifact, parse_file_blocks
 from ..core.editors import EDIT_FORMAT, Editor, Proposal
 from ..core.llm import LLM, MockLLM
 
-SYSTEM = ("You are an autonomous ML researcher running experiments in a loop. You edit code to improve one "
-          "metric under a fixed budget. You never ask the human questions.")
+SYSTEM = (
+    "You are an autonomous ML researcher running experiments in a loop. You edit code to improve one "
+    "metric under a fixed budget. You never ask the human questions."
+)
 
 
 @dataclass
 class AgentContext:
     """Everything the agent may read before one experiment."""
 
-    program: str                        # rendered program.md
-    artifact: Artifact                  # the current branch tip (all in-scope files)
+    program: str  # rendered program.md
+    artifact: Artifact  # the current branch tip (all in-scope files)
     editable: tuple[str, ...]
     locked: tuple[str, ...]
-    results_tsv: str                    # results.tsv (whole file by default; see Config.history_rows)
-    git_log: str                        # kept-commit chain (newest first)
+    results_tsv: str  # results.tsv (whole file by default; see Config.history_rows)
+    git_log: str  # kept-commit chain (newest first)
     task_brief: str = ""
     metric: str = "score"
     direction: str = "max"
-    best: Optional[float] = None
+    best: float | None = None
     experiment: int = 0
     seed: int = 0
-    notes: str = ""                     # framework notes (e.g. the NEVER STOP nudge after empty turns)
+    notes: str = ""  # framework notes (e.g. the NEVER STOP nudge after empty turns)
 
     def files(self) -> dict[str, str]:
         out = {"results.tsv": self.results_tsv, "git_log.txt": self.git_log}
@@ -48,7 +52,7 @@ class ResearchAgent:
     def propose(self, ctx: AgentContext) -> Proposal:  # pragma: no cover
         raise NotImplementedError
 
-    def fix_crash(self, ctx: AgentContext, candidate: Artifact, description: str, log_tail: str) -> Optional[Proposal]:
+    def fix_crash(self, ctx: AgentContext, candidate: Artifact, description: str, log_tail: str) -> Proposal | None:
         return None
 
     def usage(self) -> dict:
@@ -91,7 +95,7 @@ def sanitize_reply_files(prop: Proposal, parent: Artifact) -> Proposal:
     for name, text in prop.artifact.files.items():
         if parent.files.get(name) == text:
             continue
-        prose = name.lower().endswith((".md", ".markdown", ".rst", ".txt"))    # a closing fence is legal there
+        prose = name.lower().endswith((".md", ".markdown", ".rst", ".txt"))  # a closing fence is legal there
         pat = _COMMIT_TRAILER if prose else _TRAILER
         lines = text.rstrip("\n").split("\n")
         cut = []
@@ -110,7 +114,7 @@ def sanitize_reply_files(prop: Proposal, parent: Artifact) -> Proposal:
 class LLMResearchAgent(ResearchAgent):
     """Agent over an Editor; ``editable=None`` lets out-of-scope edits reach the loop to run or reject."""
 
-    last_fix: Optional[Proposal] = None                        # last fix reply (trace only)
+    last_fix: Proposal | None = None  # last fix reply (trace only)
 
     def __init__(self, editor: Editor, *, system: str = SYSTEM, name: str = "llm-agent", sanitize: bool = True) -> None:
         self.editor = editor
@@ -119,10 +123,22 @@ class LLMResearchAgent(ResearchAgent):
         self.name = name
 
     def propose(self, ctx: AgentContext) -> Proposal:
-        instr = PROPOSE.format(program=ctx.program, brief=ctx.task_brief, metric=ctx.metric,
-                               best="n/a" if ctx.best is None else f"{ctx.best:.6f}", n=ctx.experiment)
-        prop = self.editor.edit(ctx.artifact, instr, context=ctx.files(), editable=None, system=self.system,
-                                seed=ctx.seed * 100003 + ctx.experiment, role="researcher")
+        instr = PROPOSE.format(
+            program=ctx.program,
+            brief=ctx.task_brief,
+            metric=ctx.metric,
+            best="n/a" if ctx.best is None else f"{ctx.best:.6f}",
+            n=ctx.experiment,
+        )
+        prop = self.editor.edit(
+            ctx.artifact,
+            instr,
+            context=ctx.files(),
+            editable=None,
+            system=self.system,
+            seed=ctx.seed * 100003 + ctx.experiment,
+            role="researcher",
+        )
         prop.meta.setdefault("prompt", self._prompt_text(ctx.artifact, instr, ctx.files()))
         if not prop.ok:
             m = _REWIND.search(prop.raw or "")
@@ -142,8 +158,15 @@ class LLMResearchAgent(ResearchAgent):
 
     def fix_crash(self, ctx, candidate, description, log_tail):
         instr = FIX.format(program=ctx.program, desc=description, tail=log_tail[-4000:])
-        prop = self.editor.edit(candidate, instr, context=None, editable=None, system=self.system,
-                                seed=ctx.seed * 100003 + ctx.experiment + 50000, role="researcher_fix")
+        prop = self.editor.edit(
+            candidate,
+            instr,
+            context=None,
+            editable=None,
+            system=self.system,
+            seed=ctx.seed * 100003 + ctx.experiment + 50000,
+            role="researcher_fix",
+        )
         prop.meta.setdefault("prompt", self._prompt_text(candidate, instr, None))
         if self.sanitize:
             prop = sanitize_reply_files(prop, candidate)
@@ -154,7 +177,7 @@ class LLMResearchAgent(ResearchAgent):
         return prop
 
     def usage(self) -> dict:
-        llm: Optional[LLM] = getattr(self.editor, "llm", None) or getattr(self.editor, "cli", None)
+        llm: LLM | None = getattr(self.editor, "llm", None) or getattr(self.editor, "cli", None)
         return llm.meter.snapshot() if llm is not None else {}
 
 
@@ -164,9 +187,9 @@ class ScriptedEdit:
 
     name: str
     kind: str
-    apply: Callable[[dict], Optional[tuple[dict, str]]]
-    fix: Optional[Callable[[dict], Optional[dict]]] = None    # crash repair that keeps the idea
-    group: str = ""                                           # knob / family
+    apply: Callable[[dict], tuple[dict, str] | None]
+    fix: Callable[[dict], dict | None] | None = None  # crash repair that keeps the idea
+    group: str = ""  # knob / family
     weight: float = 1.0
     meta: dict = field(default_factory=dict)
 
@@ -174,7 +197,7 @@ class ScriptedEdit:
 _KNOB = r"^(?P<name>{name})(?P<eq>\s*=\s*)(?P<val>[^#\n]+?)(?P<rest>\s*(#.*)?)$"
 
 
-def _knob(text: str, name: str) -> Optional[re.Match]:
+def _knob(text: str, name: str) -> re.Match | None:
     return re.search(_KNOB.format(name=re.escape(name)), text, re.M)
 
 
@@ -188,9 +211,9 @@ def get_knob(text: str, name: str) -> Any:
         return None
 
 
-def set_knob(text: str, name: str, value: Any) -> Optional[str]:
+def set_knob(text: str, name: str, value: Any) -> str | None:
     m = _knob(text, name)
-    return text[:m.start("val")] + fmt_value(value) + text[m.end("val"):] if m else None
+    return text[: m.start("val")] + fmt_value(value) + text[m.end("val") :] if m else None
 
 
 def fmt_value(v: Any) -> str:
@@ -200,8 +223,17 @@ def fmt_value(v: Any) -> str:
     return repr(v)
 
 
-def knob_edit(knob: str, op: Callable[[Any], Any], *, kind: str = "unknown", file: str = "train.py",
-              lo: Any = None, hi: Any = None, name: Optional[str] = None, weight: float = 1.0) -> ScriptedEdit:
+def knob_edit(
+    knob: str,
+    op: Callable[[Any], Any],
+    *,
+    kind: str = "unknown",
+    file: str = "train.py",
+    lo: Any = None,
+    hi: Any = None,
+    name: str | None = None,
+    weight: float = 1.0,
+) -> ScriptedEdit:
     """``KNOB = op(KNOB)`` described as ``KNOB old -> new``; not applicable when the result leaves ``[lo, hi]``."""
 
     def apply(files: dict):
@@ -211,7 +243,7 @@ def knob_edit(knob: str, op: Callable[[Any], Any], *, kind: str = "unknown", fil
             return None
         new = op(old)
         if isinstance(old, int) and not isinstance(old, bool) and isinstance(new, float):
-            new = int(round(new))                     # integer knobs stay integers
+            new = int(round(new))  # integer knobs stay integers
         if isinstance(new, float):
             new = float(f"{new:.6g}")
         if new == old or (lo is not None and new < lo) or (hi is not None and new > hi):
@@ -222,9 +254,19 @@ def knob_edit(knob: str, op: Callable[[Any], Any], *, kind: str = "unknown", fil
     return ScriptedEdit(name or f"{knob}:{getattr(op, '__name__', 'op')}", kind, apply, group=knob, weight=weight)
 
 
-def text_edit(name: str, kind: str, file: str, old: str, new: str, description: str, *,
-              fix: Optional[Callable[[dict], Optional[dict]]] = None, group: str = "", weight: float = 1.0,
-              extra_files: Optional[dict] = None) -> ScriptedEdit:
+def text_edit(
+    name: str,
+    kind: str,
+    file: str,
+    old: str,
+    new: str,
+    description: str,
+    *,
+    fix: Callable[[dict], dict | None] | None = None,
+    group: str = "",
+    weight: float = 1.0,
+    extra_files: dict | None = None,
+) -> ScriptedEdit:
     """Replace the first ``old`` with ``new`` in ``file`` (``old=""`` appends); ``extra_files`` overwrite others."""
 
     def apply(files: dict):
@@ -245,9 +287,19 @@ def text_edit(name: str, kind: str, file: str, old: str, new: str, description: 
 class MockResearchAgent(ResearchAgent):
     """Scripted agent; ``greedy`` repeats a kept edit w.p. ``p_repeat``, else tries an untried one."""
 
-    def __init__(self, pool: Sequence[ScriptedEdit], *, policy: str = "greedy", seed: int = 0,
-                 crash_rate: float = 0.0, exploit_rate: float = 0.0, p_fix: float = 1.0, p_repeat: float = 0.7,
-                 schedule: Optional[Sequence[str]] = None, name: str = "mock-agent") -> None:
+    def __init__(
+        self,
+        pool: Sequence[ScriptedEdit],
+        *,
+        policy: str = "greedy",
+        seed: int = 0,
+        crash_rate: float = 0.0,
+        exploit_rate: float = 0.0,
+        p_fix: float = 1.0,
+        p_repeat: float = 0.7,
+        schedule: Sequence[str] | None = None,
+        name: str = "mock-agent",
+    ) -> None:
         self.pool = list(pool)
         self.by_name = {e.name: e for e in self.pool}
         self.policy = "schedule" if schedule is not None else policy
@@ -257,14 +309,14 @@ class MockResearchAgent(ResearchAgent):
         self.p_fix, self.p_repeat = p_fix, p_repeat
         self.name = name
         self._tried: dict[str, set] = {}
-        self._last: Optional[ScriptedEdit] = None
-        self._last_inc: Optional[str] = None
+        self._last: ScriptedEdit | None = None
+        self._last_inc: str | None = None
         self.n_proposals = 0
 
     def _sub(self, kinds: Sequence[str]) -> list[ScriptedEdit]:
         return [e for e in self.pool if e.kind in kinds]
 
-    def _pick(self, cands: list[ScriptedEdit], files: dict) -> Optional[tuple[ScriptedEdit, dict, str]]:
+    def _pick(self, cands: list[ScriptedEdit], files: dict) -> tuple[ScriptedEdit, dict, str] | None:
         cands = list(cands)
         while cands:
             w = [max(e.weight, 1e-9) for e in cands]
@@ -296,15 +348,19 @@ class MockResearchAgent(ResearchAgent):
                 choice = self._pick(self._sub(["exploit"]), files)
             elif u < self.exploit_rate + self.crash_rate and self._sub(["crash"]):
                 choice = self._pick(self._sub(["crash"]), files)
-            elif self.policy == "greedy" and kept_last and self._last.kind not in ("crash", "exploit") \
-                    and self.rng.random() < self.p_repeat:
+            elif (
+                self.policy == "greedy"
+                and kept_last
+                and self._last.kind not in ("crash", "exploit")
+                and self.rng.random() < self.p_repeat
+            ):
                 r = self._last.apply(files)
                 choice = (self._last, r[0], r[1]) if r else None
             if choice is None:
                 fresh = [e for e in normal if e.name not in tried] if self.policy == "greedy" else normal
                 if fresh:
                     choice = self._pick(fresh, files)
-                if choice is None:       # out of ideas: combine two edits
+                if choice is None:  # out of ideas: combine two edits
                     choice = self._combine(normal, files)
         if choice is None:
             return Proposal(None, error="no applicable edit in the pool")
@@ -312,8 +368,13 @@ class MockResearchAgent(ResearchAgent):
         tried.add(e.name)
         self._last, self._last_inc = e, inc
         new = ctx.artifact.with_files(updates)
-        return Proposal(new, change=desc, hypothesis=f"scripted {e.kind} edit", components=[e.group or e.name],
-                        meta={"edit": e.name, "kind": e.kind})
+        return Proposal(
+            new,
+            change=desc,
+            hypothesis=f"scripted {e.kind} edit",
+            components=[e.group or e.name],
+            meta={"edit": e.name, "kind": e.kind},
+        )
 
     def _combine(self, normal: list[ScriptedEdit], files: dict):
         first = self._pick(normal, files)
@@ -335,15 +396,26 @@ class MockResearchAgent(ResearchAgent):
         ups = e.fix(candidate.files)
         if not ups:
             return None
-        return Proposal(candidate.with_files(ups), change=description, hypothesis="trivial fix",
-                        meta={"edit": e.name, "kind": e.kind, "fixed": True})
+        return Proposal(
+            candidate.with_files(ups),
+            change=description,
+            hypothesis="trivial fix",
+            meta={"edit": e.name, "kind": e.kind, "fixed": True},
+        )
 
 
 class RandomSearchAgent(ResearchAgent):
     """Baseline: each proposal is ``base`` plus 1..``max_edits`` random applicable edits (independent draws)."""
 
-    def __init__(self, pool: Sequence[ScriptedEdit], base: Artifact, *, seed: int = 0, max_edits: int = 3,
-                 name: str = "random-search") -> None:
+    def __init__(
+        self,
+        pool: Sequence[ScriptedEdit],
+        base: Artifact,
+        *,
+        seed: int = 0,
+        max_edits: int = 3,
+        name: str = "random-search",
+    ) -> None:
         self.pool = [e for e in pool if e.kind not in ("crash", "exploit")]
         self.base = base
         self.rng = random.Random(seed)
@@ -386,8 +458,10 @@ def scripted_llm(pool: Sequence[ScriptedEdit], seed: int = 0, name: str = "scrip
             if r:
                 ups, desc = r
                 blocks = "\n".join(f"=== FILE: {k} ===\n{v}" for k, v in ups.items())
-                return (f'```json\n{{"change": "{desc}", "hypothesis": "scripted", "components": ["{e.group}"]}}\n```\n'
-                        f"{blocks}")
+                return (
+                    f'```json\n{{"change": "{desc}", "hypothesis": "scripted", "components": ["{e.group}"]}}\n```\n'
+                    f"{blocks}"
+                )
             cands.remove(e)
         return "no idea"
 

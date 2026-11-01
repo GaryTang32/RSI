@@ -1,4 +1,5 @@
 """Second-review regressions and a genericity test on a new problem with only a ``train`` split."""
+
 import json
 import math
 
@@ -6,20 +7,39 @@ import pytest
 
 from rsi.core import Artifact, FunctionDomain, MockLLM, SealedSplitError, Task, TaskSuite, transfer_report
 from rsi.domains.discovery import LassoPathDomain, SyntheticConfig, SyntheticDomain
-from rsi.dream import (Config, DomainTask, DreamRSILoop, EditorAgent, EpisodeResult, Eq1Objective, GuardViolation,
-                       LLMPolicyDeveloper, ParametricAgent, ParametricMutator, PrefixGuard, QuestionProxy,
-                       ReplayEvaluator, ReplayQuestion, choose_default_beta, code_of, mock_developer_llm,
-                       parallel_refine, run, static_check, template_code)
+from rsi.dream import (
+    Config,
+    DomainTask,
+    DreamRSILoop,
+    EditorAgent,
+    EpisodeResult,
+    Eq1Objective,
+    GuardViolation,
+    LLMPolicyDeveloper,
+    ParametricAgent,
+    ParametricMutator,
+    PrefixGuard,
+    QuestionProxy,
+    ReplayEvaluator,
+    ReplayQuestion,
+    choose_default_beta,
+    code_of,
+    mock_developer_llm,
+    parallel_refine,
+    run,
+    static_check,
+    template_code,
+)
 from rsi.dream.developer import default_beta_of
 from rsi.dream.guard import InProcessRunner, SubprocessRunner
 
-LLM_STYLE = '''from policy_api import GridPlan, LLMDesignedMethod
+LLM_STYLE = """from policy_api import GridPlan, LLMDesignedMethod
 NAME = "OptimalPolicy"
 class OptimalPolicy(LLMDesignedMethod):
     def __init__(self, config=None):
         super().__init__(config)
         self.beta = float(self.config.get("beta", 0.8))
-'''
+"""
 XS_TRAIN = [i / 10 for i in range(0, 20, 2)]
 XS_HOLD = [i / 10 for i in range(1, 20, 2)]
 CURVE_SEED = Artifact({"w.json": "[0.0, 0.0, 0.0]"})
@@ -54,17 +74,59 @@ def test_reset_before_the_first_probe_is_allowed(synthetic_world):
 
 def test_disqualified_scores_below_every_honest_episode():
     obj = Eq1Objective()  # normalized, beta1 = 0.01
-    full = EpisodeResult("w", None, {}, {}, False, N=640, k=20, batch_sizes=[32] * 20, best=1.0, root=0.0,
-                         ceiling=1.0, world_size=640, W=32)  # the paper's Flash grid, every cell refined
-    bad = EpisodeResult("w", None, {}, {}, False, N=0, k=0, batch_sizes=[], best=None, root=0.0, ceiling=1.0,
-                        world_size=640, W=32, error="policy crashed")
+    full = EpisodeResult(
+        "w",
+        None,
+        {},
+        {},
+        False,
+        N=640,
+        k=20,
+        batch_sizes=[32] * 20,
+        best=1.0,
+        root=0.0,
+        ceiling=1.0,
+        world_size=640,
+        W=32,
+    )  # the paper's Flash grid, every cell refined
+    bad = EpisodeResult(
+        "w",
+        None,
+        {},
+        {},
+        False,
+        N=0,
+        k=0,
+        batch_sizes=[],
+        best=None,
+        root=0.0,
+        ceiling=1.0,
+        world_size=640,
+        W=32,
+        error="policy crashed",
+    )
     assert obj.score_episode(full) == pytest.approx(1.0 - 6.4 + 0.005 * 32)
     assert obj.score_episode(bad) < obj.score_episode(full)
     raw = Eq1Objective(normalize=False)  # raw negative scores, e.g. a negated loss
-    honest = EpisodeResult("w", None, {}, {}, False, N=3, k=1, batch_sizes=[3], best=-2.5, root=-3.0, ceiling=-2.5,
-                           world_size=3, W=3)
-    cheat = EpisodeResult("w", None, {}, {}, False, N=1, k=1, batch_sizes=[1], best=-2.5, root=-3.0, ceiling=-2.5,
-                          world_size=3, W=3, violations=["tree"])
+    honest = EpisodeResult(
+        "w", None, {}, {}, False, N=3, k=1, batch_sizes=[3], best=-2.5, root=-3.0, ceiling=-2.5, world_size=3, W=3
+    )
+    cheat = EpisodeResult(
+        "w",
+        None,
+        {},
+        {},
+        False,
+        N=1,
+        k=1,
+        batch_sizes=[1],
+        best=-2.5,
+        root=-3.0,
+        ceiling=-2.5,
+        world_size=3,
+        W=3,
+        violations=["tree"],
+    )
     assert raw.score_episode(cheat) < raw.score_episode(honest) < 0
 
 
@@ -79,9 +141,11 @@ def test_domain_task_uses_a_decision_split_and_never_fakes_success():
     assert dt.split == "train"
     ev = dt.evaluate(prog)
     assert ev.n_total == 3 and ev.score == pytest.approx(1 / 3)  # output 1 vs targets 0, 1, 0
-    for splits, kw in (({"holdout": ["t0", "t1"]}, {}),  # no decision split at all
-                       ({"evolve": ["t0"], "holdout": ["t1"]}, {"split": "holdout"}),  # sealed
-                       ({"evolve": ["t0"], "val": []}, {"split": "val"})):  # empty
+    for splits, kw in (
+        ({"holdout": ["t0", "t1"]}, {}),  # no decision split at all
+        ({"evolve": ["t0"], "holdout": ["t1"]}, {"split": "holdout"}),  # sealed
+        ({"evolve": ["t0"], "val": []}, {"split": "val"}),
+    ):  # empty
         with pytest.raises(ValueError):
             DomainTask(_fdomain(splits), prog, **kw)
 
@@ -99,9 +163,12 @@ def test_lasso_sandboxed_grader_cannot_be_influenced_by_the_candidate():
     memo = seed.replace(
         "def lasso_path(X, y, lambdas):",
         "_M = {}\n\ndef lasso_path(X, y, lambdas):\n    k = np.asarray(X).tobytes()\n    if k not in _M:\n"
-        "        _M[k] = _lp(X, y, lambdas)\n    return _M[k]\n\n\ndef _lp(X, y, lambdas):")
-    forge = ("import atexit, json\natexit.register(lambda: print('\\n__LASSO__' + json.dumps("
-             "{'times': [1e-9, 1e-9], 'objs': [[0.0] * 10, [0.0] * 10]})))\n" + seed)
+        "        _M[k] = _lp(X, y, lambdas)\n    return _M[k]\n\n\ndef _lp(X, y, lambdas):",
+    )
+    forge = (
+        "import atexit, json\natexit.register(lambda: print('\\n__LASSO__' + json.dumps("
+        "{'times': [1e-9, 1e-9], 'objs': [[0.0] * 10, [0.0] * 10]})))\n" + seed
+    )
     for code in (patch_clock, memo, forge):
         ev = dom.evaluate_program(Artifact({"solver.py": code}))
         assert ev.fail_class == "ok" and ev.score < 3.0 * base
@@ -122,16 +189,27 @@ class _SpyDeveloper(ParametricMutator):
 
 def test_pareto_objective_with_guarded_selector_uses_pareto_values_and_hides_holdout():
     spy = _SpyDeveloper()
-    cfg = Config(rounds=4, W=3, branch_count=3, refine_count=2, M=2, objective="pareto", selector="guarded",
-                 sandbox="inprocess", seed=3, dream_last=True)
+    cfg = Config(
+        rounds=4,
+        W=3,
+        branch_count=3,
+        refine_count=2,
+        M=2,
+        objective="pareto",
+        selector="guarded",
+        sandbox="inprocess",
+        seed=3,
+        dream_last=True,
+    )
     dom = SyntheticDomain(SyntheticConfig(seed=3))
     loop = DreamRSILoop(dom.as_task(), dom.mock_agent(), config=cfg, developer=spy)
     res = loop.run()
     obj, worlds = loop.replay.objective, loop.worlds
     rep = loop.replay.evaluate(res.meta["policy"], worlds)
     for i, w in enumerate(worlds):  # per-world values are the Pareto rewards of each world's own sweep
-        assert rep.per_world[i] == pytest.approx(obj.sweep({e.beta: [e] for e in rep.sweep_episodes
-                                                             if e.world_id == w.world_id})["reward"])
+        assert rep.per_world[i] == pytest.approx(
+            obj.sweep({e.beta: [e] for e in rep.sweep_episodes if e.world_id == w.world_id})["reward"]
+        )
     last = spy.seen[-1]
     hold = {worlds[i].world_id for i in loop.selector.holdout_worlds(len(worlds))}
     dev_ids = {worlds[i].world_id for i in loop.selector.dev_worlds(len(worlds))}
@@ -163,8 +241,12 @@ def test_default_beta_of_reads_the_listing2_idiom():
 
 
 def test_default_beta_rule_lowers_a_default_at_the_top_of_the_grid():
-    sweep = {"points": [{"beta": 0.8, "attainment": 0.9, "probes_frac": 0.5, "V_eq1": 0.5},
-                        {"beta": 1.0, "attainment": 0.9, "probes_frac": 0.8, "V_eq1": 0.4}]}
+    sweep = {
+        "points": [
+            {"beta": 0.8, "attainment": 0.9, "probes_frac": 0.5, "V_eq1": 0.5},
+            {"beta": 1.0, "attainment": 0.9, "probes_frac": 0.8, "V_eq1": 0.4},
+        ]
+    }
     b, why = choose_default_beta(1.0, [{"final_best": 1.0}, {"final_best": 1.0}], sweep)
     assert b == pytest.approx(0.9) and "lower" in why
 
@@ -187,11 +269,15 @@ def _curve_domain(log: list) -> FunctionDomain:
     def execute(art, task, seed, llm):
         log.append(task.id)
         a, b, c = json.loads(art["w.json"])
-        return a * task.input ** 2 + b * task.input + c
+        return a * task.input**2 + b * task.input + c
 
-    return FunctionDomain(TaskSuite(tasks, splits, name="curve"), execute,
-                          lambda task, out: 1.0 / (1.0 + abs(out - task.target)), name="curve",
-                          description="w.json: [a, b, c] of a*x^2 + b*x + c; score = mean 1/(1+|error|)")
+    return FunctionDomain(
+        TaskSuite(tasks, splits, name="curve"),
+        execute,
+        lambda task, out: 1.0 / (1.0 + abs(out - task.target)),
+        name="curve",
+        description="w.json: [a, b, c] of a*x^2 + b*x + c; score = mean 1/(1+|error|)",
+    )
 
 
 def _mutate(parent, rng, ctx):
@@ -204,10 +290,22 @@ def _mutate(parent, rng, ctx):
 def test_generic_train_split_domain_pareto_guarded_subprocess():
     log = []
     dom = _curve_domain(log)
-    cfg = Config(rounds=4, W=3, branch_count=3, refine_count=2, M=3, objective="pareto", selector="guarded",
-                 sandbox="subprocess", seed=11)
-    kw = {"agent": ParametricAgent(_mutate), "config": cfg,
-          "task_kwargs": {"directions": ["c0", "c1", "c2"], "workers": 1}}
+    cfg = Config(
+        rounds=4,
+        W=3,
+        branch_count=3,
+        refine_count=2,
+        M=3,
+        objective="pareto",
+        selector="guarded",
+        sandbox="subprocess",
+        seed=11,
+    )
+    kw = {
+        "agent": ParametricAgent(_mutate),
+        "config": cfg,
+        "task_kwargs": {"directions": ["c0", "c1", "c2"], "workers": 1},
+    }
     res = run(dom, CURVE_SEED, **kw)  # a plain rsi.core Domain
     assert res.meta["best_score"] > res.meta["seed_score"]
     assert all(t in {f"x{x:.1f}" for x in XS_TRAIN} for t in log)
@@ -228,9 +326,13 @@ def test_run_meters_llms_inside_explicit_agent_and_developer():
         c[(seed or 0) % 3] += 0.1
         return '```json\n{"change": "nudge"}\n```\n=== FILE: w.json ===\n' + json.dumps(c) + "\n"
 
-    res = run(_curve_domain([]), CURVE_SEED, agent=EditorAgent(MockLLM(respond, name="agent-llm"), editable=["w.json"]),
-              developer=LLMPolicyDeveloper(mock_developer_llm()),
-              config=Config(rounds=2, W=2, branch_count=2, refine_count=1, M=2, sandbox="inprocess"),
-              task_kwargs={"workers": 1})
+    res = run(
+        _curve_domain([]),
+        CURVE_SEED,
+        agent=EditorAgent(MockLLM(respond, name="agent-llm"), editable=["w.json"]),
+        developer=LLMPolicyDeveloper(mock_developer_llm()),
+        config=Config(rounds=2, W=2, branch_count=2, refine_count=1, M=2, sandbox="inprocess"),
+        task_kwargs={"workers": 1},
+    )
     assert res.usage["agent"]["calls"] == res.usage["_cost"]["agent_calls"] > 0
     assert res.usage["developer"]["calls"] == res.usage["_cost"]["developer_calls"] == 1

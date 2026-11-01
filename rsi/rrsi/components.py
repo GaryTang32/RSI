@@ -1,12 +1,22 @@
 """Component vocabulary K, structural subset K_str, and diff-evidenced tagging of declared edits."""
+
 from __future__ import annotations
 
 import fnmatch
 import re
-from typing import Iterable, Optional, Sequence
+from collections.abc import Iterable, Sequence
 
-K = ["prompt", "control_flow", "config", "output_plumbing", "context_mgmt",
-     "client_tool", "skill", "memory", "subagent"]
+K = [
+    "prompt",
+    "control_flow",
+    "config",
+    "output_plumbing",
+    "context_mgmt",
+    "client_tool",
+    "skill",
+    "memory",
+    "subagent",
+]
 K_STR = ["client_tool", "skill", "memory", "subagent"]
 
 GENERIC_SIGNALS: list[tuple[str, list[str]]] = [
@@ -17,17 +27,30 @@ GENERIC_SIGNALS: list[tuple[str, list[str]]] = [
 ]
 
 # Maps the generic signals onto a domain's names; accepts a declared alias only with ``aliases=True``.
-ALIASES = {"client_tool": "tool", "tool": "client_tool", "tools": "tool", "prompts": "prompt",
-           "control": "control_flow", "skills": "skill", "subagents": "subagent", "agents": "subagent"}
+ALIASES = {
+    "client_tool": "tool",
+    "tool": "client_tool",
+    "tools": "tool",
+    "prompts": "prompt",
+    "control": "control_flow",
+    "skills": "skill",
+    "subagents": "subagent",
+    "agents": "subagent",
+}
 
 _STRING_LINE = re.compile(r'^[+-]\s*(?:[frb]?["\']|""")')
 _PATH_LINE = re.compile(r"^(?:\+\+\+|---) (?:[ab]/)?(\S+)", re.M)
 
 
 def changed_lines(diff: str) -> list[str]:
-    return [l for l in (diff or "").splitlines()
-            if (l.startswith("+") or l.startswith("-")) and not l.startswith("+++") and not l.startswith("---")
-            and l[1:].strip()]
+    return [
+        l
+        for l in (diff or "").splitlines()
+        if (l.startswith("+") or l.startswith("-"))
+        and not l.startswith("+++")
+        and not l.startswith("---")
+        and l[1:].strip()
+    ]
 
 
 def text_only(diff: str) -> bool:
@@ -44,10 +67,16 @@ def changed_paths(diff: str) -> list[str]:
 class Taxonomy:
     """K, K_str and the evidence signals of one domain."""
 
-    def __init__(self, components: Sequence[str] = tuple(K), structural: Sequence[str] = tuple(K_STR),
-                 path_hints: Optional[dict[str, list[str]]] = None,
-                 signals: Optional[list[tuple[str, list[str]]]] = None, *, trust_code_tags: bool = False,
-                 aliases: bool = False) -> None:
+    def __init__(
+        self,
+        components: Sequence[str] = tuple(K),
+        structural: Sequence[str] = tuple(K_STR),
+        path_hints: dict[str, list[str]] | None = None,
+        signals: list[tuple[str, list[str]]] | None = None,
+        *,
+        trust_code_tags: bool = False,
+        aliases: bool = False,
+    ) -> None:
         self.aliases = aliases
         self.K = list(components)
         self.K_str = [c for c in structural if c in self.K]
@@ -55,12 +84,15 @@ class Taxonomy:
         self.signals = [(c, list(p)) for c, p in (signals or []) if c in self.K]
         self.trust_code_tags = trust_code_tags
         # path hints: structural first, prompt last
-        order = self.K_str + [c for c in self.K if c not in self.K_str and c != "prompt"] + \
-            (["prompt"] if "prompt" in self.K else [])
+        order = (
+            self.K_str
+            + [c for c in self.K if c not in self.K_str and c != "prompt"]
+            + (["prompt"] if "prompt" in self.K else [])
+        )
         self._path_order = [c for c in order if c in self.path_hints]
 
     @classmethod
-    def from_domain(cls, domain, *, aliases: bool = False) -> "Taxonomy":
+    def from_domain(cls, domain, *, aliases: bool = False) -> Taxonomy:
         comps = dict(getattr(domain, "components", None) or {})
         if not comps:
             sig = list(getattr(domain, "component_signals", []) or [])
@@ -92,8 +124,9 @@ class Taxonomy:
     def has_evidence(self, component: str, diff: str) -> bool:
         if self._path_match(component, changed_paths(diff)):
             return True
-        if any(comp == component and any(re.search(p, diff) for p in pats)
-               for comp, pats in self.signals + self._generic()):
+        if any(
+            comp == component and any(re.search(p, diff) for p in pats) for comp, pats in self.signals + self._generic()
+        ):
             return True
         if self.trust_code_tags and component in self.K and component not in self.K_str:
             return component == "prompt" or (bool(changed_lines(diff)) and not text_only(diff))
@@ -118,7 +151,7 @@ class Taxonomy:
                 return comp
         return default
 
-    def canonical(self, declared: Optional[str], strip: bool = True) -> str:
+    def canonical(self, declared: str | None, strip: bool = True) -> str:
         """Lower-cased (and stripped) tag; an alias maps into K only with ``aliases=True``."""
         d = str(declared or "").lower()
         if strip:
@@ -127,7 +160,7 @@ class Taxonomy:
             d = ALIASES[d.strip()]
         return d
 
-    def normalize(self, declared: Optional[str], diff: str) -> str:
+    def normalize(self, declared: str | None, diff: str) -> str:
         """The declared tag if in K and evidenced by the (whole candidate) diff, else :meth:`classify`."""
         d = self.canonical(declared)
         return d if d in self.K and self.has_evidence(d, diff) else self.classify(diff)
@@ -137,7 +170,7 @@ class Taxonomy:
         return sum(1 for c in set(edit_components) if c in self.K_str and incumbent_counts.get(c, 0) == 0)
 
 
-def normalize(declared: Optional[str], diff: str, domain_signals: Optional[list] = None) -> str:
+def normalize(declared: str | None, diff: str, domain_signals: list | None = None) -> str:
     return Taxonomy(K, K_STR, {}, domain_signals).normalize(declared, diff)
 
 

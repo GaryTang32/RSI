@@ -2,6 +2,7 @@
 
 Run: python experiments/gepa/live_stop_reason_check.py [--fresh]   (``--fresh``: clear the cache, a ~$0.007 live call)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -9,6 +10,7 @@ import json
 import shutil
 
 from _common import ROOT, save
+
 from rsi.core import Artifact, CachedLLM, ClaudeCLI
 from rsi.gepa.reflection import ReflectionProposer
 
@@ -24,26 +26,48 @@ def main() -> None:
     llm = CachedLLM(ClaudeCLI("haiku", timeout_s=240), CACHE)
     prop = ReflectionProposer(llm)
     art = Artifact({"prompts/triage.md": "Route the ticket to one team.\n"})
-    recs = {"prompts/triage.md": [{"Inputs": "Customer writes about a refund problem",
-                                   "Generated Outputs": "engineering",
-                                   "Feedback": "Wrong: refund tickets must go to the billing team."}]}
+    recs = {
+        "prompts/triage.md": [
+            {
+                "Inputs": "Customer writes about a refund problem",
+                "Generated Outputs": "engineering",
+                "Feedback": "Wrong: refund tickets must go to the billing team.",
+            }
+        ]
+    }
     calls = []
     for k in range(2):
         hits = llm.hits
         r = prop.propose(art, recs, ["prompts/triage.md"], seed_fn=lambda c: 7)
-        calls.append({"call": k, "cache_hit": llm.hits > hits, "finish_reason": r.finish.get("prompts/triage.md"),
-                      "parsed": bool(r.new_texts), "rejected": r.rejected,
-                      "new_text_head": r.new_texts.get("prompts/triage.md", "")[:160]})
+        calls.append(
+            {
+                "call": k,
+                "cache_hit": llm.hits > hits,
+                "finish_reason": r.finish.get("prompts/triage.md"),
+                "parsed": bool(r.new_texts),
+                "rejected": r.rejected,
+                "new_text_head": r.new_texts.get("prompts/triage.md", "")[:160],
+            }
+        )
     entry = json.loads(next(CACHE.rglob("*.json")).read_text())
     usage = llm.meter.snapshot().get("_total", {})
-    out = {"experiment": "live stop_reason check (reflection truncation finding)", "llm": "claude:haiku",
-           "cache": str(CACHE.relative_to(ROOT)), "fresh": a.fresh, "calls": calls,
-           "cache_entry_stop_reason": entry.get("stop_reason"), "spend_usd": usage.get("cost_usd", 0.0),
-           "verdict": ("claude -p reports stop_reason; CachedLLM stores it and returns it on a hit; the reflection "
-                       "proposer sees the same reason on miss and hit: "
-                       + ", ".join(f"call {c['call']} ({'hit' if c['cache_hit'] else 'miss'}) -> {c['finish_reason']!r}"
-                                   for c in calls))}
-    if a.fresh:                 # only a fresh run is evidence of a cache miss; a replay just prints
+    out = {
+        "experiment": "live stop_reason check (reflection truncation finding)",
+        "llm": "claude:haiku",
+        "cache": str(CACHE.relative_to(ROOT)),
+        "fresh": a.fresh,
+        "calls": calls,
+        "cache_entry_stop_reason": entry.get("stop_reason"),
+        "spend_usd": usage.get("cost_usd", 0.0),
+        "verdict": (
+            "claude -p reports stop_reason; CachedLLM stores it and returns it on a hit; the reflection "
+            "proposer sees the same reason on miss and hit: "
+            + ", ".join(
+                f"call {c['call']} ({'hit' if c['cache_hit'] else 'miss'}) -> {c['finish_reason']!r}" for c in calls
+            )
+        ),
+    }
+    if a.fresh:  # only a fresh run is evidence of a cache miss; a replay just prints
         save("live_stop_reason_check", out)
     else:
         print(json.dumps(out["calls"], indent=1))

@@ -1,4 +1,5 @@
 """ExperienceStore: the filesystem holding every candidate's code, scores and raw traces, and its history views."""
+
 from __future__ import annotations
 
 import json
@@ -7,8 +8,9 @@ import re
 import shutil
 import stat
 import time
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any
 
 from ..core.artifact import Artifact
 from ..core.evaluate import EvalResult
@@ -27,15 +29,16 @@ def safe_name(s: str) -> str:
 
 
 #: wall-clock fields: they vary between runs and say nothing about a harness (see Config.deterministic_view)
-VOLATILE_KEYS = frozenset({"created_at", "latency_s", "runtime_seconds", "timing_s", "seconds", "wall_s",
-                           "elapsed_s"})
+VOLATILE_KEYS = frozenset({"created_at", "latency_s", "runtime_seconds", "timing_s", "seconds", "wall_s", "elapsed_s"})
 #: a proposer session's own bill, which a cached replay meters as $0
 SESSION_VOLATILE_KEYS = frozenset({"usage"})
 #: the files the store writes; sources and raw traces are always shown exactly as written
-STORE_WRITTEN = re.compile(r"^(evolution_summary\.jsonl|frontier_val\.json|reports/[^/]+\.jsonl?"
-                           r"|sessions/[^/]+/meta\.json"
-                           r"|candidates/[^/]+/(meta\.json|eval/search/scores\.json"
-                           r"|eval/search/per_task/[^/]+\.json))$")
+STORE_WRITTEN = re.compile(
+    r"^(evolution_summary\.jsonl|frontier_val\.json|reports/[^/]+\.jsonl?"
+    r"|sessions/[^/]+/meta\.json"
+    r"|candidates/[^/]+/(meta\.json|eval/search/scores\.json"
+    r"|eval/search/per_task/[^/]+\.json))$"
+)
 
 
 def _drop_volatile(obj: Any) -> tuple[Any, bool]:
@@ -130,31 +133,47 @@ class ExperienceStore:
     def artifact(self, name: str) -> Artifact:
         return Artifact.from_dir(self.cand_dir(name) / "src")
 
-    def names(self, status: Optional[str] = None) -> list[str]:
+    def names(self, status: str | None = None) -> list[str]:
         """Candidate names in registration order."""
         dirs = sorted((self.root / "candidates").iterdir(), key=lambda p: (p.stat().st_mtime_ns, p.name))
         metas = [json.loads((d / "meta.json").read_text()) for d in dirs if (d / "meta.json").exists()]
         metas.sort(key=lambda m: (m.get("order", 0), m["name"]))
         return [m["name"] for m in metas if status is None or m.get("status") == status]
 
-    def write_eval(self, name: str, ev: EvalResult, *, cost: dict[str, float], extra: Optional[dict] = None,
-                   split: str = SEARCH) -> dict:
+    def write_eval(
+        self, name: str, ev: EvalResult, *, cost: dict[str, float], extra: dict | None = None, split: str = SEARCH
+    ) -> dict:
         """Write scores, per-unit trial records and raw traces of one evaluation."""
         base = self._eval_dir(name, split)
         (base / "per_task").mkdir(parents=True, exist_ok=True)
         (base / "traces").mkdir(parents=True, exist_ok=True)
         per_unit = ev.task_scores()
-        scores = {"split": split, "score": ev.score, "avg_val": round(100 * ev.score, 1), "per_unit": per_unit,
-                  "per_unit_cost": cost, "context_cost": context_mean(cost),
-                  "tokens": ev.cost, "steps": ev.steps, "n_units": len(per_unit), "k": ev.k,
-                  "error_rate": ev.error_rate, "n_missing": ev.n_missing, "families": ev.family_scores(),
-                  **(extra or {})}
+        scores = {
+            "split": split,
+            "score": ev.score,
+            "avg_val": round(100 * ev.score, 1),
+            "per_unit": per_unit,
+            "per_unit_cost": cost,
+            "context_cost": context_mean(cost),
+            "tokens": ev.cost,
+            "steps": ev.steps,
+            "n_units": len(per_unit),
+            "k": ev.k,
+            "error_rate": ev.error_rate,
+            "n_missing": ev.n_missing,
+            "families": ev.family_scores(),
+            **(extra or {}),
+        }
         (base / "scores.json").write_text(json.dumps(scores, indent=1, default=float))
         for tid, trs in ev.trials.items():
             u = safe_name(tid)
-            (base / "per_task" / f"{u}.json").write_text(json.dumps(
-                [{k: v for k, v in t.to_json(max_trace=0).items() if k != "trace"} for t in trs], indent=1,
-                default=str))
+            (base / "per_task" / f"{u}.json").write_text(
+                json.dumps(
+                    [{k: v for k, v in t.to_json(max_trace=0).items() if k != "trace"} for t in trs],
+                    indent=1,
+                    default=str,
+                )
+            )
             if len(trs) == 1:
                 text = trs[0].trace or ""
             else:
@@ -167,7 +186,7 @@ class ExperienceStore:
             raise ValueError("only the search split is written under candidates/; test goes to results/")
         return self.cand_dir(name) / "eval" / split
 
-    def scores(self, name: str) -> Optional[dict]:
+    def scores(self, name: str) -> dict | None:
         return _read_json(self.cand_dir(name) / "eval" / SEARCH / "scores.json")
 
     def traces(self, name: str) -> dict[str, str]:
@@ -246,23 +265,37 @@ class ExperienceStore:
     def write_test_result(self, split: str, name: str, ev: EvalResult, cost: dict[str, float]) -> dict:
         d = self.results_dir / safe_name(split) / safe_name(name)
         d.mkdir(parents=True, exist_ok=True)
-        res = {"split": split, "score": ev.score, "per_unit": ev.task_scores(), "per_unit_cost": cost,
-               "context_cost": context_mean(cost), "tokens": ev.cost, "families": ev.family_scores()}
+        res = {
+            "split": split,
+            "score": ev.score,
+            "per_unit": ev.task_scores(),
+            "per_unit_cost": cost,
+            "context_cost": context_mean(cost),
+            "tokens": ev.cost,
+            "families": ev.family_scores(),
+        }
         (d / "test.json").write_text(json.dumps(res, indent=1, default=float))
         return res
 
-    def test_result(self, split: str, name: str) -> Optional[dict]:
+    def test_result(self, split: str, name: str) -> dict | None:
         return _read_json(self.results_dir / safe_name(split) / safe_name(name) / "test.json")
 
-    def view(self, mode: str = "full", *, window: int = 5, focus: Optional[str] = None,
-             seeds: Iterable[str] = (), strip_volatile: bool = False) -> dict[str, str]:
+    def view(
+        self,
+        mode: str = "full",
+        *,
+        window: int = 5,
+        focus: str | None = None,
+        seeds: Iterable[str] = (),
+        strip_volatile: bool = False,
+    ) -> dict[str, str]:
         """Read-only ``{relative path: text}`` projection of the store for the proposer (see ``HISTORY_MODES``)."""
         files = self._view(mode, window=window, focus=focus, seeds=seeds)
         if strip_volatile:
             files = {p: strip_volatile_fields(p, text) for p, text in files.items()}
         return files
 
-    def _view(self, mode: str, *, window: int, focus: Optional[str], seeds: Iterable[str]) -> dict[str, str]:
+    def _view(self, mode: str, *, window: int, focus: str | None, seeds: Iterable[str]) -> dict[str, str]:
         files: dict[str, str] = {}
         names = self.names()
 
@@ -274,9 +307,13 @@ class ExperienceStore:
                     if p.is_file() and "__pycache__" not in p.parts and p.suffix != ".pyc":
                         files[f"{rel}/src/{p.relative_to(d / 'src')}"] = p.read_text()
             ev = d / "eval" / SEARCH
-            for want, folder, pattern in ((meta, d, "meta.json"), (scores, ev, "scores.json"),
-                                          (per_task, ev / "per_task", "*.json"), (traces, ev / "traces", "*.jsonl"),
-                                          (summary, ev, "summary.md")):
+            for want, folder, pattern in (
+                (meta, d, "meta.json"),
+                (scores, ev, "scores.json"),
+                (per_task, ev / "per_task", "*.json"),
+                (traces, ev / "traces", "*.jsonl"),
+                (summary, ev, "summary.md"),
+            ):
                 if want:
                     for p in sorted(folder.glob(pattern)):
                         files[f"{rel}/{p.relative_to(d).as_posix()}"] = p.read_text()
@@ -317,7 +354,7 @@ class ExperienceStore:
             for p in sorted(self.sessions_dir().glob("*/meta.json")):
                 files[f"sessions/{p.parent.name}/meta.json"] = p.read_text()
 
-    def _best_name(self) -> Optional[str]:
+    def _best_name(self) -> str | None:
         fr = self.frontier()
         if fr.get("_best"):
             return fr["_best"]["system"]
@@ -362,8 +399,10 @@ def cli_diff(store: ExperienceStore, a: str, b: str) -> str:
     """Code diff plus per-unit score deltas between two candidates."""
     diff = store.artifact(a).diff(store.artifact(b))
     sa, sb = store.scores(a) or {}, store.scores(b) or {}
-    lines = [f"{u}: {sa.get('per_unit', {}).get(u, float('nan')):.3f} -> {v:.3f}"
-             for u, v in (sb.get("per_unit") or {}).items()]
+    lines = [
+        f"{u}: {sa.get('per_unit', {}).get(u, float('nan')):.3f} -> {v:.3f}"
+        for u, v in (sb.get("per_unit") or {}).items()
+    ]
     return diff + "\n# per-unit scores\n" + "\n".join(lines)
 
 

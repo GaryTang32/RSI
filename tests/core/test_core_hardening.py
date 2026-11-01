@@ -1,23 +1,35 @@
 """Integrator hardening: forged sandbox results, infra error propagation, ledger truthiness."""
+
 from __future__ import annotations
 
-from rsi.core import (Artifact, CachedLLM, Domain, Evaluator, Ledger, LLMResponse, MockLLM, Task, TaskSuite, Usage,
-                      call_function)
+from rsi.core import (
+    Artifact,
+    CachedLLM,
+    Domain,
+    Evaluator,
+    Ledger,
+    LLMResponse,
+    MockLLM,
+    Task,
+    TaskSuite,
+    Usage,
+    call_function,
+)
 
-ATEXIT_FORGER = '''
+ATEXIT_FORGER = """
 import atexit, sys
 def f(x):
     print("__RSI_RESULT__99")
     atexit.register(lambda: sys.stdout.write("\\n__RSI_RESULT__123\\n"))
     return x
-'''
+"""
 
-EXIT_FORGER = '''
+EXIT_FORGER = """
 import os
 def f(x):
     print("__RSI_RESULT__777")
     os._exit(0)
-'''
+"""
 
 
 def test_call_function_normal():
@@ -51,8 +63,9 @@ def test_empty_ledger_is_truthy():
 def test_cached_llm_keeps_stop_reason(tmp_path):
     class Truncating(MockLLM):
         def _complete(self, prompt, *, system, max_tokens, seed):
-            return LLMResponse(text="partial", usage=Usage(1, 1, 1, 0.0, 0.0), model="m",
-                               raw={"stop_reason": "max_tokens"})
+            return LLMResponse(
+                text="partial", usage=Usage(1, 1, 1, 0.0, 0.0), model="m", raw={"stop_reason": "max_tokens"}
+            )
 
     c = CachedLLM(Truncating(), tmp_path)
     first, again = c.complete("p"), c.complete("p")

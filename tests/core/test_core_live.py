@@ -1,4 +1,5 @@
 """Live smoke tests against the real headless ``claude`` CLI (Haiku); run with ``pytest -m live``, a few cents each."""
+
 from __future__ import annotations
 
 import json
@@ -10,8 +11,7 @@ import pytest
 
 from rsi.core import AgentEditor, Artifact, CachedLLM, ClaudeCLI
 
-pytestmark = [pytest.mark.live,
-              pytest.mark.skipif(shutil.which("claude") is None, reason="claude CLI not installed")]
+pytestmark = [pytest.mark.live, pytest.mark.skipif(shutil.which("claude") is None, reason="claude CLI not installed")]
 
 ROOT = Path(__file__).resolve().parents[2]
 CACHE = ROOT / ".rsi_cache" / "core-qa"
@@ -26,14 +26,24 @@ def _record_outcome():
     out = ROOT / "results" / "core-qa" / "live_smoke.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     total = sum(r.get("cost_usd", 0.0) for r in RECORD.values())
-    out.write_text(json.dumps({"when": time.strftime("%Y-%m-%d %H:%M:%S"), "wall_s": round(time.time() - t0, 1),
-                               "total_cost_usd": round(total, 5), "tests": RECORD}, indent=1))
+    out.write_text(
+        json.dumps(
+            {
+                "when": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "wall_s": round(time.time() - t0, 1),
+                "total_cost_usd": round(total, 5),
+                "tests": RECORD,
+            },
+            indent=1,
+        )
+    )
 
 
 def test_claude_cli_complete_live():
     cli = ClaudeCLI("haiku", timeout_s=120, retries=2)
-    r = cli.complete("Reply with exactly one word: pong", system="You follow formatting instructions exactly.",
-                     role="smoke")
+    r = cli.complete(
+        "Reply with exactly one word: pong", system="You follow formatting instructions exactly.", role="smoke"
+    )
     assert r.ok, r.error
     assert "pong" in r.text.lower()
     assert r.usage.calls == 1 and r.usage.input_tokens > 0 and r.usage.output_tokens > 0
@@ -47,8 +57,13 @@ def test_cached_claude_cli_live():
     c = CachedLLM(ClaudeCLI("haiku", timeout_s=120, retries=2), CACHE)
     prompt = "What is 17 * 3? Reply with just the number."
     first, second = (c.complete(prompt, seed=0, role="smoke") for _ in range(2))
-    RECORD["cached_claude_cli"] = {"first": first.text[:50], "second_calls": second.usage.calls,
-                                   "hits": c.hits, "misses": c.misses, "cost_usd": c.meter.total().cost_usd}
+    RECORD["cached_claude_cli"] = {
+        "first": first.text[:50],
+        "second_calls": second.usage.calls,
+        "hits": c.hits,
+        "misses": c.misses,
+        "cost_usd": c.meter.total().cost_usd,
+    }
     assert first.ok and second.ok, (first.error, second.error)
     assert "51" in first.text and second.text == first.text
     assert second.usage.calls == 0 and second.usage.cost_usd == 0.0 and c.hits >= 1
@@ -58,13 +73,22 @@ def test_cached_claude_cli_live():
 def test_agent_editor_live(tmp_path):
     base = Artifact({"greeting.txt": "hello\n", "locked.txt": "do not touch\n"})
     ed = AgentEditor(ClaudeCLI("haiku", timeout_s=300, retries=1), timeout_s=300)
-    p = ed.edit(base,
-                "Edit greeting.txt so that its entire content is the single line: hello world\n"
-                "Do not modify any other file.",
-                context={"history.md": "No previous attempts."}, editable=["greeting.txt"], role="proposer")
-    RECORD["agent_editor"] = {"ok": p.ok, "error": p.error, "change": p.change, "blocked": p.blocked_files,
-                              "greeting": p.artifact["greeting.txt"] if p.artifact else None,
-                              "diff": base.diff(p.artifact) if p.artifact else "", **p.usage.to_dict()}
+    p = ed.edit(
+        base,
+        "Edit greeting.txt so that its entire content is the single line: hello world\nDo not modify any other file.",
+        context={"history.md": "No previous attempts."},
+        editable=["greeting.txt"],
+        role="proposer",
+    )
+    RECORD["agent_editor"] = {
+        "ok": p.ok,
+        "error": p.error,
+        "change": p.change,
+        "blocked": p.blocked_files,
+        "greeting": p.artifact["greeting.txt"] if p.artifact else None,
+        "diff": base.diff(p.artifact) if p.artifact else "",
+        **p.usage.to_dict(),
+    }
     assert p.ok, (p.error, p.raw[-500:])
     assert p.artifact["greeting.txt"].strip() == "hello world"
     assert p.artifact["locked.txt"] == "do not touch\n"

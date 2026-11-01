@@ -1,4 +1,5 @@
 """Lasso regularization path: make a correct numpy path solver fast [paper:App.A Problem 1]; score = 1/geomean CPU s."""
+
 from __future__ import annotations
 
 import json
@@ -12,7 +13,6 @@ import tempfile
 import time
 from contextlib import suppress
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -153,8 +153,16 @@ def lasso_path(X, y, lambdas):
     return [coefs[:, k].tolist() for k in range(coefs.shape[1])]
 '''
 
-SEED_KNOBS = {"ALGO": "cd", "WARM": False, "SCREEN": False, "KKT": True, "ACTIVE": False, "GRAM": False,
-              "TOL": 1e-7, "MAXIT": 3000}
+SEED_KNOBS = {
+    "ALGO": "cd",
+    "WARM": False,
+    "SCREEN": False,
+    "KKT": True,
+    "ACTIVE": False,
+    "GRAM": False,
+    "TOL": 1e-7,
+    "MAXIT": 3000,
+}
 
 
 def solver_code(knobs: dict) -> str:
@@ -179,7 +187,7 @@ def make_instance(n: int, p: int, k: int, rho: float, seed: int, n_lambdas: int 
     C = rho ** np.abs(np.subtract.outer(np.arange(p), np.arange(p)))
     Lc = np.linalg.cholesky(C + 1e-12 * np.eye(p))
     X = rng.standard_normal((n, p)) @ Lc.T
-    X /= np.sqrt((X ** 2).mean(0))
+    X /= np.sqrt((X**2).mean(0))
     beta = np.zeros(p)
     idx = rng.choice(p, size=min(k, p), replace=False)
     beta[idx] = rng.normal(0, 1, len(idx)) + np.sign(rng.normal(0, 1, len(idx)))
@@ -201,8 +209,14 @@ def reference_objectives(inst: dict) -> list[float]:
     try:
         from sklearn.linear_model import Lasso
 
-        m = Lasso(alpha=inst["lambdas"][0], fit_intercept=False, tol=1e-12, max_iter=200000, warm_start=True,
-                  selection="cyclic")
+        m = Lasso(
+            alpha=inst["lambdas"][0],
+            fit_intercept=False,
+            tol=1e-12,
+            max_iter=200000,
+            warm_start=True,
+            selection="cyclic",
+        )
         out = []
         for lam in inst["lambdas"]:
             m.set_params(alpha=lam)
@@ -216,7 +230,8 @@ def reference_objectives(inst: dict) -> list[float]:
         for lam in inst["lambdas"]:
             for _ in range(20000):
                 w = np.sign(w - X.T @ (X @ w - y) / n / L) * np.maximum(
-                    np.abs(w - X.T @ (X @ w - y) / n / L) - lam / L, 0)
+                    np.abs(w - X.T @ (X @ w - y) / n / L) - lam / L, 0
+                )
             out.append(objective(X, y, w, lam))
         return out
 
@@ -227,7 +242,7 @@ HOLDOUT_SHAPES = [(300, 400, 20, 0.5), (100, 600, 8, 0.2)]
 
 # Sandboxed timing harness: clock and nonce are bound before candidate code runs, each repeat times a fresh module
 # on perturbed data, the parent computes the objectives, and os._exit follows the nonce-tagged result.
-_HARNESS = r'''
+_HARNESS = r"""
 import importlib.util, os, sys
 from json import dumps as _dumps, loads as _loads
 from time import process_time as _clock
@@ -282,7 +297,7 @@ def _main(clock=_clock, dumps=_dumps, exit_=os._exit, write=os.write):
 
 
 _main()
-'''
+"""
 
 
 class LassoPathDomain(ProgramDomain):
@@ -290,14 +305,19 @@ class LassoPathDomain(ProgramDomain):
     program_file = PROGRAM
     entry = "lasso_path"
 
-    def __init__(self, *, repeats: int = 3, n_lambdas: int = 10, sandboxed: bool = True, timeout_s: float = 60.0,
-                 seed: int = 0) -> None:
+    def __init__(
+        self, *, repeats: int = 3, n_lambdas: int = 10, sandboxed: bool = True, timeout_s: float = 60.0, seed: int = 0
+    ) -> None:
         tasks = [Task("lasso-search", "search", None, "lasso"), Task("lasso-heldout", "holdout", None, "lasso")]
-        super().__init__(TaskSuite(tasks, {"evolve": ["lasso-search"], "holdout": ["lasso-heldout"]}, name="lasso"),
-                         sandboxed=sandboxed, timeout_s=timeout_s)
+        super().__init__(
+            TaskSuite(tasks, {"evolve": ["lasso-search"], "holdout": ["lasso-heldout"]}, name="lasso"),
+            sandboxed=sandboxed,
+            timeout_s=timeout_s,
+        )
         self.repeats = repeats
-        mk = lambda shapes, s0: [make_instance(n, p, k, rho, s0 + i, n_lambdas) for i, (n, p, k, rho) in
-                                 enumerate(shapes)]
+        mk = lambda shapes, s0: [
+            make_instance(n, p, k, rho, s0 + i, n_lambdas) for i, (n, p, k, rho) in enumerate(shapes)
+        ]
         self.sets = {
             "search": {"timing": mk(SEARCH_SHAPES, 1000 + seed), "check": mk(CHECK_SHAPES, 2000 + seed)},
             "holdout": {"timing": mk(HOLDOUT_SHAPES, 3000 + seed), "check": mk(CHECK_SHAPES, 4000 + seed)},
@@ -307,11 +327,13 @@ class LassoPathDomain(ProgramDomain):
         self._dirs: dict[str, str] = {}
 
     def describe(self) -> str:
-        return ("Lasso regularization path: write solver.py with lasso_path(X, y, lambdas) returning one coefficient "
-                "vector per lambda (decreasing sequence) minimizing F_k(w) = 1/(2n)||y - Xw||^2 + lambda_k ||w||_1. "
-                f"Correctness gate on fresh instances: F_k(w_k) <= F_k(reference) + {TOL_GATE:g} for every k, "
-                "else score 0. Score = 1 / geometric-mean runtime (seconds) over the timing instances (higher is "
-                "better). numpy is available.")
+        return (
+            "Lasso regularization path: write solver.py with lasso_path(X, y, lambdas) returning one coefficient "
+            "vector per lambda (decreasing sequence) minimizing F_k(w) = 1/(2n)||y - Xw||^2 + lambda_k ||w||_1. "
+            f"Correctness gate on fresh instances: F_k(w_k) <= F_k(reference) + {TOL_GATE:g} for every k, "
+            "else score 0. Score = 1 / geometric-mean runtime (seconds) over the timing instances (higher is "
+            "better). numpy is available."
+        )
 
     def seed_artifact(self) -> Artifact:
         return Artifact({PROGRAM: solver_code(SEED_KNOBS)})
@@ -334,14 +356,20 @@ class LassoPathDomain(ProgramDomain):
             for i, inst in enumerate(s["check"]):
                 arrays[f"cX{i}"], arrays[f"cy{i}"] = inst["X"], inst["y"]
             np.savez(d / "instances.npz", **arrays)
-            (d / "meta.json").write_text(json.dumps({
-                "repeats": self.repeats, "timing": [{"lambdas": i["lambdas"]} for i in s["timing"]],
-                "check": [{"lambdas": i["lambdas"]} for i in s["check"]]}))
+            (d / "meta.json").write_text(
+                json.dumps(
+                    {
+                        "repeats": self.repeats,
+                        "timing": [{"lambdas": i["lambdas"]} for i in s["timing"]],
+                        "check": [{"lambdas": i["lambdas"]} for i in s["check"]],
+                    }
+                )
+            )
             (d / "_lasso_eval.py").write_text(_HARNESS)
             self._dirs[which] = str(d)
         return self._dirs[which]
 
-    def _measure(self, code: str, which: str) -> tuple[Optional[dict], Optional[str], str]:
+    def _measure(self, code: str, which: str) -> tuple[dict | None, str | None, str]:
         """``{"times": CPU s per timing instance, "paths": coefficient paths of the check instances}``."""
         s = self.sets[which]
         if self.sandboxed:
@@ -352,8 +380,9 @@ class LassoPathDomain(ProgramDomain):
                 for f in ("instances.npz", "meta.json", "_lasso_eval.py"):
                     shutil.copy(src / f, d / f)
                 (d / "candidate.py").write_text(code)
-                rr = run_cmd([sys.executable, "_lasso_eval.py"], cwd=d, timeout_s=self.timeout_s,
-                             mem_mb=2048, stdin=nonce + "\n")
+                rr = run_cmd(
+                    [sys.executable, "_lasso_eval.py"], cwd=d, timeout_s=self.timeout_s, mem_mb=2048, stdin=nonce + "\n"
+                )
             finally:
                 shutil.rmtree(d, ignore_errors=True)
             if rr.timed_out:
@@ -421,8 +450,11 @@ class LassoPathDomain(ProgramDomain):
             return failure("correctness", f"bad output: {e}", seconds=dt)
         times = [max(1e-6, float(t)) for t in res["times"]]
         gm = float(np.exp(np.mean(np.log(times))))
-        diag = {"runtime_ms": [round(1000 * t, 3) for t in times], "geomean_ms": round(1000 * gm, 3),
-                "max_objective_excess": worst}
+        diag = {
+            "runtime_ms": [round(1000 * t, 3) for t in times],
+            "geomean_ms": round(1000 * gm, 3),
+            "max_objective_excess": worst,
+        }
         if not worst <= TOL_GATE:
             return failure("correctness", f"objective exceeds reference by {worst:.3g} > {TOL_GATE:g}", diag, dt)
         return EvalOutcome(1.0 / gm, True, True, "ok", None, 1, 1, diag, dt)
@@ -437,7 +469,7 @@ class LassoPathDomain(ProgramDomain):
         return ParametricAgent(_mutate, name="lasso-mock", **kw)
 
 
-def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext]):
+def _mutate(parent: Artifact, rng: random.Random, ctx: AttemptContext | None):
     knobs = {**SEED_KNOBS, **read_knobs(parent[PROGRAM])}
     mech = pick_mechanism(ctx, rng, MECHANISMS, 0.3)
     before = dict(knobs)

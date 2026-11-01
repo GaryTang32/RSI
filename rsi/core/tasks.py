@@ -1,11 +1,13 @@
 """Tasks and split discipline: decision splits (evolve, val, train) and sealed splits (holdout, ood, test)."""
+
 from __future__ import annotations
 
 import json
 import random
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any
 
 DECISION_SPLITS = ("evolve", "val", "train")
 SEALED_SPLITS = ("holdout", "ood", "test")
@@ -46,7 +48,8 @@ class TaskSuite:
         if name in self._sealed and not allow_sealed:
             raise SealedSplitError(
                 f"split {name!r} is sealed: it must not influence decisions. "
-                "Call suite.unseal(name) only in final reporting code.")
+                "Call suite.unseal(name) only in final reporting code."
+            )
         return [self.tasks[i] for i in self.splits.get(name, [])]
 
     def unseal(self, *names: str) -> None:
@@ -62,7 +65,7 @@ class TaskSuite:
     def get(self, task_id: str) -> Task:
         return self.tasks[task_id]
 
-    def families(self, split: Optional[str] = None) -> list[str]:
+    def families(self, split: str | None = None) -> list[str]:
         ts = self.tasks.values() if split is None else [self.tasks[i] for i in self.splits.get(split, [])]
         return sorted({t.family for t in ts})
 
@@ -88,8 +91,15 @@ class TaskSuite:
         return cls(tasks, head["splits"], head.get("__suite__", "suite"))
 
     @classmethod
-    def from_tasks(cls, tasks: list[Task], *, fractions: dict[str, float], seed: int = 0,
-                   by_family: Optional[dict[str, list[str]]] = None, name: str = "suite") -> TaskSuite:
+    def from_tasks(
+        cls,
+        tasks: list[Task],
+        *,
+        fractions: dict[str, float],
+        seed: int = 0,
+        by_family: dict[str, list[str]] | None = None,
+        name: str = "suite",
+    ) -> TaskSuite:
         """Put whole families in splits (``by_family={"ood": ["dates"]}``), then divide the rest by ``fractions``."""
         rng = random.Random(seed)
         splits: dict[str, list[str]] = {}
@@ -105,6 +115,6 @@ class TaskSuite:
         items = list(fractions.items())
         for j, (split, frac) in enumerate(items):
             n = len(pool) - start if j == len(items) - 1 else int(round(len(pool) * frac / total))
-            splits.setdefault(split, []).extend(t.id for t in pool[start:start + n])
+            splits.setdefault(split, []).extend(t.id for t in pool[start : start + n])
             start += n
         return cls(tasks, splits, name)

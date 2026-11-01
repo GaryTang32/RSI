@@ -1,4 +1,5 @@
 """Recording domain and improver shared by the Harness² tests."""
+
 from __future__ import annotations
 
 from rsi.core.llm import LLMResponse, Usage

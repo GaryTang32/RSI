@@ -1,4 +1,5 @@
 """Deterministic agent backends that act only on what their (projected) context shows, plus an LLM adapter."""
+
 from __future__ import annotations
 
 import json
@@ -7,7 +8,6 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 from itertools import takewhile
-from typing import Optional
 
 from ...core.llm import LLM, LLMResponse, Usage, extract_json
 from ...solpi.runtime import AgentRuntime, Message, ToolCall, ToolSpec
@@ -23,27 +23,41 @@ class Profile:
 
     name: str
     prices: str = "sim-a"
-    p_read_first: float = 0.5      # read the file before editing
-    p_verify: float = 0.95         # run the targeted check after a fix
-    p_fuse: float = 0.88           # use then_run when the tool offers it
-    p_plan: float = 0.95           # keep a plan with update_plan when offered
-    p_recall: float = 0.85         # recall a packed observation instead of re-running
-    p_readback: float = 0.8        # read back an EPR source_artifact when a receipt lacks the evidence
-    p_smart: float = 0.6           # targeted fallback commands (grep/-q/head) when evidence is missing
-    p_misfix: float = 0.06         # wrong fix / misread although the evidence was visible
-    p_final_check: float = 0.9     # full check before declaring done
-    p_note_all: float = 0.3        # note evidence for other subtasks too
-    p_rerun_full: float = 0.8      # re-run the full diagnostic before each new subtask (fresh view)
-    p_explore: float = 0.6         # skim a few files before starting
+    p_read_first: float = 0.5  # read the file before editing
+    p_verify: float = 0.95  # run the targeted check after a fix
+    p_fuse: float = 0.88  # use then_run when the tool offers it
+    p_plan: float = 0.95  # keep a plan with update_plan when offered
+    p_recall: float = 0.85  # recall a packed observation instead of re-running
+    p_readback: float = 0.8  # read back an EPR source_artifact when a receipt lacks the evidence
+    p_smart: float = 0.6  # targeted fallback commands (grep/-q/head) when evidence is missing
+    p_misfix: float = 0.06  # wrong fix / misread although the evidence was visible
+    p_final_check: float = 0.9  # full check before declaring done
+    p_note_all: float = 0.3  # note evidence for other subtasks too
+    p_rerun_full: float = 0.8  # re-run the full diagnostic before each new subtask (fresh view)
+    p_explore: float = 0.6  # skim a few files before starting
     reasoning: tuple[int, int] = (150, 400)
     max_attempts: int = 3
 
 
 PROFILES = {
     "A": Profile("A"),
-    "B": Profile("B", prices="sim-b", p_read_first=0.8, p_verify=0.7, p_fuse=0.4, p_plan=0.35, p_recall=0.6,
-                 p_readback=0.5, p_smart=0.45, p_misfix=0.09, p_final_check=0.5, p_note_all=0.2, p_rerun_full=0.6,
-                 p_explore=0.3, reasoning=(80, 250)),
+    "B": Profile(
+        "B",
+        prices="sim-b",
+        p_read_first=0.8,
+        p_verify=0.7,
+        p_fuse=0.4,
+        p_plan=0.35,
+        p_recall=0.6,
+        p_readback=0.5,
+        p_smart=0.45,
+        p_misfix=0.09,
+        p_final_check=0.5,
+        p_note_all=0.2,
+        p_rerun_full=0.6,
+        p_explore=0.3,
+        reasoning=(80, 250),
+    ),
 }
 
 
@@ -55,10 +69,10 @@ class MockAgent:
         self.name = name
         self.rng = random.Random(f"mockagent|{profile.name}|{seed}")
         self.started = self.explored = self.fuse_ok = self.no_verify = self.use_plan = self.final_checked = False
-        self.skill: Optional[Skill] = None
+        self.skill: Skill | None = None
         self.phase = "start"
         self.items: list[dict] = []
-        self.calls: dict[str, dict] = {}          # call id -> {name, args}
+        self.calls: dict[str, dict] = {}  # call id -> {name, args}
         self.values: dict[str, str] = {}
         self.attempts: Counter = Counter()
         self.diag_runs: Counter = Counter()
@@ -66,23 +80,23 @@ class MockAgent:
         self.failed: set[str] = set()
         self.todo: set[str] = set()
         self.begun: set[str] = set()
-        self.recall_state: Optional[dict] = None
-        self.last_read_file: Optional[str] = None
-        self.focus: Optional[str] = None
+        self.recall_state: dict | None = None
+        self.last_read_file: str | None = None
+        self.focus: str | None = None
 
     def _tc(self, rt: AgentRuntime, name: str, args: dict) -> ToolCall:
         c = ToolCall(rt.next_call_id(), name, args)
         self.calls[c.id] = {"name": name, "args": args}
         return c
 
-    def _command(self, m: Message) -> Optional[str]:
+    def _command(self, m: Message) -> str | None:
         return self.calls.get(m.tool_call_id, {}).get("args", {}).get("command")
 
     def _msg(self, text: str, calls: list[ToolCall]) -> Message:
         return Message("assistant", text, tool_calls=tuple(calls), pad_tokens=self.rng.randint(*self.p.reasoning))
 
     @staticmethod
-    def _search(msgs: list[Message], fn) -> Optional[dict]:
+    def _search(msgs: list[Message], fn) -> dict | None:
         """``fn`` of the newest non-system message for which it is truthy."""
         for m in reversed(msgs):
             if m.role != "system" and (r := fn(m.content)):
@@ -96,11 +110,13 @@ class MockAgent:
 
     def _fresh_text(self, last: list[Message]) -> str:
         """Output of diagnostics/checks just run (plain bash or a fused then_run)."""
+
         def ran_command(c: dict) -> bool:
             return c.get("name") == "bash" or (c.get("name") in ("edit", "write") and "then_run" in c.get("args", {}))
+
         return "\n".join(m.content for m in last if ran_command(self.calls.get(m.tool_call_id, {})))
 
-    def _plan_call(self, rt, progress: Optional[dict] = None) -> Optional[ToolCall]:
+    def _plan_call(self, rt, progress: dict | None = None) -> ToolCall | None:
         if not self.use_plan or "update_plan" not in rt.tools:
             return None
         steps, cur = [], None
@@ -137,7 +153,7 @@ class MockAgent:
     def _open(self, st: dict) -> bool:
         return st["id"] not in self.done and st["id"] not in self.failed
 
-    def _cur(self) -> Optional[dict]:
+    def _cur(self) -> dict | None:
         if self.focus is not None:
             f = next((st for st in self.items if st["id"] == self.focus), None)
             if f is not None and self._open(f):
@@ -149,8 +165,9 @@ class MockAgent:
         (self.done if ok else self.failed).add(st["id"])
         text.append(("DONE: " if ok else "DONE (gave up): ") + st.get("goal", st["id"]))
         if ok:
-            pc = self._plan_call(rt, progress={"files_changed": [self.skill.file(st)], "verification": ["check passed"],
-                                               "decisions": []})
+            pc = self._plan_call(
+                rt, progress={"files_changed": [self.skill.file(st)], "verification": ["check passed"], "decisions": []}
+            )
             if pc:
                 calls.append(pc)
 
@@ -188,8 +205,9 @@ class MockAgent:
                     self._complete(st, rt, calls, False, text)
             self.phase = "diagnose"
         elif self.phase == "final_wait":
-            bad = [st for st in self.items
-                   if not self._open(st) and sk.find(st, last_text) and "NOTE:" not in last_text]
+            bad = [
+                st for st in self.items if not self._open(st) and sk.find(st, last_text) and "NOTE:" not in last_text
+            ]
             if bad and last and last[0].is_error:
                 for st in bad:
                     self.done.discard(st["id"])
@@ -206,8 +224,10 @@ class MockAgent:
                 self.explored = True
                 files = sorted({sk.file(st) for st in self.items})
                 self.rng.shuffle(files)
-                calls += [self._tc(rt, "bash", {"command": "ls src tests"}),
-                          self._tc(rt, "read", {"path": "docs/GUIDE.md"})]
+                calls += [
+                    self._tc(rt, "bash", {"command": "ls src tests"}),
+                    self._tc(rt, "read", {"path": "docs/GUIDE.md"}),
+                ]
                 calls += [self._tc(rt, "read", {"path": f}) for f in files[:2]]
                 return "Exploring the repository first.", calls
             self.phase = "diag_wait"
@@ -220,8 +240,9 @@ class MockAgent:
             st = self._cur()
             if st is not None:
                 return self._work_on(st, msgs, rt, last, last_text, text, calls)
-            return self._final_check(rt, text, calls, "All subtasks addressed; running the full check.") or \
-                self._finish(text)
+            return self._final_check(
+                rt, text, calls, "All subtasks addressed; running the full check."
+            ) or self._finish(text)
         if self.phase == "verify":
             self.phase = "verify_wait"
             calls.append(self._tc(rt, "bash", {"command": sk.verify_cmd(self._cur())}))
@@ -265,8 +286,7 @@ class MockAgent:
             for other in self.items:
                 if other is not st and other["id"] not in self.done and (e2 := sk.find(other, last_text)):
                     text.append(sk.note(other, e2))
-        if self.phase != "read_wait" and self.last_read_file != sk.file(st) and \
-                self.rng.random() < self.p.p_read_first:
+        if self.phase != "read_wait" and self.last_read_file != sk.file(st) and self.rng.random() < self.p.p_read_first:
             self.phase = "read_wait"
             self.last_read_file = sk.file(st)
             calls.append(self._tc(rt, "read", {"path": sk.file(st)}))
@@ -296,14 +316,21 @@ class MockAgent:
         calls.append(self._rediagnose(st, rt))
         return "\n".join(text), calls
 
-    def _fallback(self, st, msgs, rt) -> Optional[ToolCall]:
+    def _fallback(self, st, msgs, rt) -> ToolCall | None:
         """Evidence not visible: recall a packed observation, read back a receipt's log, or re-run a diagnostic."""
         sk = self.skill
-        ph = self._search(msgs, lambda t: {"id": re.search(r"^id: (obs_[a-f0-9]{24})$", t, re.M).group(1)}
-                          if t.startswith(PLACEHOLDER) else None)
+        ph = self._search(
+            msgs,
+            lambda t: (
+                {"id": re.search(r"^id: (obs_[a-f0-9]{24})$", t, re.M).group(1)} if t.startswith(PLACEHOLDER) else None
+            ),
+        )
         if ph and "obs_recall" in rt.tools and self.rng.random() < self.p.p_recall:
-            rs = self.recall_state if self.recall_state and self.recall_state["id"] == ph["id"] else \
-                {"id": ph["id"], "offset": 0, "eof": False}
+            rs = (
+                self.recall_state
+                if self.recall_state and self.recall_state["id"] == ph["id"]
+                else {"id": ph["id"], "offset": 0, "eof": False}
+            )
             if not rs["eof"]:
                 for m in self._since_reply(msgs, "tool"):
                     mm = re.match(r"\[obs_recall id=(\S+) offset=\d+ next_offset=(\d+) eof=(\w+)\]", m.content)
@@ -312,8 +339,14 @@ class MockAgent:
                 self.recall_state = rs
                 if not rs["eof"]:
                     return self._tc(rt, "obs_recall", {"id": rs["id"], "offset": rs["offset"]})
-        rc = self._search(msgs, lambda t: {"path": re.search(r"^source_artifact=(\S+)$", t, re.M).group(1)}
-                          if t.startswith("sol_pi_evidence_receipt_v1") else None)
+        rc = self._search(
+            msgs,
+            lambda t: (
+                {"path": re.search(r"^source_artifact=(\S+)$", t, re.M).group(1)}
+                if t.startswith("sol_pi_evidence_receipt_v1")
+                else None
+            ),
+        )
         if rc and self.rng.random() < self.p.p_readback and not self.attempts["rb", rc["path"]]:
             self.attempts["rb", rc["path"]] = 1
             return self._tc(rt, "bash", {"command": f"grep -n -m 20 {sk.pattern(st)} {rc['path']}"})
@@ -323,7 +356,7 @@ class MockAgent:
             return self._tc(rt, "bash", {"command": sk.diag(st, n == 0, self.rng.random() < self.p.p_smart)})
         return None
 
-    def _data_view(self, msgs) -> Optional[str]:
+    def _data_view(self, msgs) -> str | None:
         """The latest full view of the data file (None if absent or replaced by a placeholder)."""
         for m in reversed(msgs):
             if m.role == "tool" and self._command(m) == self.skill.read_cmd:
@@ -380,10 +413,10 @@ class MockAgent:
             self.phase = "compute"
             data = self._data_view(msgs)
             if data is not None and sk.is_data(data):
-                self._derive(data, misfix=False)          # the data is still in context
+                self._derive(data, misfix=False)  # the data is still in context
                 return self._batch(msgs, rt)
             if u > self.p.p_smart + (1 - self.p.p_smart) * self.p.p_recall:
-                self.todo = set()                         # resubmit the earlier values from memory
+                self.todo = set()  # resubmit the earlier values from memory
                 return self._batch(msgs, rt)
             calls.append(self._tc(rt, "bash", {"command": sk.read_cmd}))
             return "Re-reading the data.", calls
@@ -395,8 +428,9 @@ class MockAgent:
             if missing and self.rng.random() < self.p.p_smart and self.attempts["smart"] < 2:
                 self.attempts["smart"] += 1
                 self.phase = "smart_wait"
-                return "Some items are not visible; querying them directly.", \
-                    [self._tc(rt, "bash", {"command": sk.smart(st)}) for st in missing]
+                return "Some items are not visible; querying them directly.", [
+                    self._tc(rt, "bash", {"command": sk.smart(st)}) for st in missing
+                ]
             for st in missing:
                 self.values[st["id"]] = "unknown"
             self.todo = set()
@@ -409,8 +443,18 @@ class MockAgent:
                 self.phase = "end_unverified" if self.no_verify else "check"
             newly = {st["id"] for st in self.items} - self.done
             self.done |= newly
-            pc = self._plan_call(rt, progress={"files_changed": [sk.out_file], "verification": [],
-                                               "decisions": [f"computed {len(newly)} items"]}) if newly else None
+            pc = (
+                self._plan_call(
+                    rt,
+                    progress={
+                        "files_changed": [sk.out_file],
+                        "verification": [],
+                        "decisions": [f"computed {len(newly)} items"],
+                    },
+                )
+                if newly
+                else None
+            )
             calls.append(self._tc(rt, "write", args))
             if pc:
                 calls.append(pc)
@@ -460,18 +504,23 @@ class LLMAgent:
                 tc = json.dumps([{"name": c.name, "args": c.args} for c in m.tool_calls])
                 parts.append(f"ASSISTANT: {m.content}\nTOOL_CALLS: {tc}")
             elif m.role == "tool":
-                parts.append(f"TOOL RESULT ({m.tool_name}{', error' if m.is_error else ''}):\n"
-                             f"{m.content[: self.max_chars]}")
+                parts.append(
+                    f"TOOL RESULT ({m.tool_name}{', error' if m.is_error else ''}):\n{m.content[: self.max_chars]}"
+                )
             else:
                 parts.append(f"USER: {m.content}")
-        resp = self.llm.complete("\n\n".join(parts), system=msgs[0].content + ACTION_PROTOCOL, role="agent",
-                                 seed=rt.turns)
-        if not resp.ok:     # a backend outage must not look like an agent that chose to stop
+        resp = self.llm.complete(
+            "\n\n".join(parts), system=msgs[0].content + ACTION_PROTOCOL, role="agent", seed=rt.turns
+        )
+        if not resp.ok:  # a backend outage must not look like an agent that chose to stop
             raise RuntimeError(f"infra: agent backend error: {resp.error}")
         try:
             d = extract_json(resp.text)
         except ValueError:
             d = {"thought": resp.text[:500], "tool_calls": []}
-        calls = tuple(ToolCall(rt.next_call_id(), str(c.get("name")), dict(c.get("args") or {}))
-                      for c in (d.get("tool_calls") or []) if isinstance(c, dict))
+        calls = tuple(
+            ToolCall(rt.next_call_id(), str(c.get("name")), dict(c.get("args") or {}))
+            for c in (d.get("tool_calls") or [])
+            if isinstance(c, dict)
+        )
         return Message("assistant", str(d.get("thought", ""))[:2000], tool_calls=calls)

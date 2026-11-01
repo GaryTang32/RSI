@@ -1,9 +1,9 @@
 """CostMeter: discovery-agent calls (the paper's cost unit) kept apart from replay CPU and developer calls."""
+
 from __future__ import annotations
 
 import threading
 from dataclasses import asdict, dataclass, field
-from typing import Optional
 
 from ..core.llm import LLM, Usage
 
@@ -28,7 +28,7 @@ class CostMeter:
     def __post_init__(self) -> None:
         self._lock = threading.Lock()
 
-    def add_agent(self, usage: Optional[Usage]) -> None:
+    def add_agent(self, usage: Usage | None) -> None:
         with self._lock:
             self.agent_calls += 1
             if usage is not None:
@@ -45,7 +45,7 @@ class CostMeter:
             self.replay_cpu_s += float(cpu_s)
             self.replay_wall_s += float(wall_s)
 
-    def add_developer(self, usage: Optional[Usage], revisions: int = 1) -> None:
+    def add_developer(self, usage: Usage | None, revisions: int = 1) -> None:
         with self._lock:
             self.developer_revisions += int(revisions)
             if usage is None:
@@ -55,9 +55,15 @@ class CostMeter:
             self.developer_usd += float(usage.cost_usd)
 
     def close_iteration(self, t: int, **extra) -> dict:
-        row = {"iteration": t, "agent_calls": self.agent_calls, "replay_episodes": self.replay_episodes,
-               "replay_cpu_s": round(self.replay_cpu_s, 4), "developer_calls": self.developer_calls,
-               "developer_revisions": self.developer_revisions, **extra}
+        row = {
+            "iteration": t,
+            "agent_calls": self.agent_calls,
+            "replay_episodes": self.replay_episodes,
+            "replay_cpu_s": round(self.replay_cpu_s, 4),
+            "developer_calls": self.developer_calls,
+            "developer_revisions": self.developer_revisions,
+            **extra,
+        }
         self.per_iteration.append(row)
         return row
 
@@ -71,7 +77,7 @@ class CostMeter:
         return d
 
 
-def llm_usage(*llms: Optional[LLM]) -> dict:
+def llm_usage(*llms: LLM | None) -> dict:
     out: dict = {}
     for llm in llms:
         if llm is None:

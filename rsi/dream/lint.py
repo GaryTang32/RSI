@@ -1,22 +1,95 @@
 """Static check of a policy module before it ever runs [paper:App.B.2 L2:131-143], incl. cross-episode state."""
+
 from __future__ import annotations
 
 import ast
 from dataclasses import dataclass, field
 
-ALLOWED_IMPORTS = {"policy_api", "math", "statistics", "collections", "itertools", "functools", "heapq",
-                   "bisect", "dataclasses", "typing", "__future__", "random", "operator", "enum", "numbers"}
-FORBIDDEN_NAMES = {"best_so_far", "budget_spent", "open", "exec", "eval", "compile", "__import__", "globals",
-                   "locals", "vars", "breakpoint", "input", "getattr", "setattr", "delattr", "__self__",
-                   "__globals__", "__closure__", "__code__", "__builtins__", "__subclasses__", "__mro__",
-                   "f_back", "f_locals", "f_globals", "gi_frame"}
+ALLOWED_IMPORTS = {
+    "policy_api",
+    "math",
+    "statistics",
+    "collections",
+    "itertools",
+    "functools",
+    "heapq",
+    "bisect",
+    "dataclasses",
+    "typing",
+    "__future__",
+    "random",
+    "operator",
+    "enum",
+    "numbers",
+}
+FORBIDDEN_NAMES = {
+    "best_so_far",
+    "budget_spent",
+    "open",
+    "exec",
+    "eval",
+    "compile",
+    "__import__",
+    "globals",
+    "locals",
+    "vars",
+    "breakpoint",
+    "input",
+    "getattr",
+    "setattr",
+    "delattr",
+    "__self__",
+    "__globals__",
+    "__closure__",
+    "__code__",
+    "__builtins__",
+    "__subclasses__",
+    "__mro__",
+    "f_back",
+    "f_locals",
+    "f_globals",
+    "gi_frame",
+}
 #: attribute names a policy may never touch (bare local variables with these names are fine)
-FORBIDDEN_ATTRS = {"_t", "_st", "_obs", "tree", "_tree", "hidden", "trace_pool", "__class__", "__bases__", "__base__",
-                   "__dict__"}
+FORBIDDEN_ATTRS = {
+    "_t",
+    "_st",
+    "_obs",
+    "tree",
+    "_tree",
+    "hidden",
+    "trace_pool",
+    "__class__",
+    "__bases__",
+    "__base__",
+    "__dict__",
+}
 #: in-place container mutations (on a module-level object they carry state across episodes)
-MUTATING_METHODS = {"append", "extend", "insert", "pop", "popitem", "remove", "clear", "update", "setdefault", "add",
-                    "discard", "appendleft", "extendleft", "popleft", "sort", "reverse", "rotate", "difference_update",
-                    "intersection_update", "symmetric_difference_update", "__setitem__", "__delitem__", "__iadd__"}
+MUTATING_METHODS = {
+    "append",
+    "extend",
+    "insert",
+    "pop",
+    "popitem",
+    "remove",
+    "clear",
+    "update",
+    "setdefault",
+    "add",
+    "discard",
+    "appendleft",
+    "extendleft",
+    "popleft",
+    "sort",
+    "reverse",
+    "rotate",
+    "difference_update",
+    "intersection_update",
+    "symmetric_difference_update",
+    "__setitem__",
+    "__delitem__",
+    "__iadd__",
+}
 RANDOM_STATE_CALLS = {"seed", "setstate", "getstate"}
 CACHE_DECORATORS = {"lru_cache", "cache", "cached_property"}
 _MUTABLE_CALLS = {"dict", "list", "set", "defaultdict", "deque", "Counter", "OrderedDict", "bytearray"}
@@ -68,8 +141,10 @@ class _EpisodeStateLint(ast.NodeVisitor):
         return not self.scopes and isinstance(r, ast.Name) and r.id in self.imported
 
     def _err(self, node, what: str) -> None:
-        self.errors.append(f"cross-episode state (line {getattr(node, 'lineno', '?')}): {what}; replay resets the "
-                           "policy's per-rollout state, so keep per-episode state on self inside solve()")
+        self.errors.append(
+            f"cross-episode state (line {getattr(node, 'lineno', '?')}): {what}; replay resets the "
+            "policy's per-rollout state, so keep per-episode state on self inside solve()"
+        )
 
     def _shared(self, name: str) -> bool:
         return bool(self.scopes) and not any(name in s for s in self.scopes)
@@ -107,8 +182,11 @@ class _EpisodeStateLint(ast.NodeVisitor):
         elif isinstance(t, (ast.Attribute, ast.Subscript)):
             r = _root(t)
             if self._into_import(r):
-                self._err(t, f"assignment into the imported object {r.id!r} at module level (it outlives the "
-                             "policy module, e.g. policy_api.memo = {})")
+                self._err(
+                    t,
+                    f"assignment into the imported object {r.id!r} at module level (it outlives the "
+                    "policy module, e.g. policy_api.memo = {})",
+                )
             elif self.scopes and not isinstance(r, ast.Name):
                 self._err(t, "assignment through an expression (e.g. type(self).x or super().x)")
             elif self.scopes and self._shared(r.id):
@@ -135,8 +213,12 @@ class _EpisodeStateLint(ast.NodeVisitor):
                 self._err(node, f"in-place mutation {r.id}...{f.attr}() of a non-local object")
             elif self._into_import(r):
                 self._err(node, f"in-place mutation {r.id}...{f.attr}() of an imported object at module level")
-        if isinstance(f, ast.Attribute) and f.attr in RANDOM_STATE_CALLS and isinstance(f.value, ast.Name) \
-                and f.value.id == "random":
+        if (
+            isinstance(f, ast.Attribute)
+            and f.attr in RANDOM_STATE_CALLS
+            and isinstance(f.value, ast.Name)
+            and f.value.id == "random"
+        ):
             self._err(node, f"random.{f.attr}() touches the shared module-level random state")
         self.generic_visit(node)
 
@@ -159,9 +241,14 @@ def static_check(code: str) -> CheckResult:
     except SyntaxError as e:
         bad = (e.text or "").strip()  # quoted so the developer sees the cause, not just a line number
         return CheckResult(False, [f"syntax error: {e}" + (f" - offending line: {bad[:120]!r}" if bad else "")])
-    names = [node.value.value for node in tree.body
-             if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "NAME" for t in node.targets)
-             and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str)]
+    names = [
+        node.value.value
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        and any(isinstance(t, ast.Name) and t.id == "NAME" for t in node.targets)
+        and isinstance(node.value, ast.Constant)
+        and isinstance(node.value.value, str)
+    ]
     name = names[-1] if names else None
     if name is None:
         errors.append('missing NAME = "OptimalPolicy"')
@@ -173,16 +260,21 @@ def static_check(code: str) -> CheckResult:
         errors += [f"{cls.name}.{m} is not overridden" for m in ("solve", "plan_grid") if m not in methods]
         pg = methods.get("plan_grid")
         if pg is not None:
-            if any(isinstance(r, ast.Return) and (r.value is None or (isinstance(r.value, ast.Constant)
-                                                                      and r.value.value is None))
-                   for r in ast.walk(pg)):
+            if any(
+                isinstance(r, ast.Return)
+                and (r.value is None or (isinstance(r.value, ast.Constant) and r.value.value is None))
+                for r in ast.walk(pg)
+            ):
                 errors.append("plan_grid returns None on some path")
             if pg.body and not isinstance(pg.body[-1], (ast.Return, ast.Raise, ast.If)):
                 warnings.append("plan_grid may fall off the end (implicit None)")
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            errors += [f"import of {a.name!r} is not allowed" for a in node.names
-                       if a.name.split(".")[0] not in ALLOWED_IMPORTS]
+            errors += [
+                f"import of {a.name!r} is not allowed"
+                for a in node.names
+                if a.name.split(".")[0] not in ALLOWED_IMPORTS
+            ]
         elif isinstance(node, ast.ImportFrom):
             if (node.module or "").split(".")[0] not in ALLOWED_IMPORTS:
                 errors.append(f"import from {node.module!r} is not allowed")
@@ -206,23 +298,28 @@ def _class_state_errors(tree: ast.Module) -> list[str]:
                 continue
             val = st.value
             if isinstance(val, (ast.Dict, ast.List, ast.Set, ast.DictComp, ast.ListComp, ast.SetComp)) or (
-                    isinstance(val, ast.Call) and getattr(val.func, "id", getattr(val.func, "attr", None))
-                    in _MUTABLE_CALLS):
-                mutable |= {t.id for t in (st.targets if isinstance(st, ast.Assign) else [st.target])
-                            if isinstance(t, ast.Name)}
+                isinstance(val, ast.Call) and getattr(val.func, "id", getattr(val.func, "attr", None)) in _MUTABLE_CALLS
+            ):
+                mutable |= {
+                    t.id for t in (st.targets if isinstance(st, ast.Assign) else [st.target]) if isinstance(t, ast.Name)
+                }
         if not mutable:
             continue
 
         def self_attr(x) -> bool:
-            return isinstance(x, ast.Attribute) and isinstance(x.value, ast.Name) and x.value.id == "self" \
+            return (
+                isinstance(x, ast.Attribute)
+                and isinstance(x.value, ast.Name)
+                and x.value.id == "self"
                 and x.attr in mutable
+            )
 
         rebound = {n.attr for n in ast.walk(cls) if self_attr(n) and isinstance(n.ctx, ast.Store)}
         mutated = {}
         for n in ast.walk(cls):
             tgt = None
             if isinstance(n, (ast.Assign, ast.AugAssign, ast.AnnAssign, ast.Delete)):
-                for t in (n.targets if isinstance(n, (ast.Assign, ast.Delete)) else [n.target]):
+                for t in n.targets if isinstance(n, (ast.Assign, ast.Delete)) else [n.target]:
                     if isinstance(t, ast.Subscript) or isinstance(n, ast.AugAssign):
                         tgt = t.value if isinstance(t, ast.Subscript) else t
             elif isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in MUTATING_METHODS:
@@ -230,7 +327,9 @@ def _class_state_errors(tree: ast.Module) -> list[str]:
             if self_attr(tgt) and tgt.attr not in rebound:
                 mutated.setdefault(tgt.attr, getattr(n, "lineno", "?"))
         for name, line in sorted(mutated.items()):
-            out.append(f"cross-episode state (line {line}): class attribute {cls.name}.{name} is a shared mutable "
-                       "container mutated through self; replay resets the policy's per-rollout state, so create "
-                       "it per instance (self.{0} = ... in __init__ or solve)".format(name))
+            out.append(
+                f"cross-episode state (line {line}): class attribute {cls.name}.{name} is a shared mutable "
+                "container mutated through self; replay resets the policy's per-rollout state, so create "
+                "it per instance (self.{0} = ... in __init__ or solve)".format(name)
+            )
     return out

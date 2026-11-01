@@ -9,9 +9,10 @@ A harness fails if any file contains
   words, numbers and sequences shorter than 3 tokens are generic), as a standalone string: not glued to further
   letters, digits or brackets, so e.g. a full Dyck closing sequence or a full sorted word list.
 """
+
 from __future__ import annotations
 
-from typing import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 
 from ...core.tasks import Task, TaskSuite
 from .grading import is_generic_target
@@ -31,9 +32,15 @@ def _standalone(text: str, needle: str) -> bool:
     return False
 
 
-def leak_check(files: Mapping[str, str], tasks: Iterable[Task] | TaskSuite, *, split: str = "evolve",
-               window: int = 40, max_hits: int = 20,
-               is_generic: Callable[[str], bool] = is_generic_target) -> dict:
+def leak_check(
+    files: Mapping[str, str],
+    tasks: Iterable[Task] | TaskSuite,
+    *,
+    split: str = "evolve",
+    window: int = 40,
+    max_hits: int = 20,
+    is_generic: Callable[[str], bool] = is_generic_target,
+) -> dict:
     """``{"passed": bool, "hits": [...], "checked": {...}}`` for harness ``files`` (an Artifact works).
 
     ``is_generic`` decides which targets are too common to count (BBEH passes its own: at most 2 tokens)."""
@@ -45,7 +52,7 @@ def leak_check(files: Mapping[str, str], tasks: Iterable[Task] | TaskSuite, *, s
         others = [o for oid, o in questions if oid != tid]
         for path, text in texts.items():
             for i in range(0, max(0, len(q) - window + 1)):
-                w = q[i:i + window]
+                w = q[i : i + window]
                 if w in text and not any(w in o for o in others):
                     hits.append({"kind": "question", "task": tid, "file": path, "snippet": w})
                     break
@@ -56,6 +63,15 @@ def leak_check(files: Mapping[str, str], tasks: Iterable[Task] | TaskSuite, *, s
         for path, text in texts.items():
             if _standalone(text, tgt):
                 hits.append({"kind": "target", "task": t.id, "file": path, "snippet": tgt[:80]})
-    return {"passed": not hits, "hits": hits[:max_hits], "n_hits": len(hits),
-            "checked": {"split": split, "tasks": len(ts), "window": window, "files": sorted(texts),
-                        "non_generic_targets": sum(not is_generic(str(t.target)) for t in ts)}}
+    return {
+        "passed": not hits,
+        "hits": hits[:max_hits],
+        "n_hits": len(hits),
+        "checked": {
+            "split": split,
+            "tasks": len(ts),
+            "window": window,
+            "files": sorted(texts),
+            "non_generic_targets": sum(not is_generic(str(t.target)) for t in ts),
+        },
+    }

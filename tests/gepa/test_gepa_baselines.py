@@ -1,10 +1,23 @@
 """Baselines at equal rollout budget: ScalarRL (GRPO-style), ScoreOnly, BestOfN, FewShot (MIPRO-lite)."""
+
 import numpy as np
 
 from rsi.domains.agentqa import AgentQADomain, SimModel, make_suite
 from rsi.domains.ruleworld import RuleWorldReflectionLM, make_domain
-from rsi.gepa import (AgentQAReflectionLM, Config, FewShotConfig, RLConfig, gepa_curve, rollouts_to_target, run,
-                      run_best_of_n, run_fewshot, run_scalar_rl, run_score_only, trajectory_curve)
+from rsi.gepa import (
+    AgentQAReflectionLM,
+    Config,
+    FewShotConfig,
+    RLConfig,
+    gepa_curve,
+    rollouts_to_target,
+    run,
+    run_best_of_n,
+    run_fewshot,
+    run_scalar_rl,
+    run_score_only,
+    trajectory_curve,
+)
 
 
 def test_scalar_rl_accounting_and_learning():
@@ -20,10 +33,14 @@ def test_scalar_rl_accounting_and_learning():
 
 def test_rl_brainstorms_vocabulary_without_domain_hook():
     suite = make_suite(n_evolve=4, n_val=4, n_holdout=2, n_ood_per_family=1, seed=0)
-    res = run_scalar_rl(AgentQADomain(suite), AgentQADomain.seed_artifact(), llm_task=SimModel(suite),
-                        llm_propose=AgentQAReflectionLM(),
-                        config=RLConfig(max_metric_calls=60, group_size=4, instances_per_step=2, val_every=2,
-                                        vocab_size=6), components=["prompts/system.md"])
+    res = run_scalar_rl(
+        AgentQADomain(suite),
+        AgentQADomain.seed_artifact(),
+        llm_task=SimModel(suite),
+        llm_propose=AgentQAReflectionLM(),
+        config=RLConfig(max_metric_calls=60, group_size=4, instances_per_step=2, val_every=2, vocab_size=6),
+        components=["prompts/system.md"],
+    )
     assert res.meta["vocab_sizes"] == {"prompts/system.md": 6}
     assert res.usage["brainstorm"]["calls"] == 1
 
@@ -40,8 +57,12 @@ def test_equal_budget_baselines_run_and_gepa_beats_score_only_on_average():
         if s == 0:
             bon = run_best_of_n(d, d.seed_artifact(), llm_propose=RuleWorldReflectionLM(d.world), config=cfg)
             assert bon.meta["rollouts"] <= 1200 and bon.meta["n_rewrites"] >= 30
-            fs = run_fewshot(d, d.seed_artifact(), llm_propose=RuleWorldReflectionLM(d.world),
-                             config=FewShotConfig(max_metric_calls=1200))
+            fs = run_fewshot(
+                d,
+                d.seed_artifact(),
+                llm_propose=RuleWorldReflectionLM(d.world),
+                config=FewShotConfig(max_metric_calls=1200),
+            )
             assert fs.meta["rollouts"] <= 1200 and fs.meta["trials"] > 10
             assert sum(len(v) for v in fs.best.files.values()) > 0
             assert rollouts_to_target(gepa_curve(g, lambda a: d.expected(a, "test")), 0.5) is not None

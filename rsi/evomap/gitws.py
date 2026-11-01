@@ -1,18 +1,31 @@
 """A real git working tree for the Solidifier: a port of Evolver ``src/gep/gitOps.js``."""
+
 from __future__ import annotations
 
 import os
 import re
 import subprocess
 import time
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping, Optional
 
 DIFF_SNAPSHOT_MAX_CHARS = 8000
 CRITICAL_PROTECTED_PREFIXES = ("skills/skill-tools/", "skills/git-sync/", "skills/evolver/")
-CRITICAL_PROTECTED_FILES = ("MEMORY.md", "SOUL.md", "IDENTITY.md", "AGENTS.md", "USER.md", "HEARTBEAT.md",
-                            "RECENT_EVENTS.md", "TOOLS.md", "TROUBLESHOOTING.md", "openclaw.json", "evolver.json",
-                            ".env", "package.json")
+CRITICAL_PROTECTED_FILES = (
+    "MEMORY.md",
+    "SOUL.md",
+    "IDENTITY.md",
+    "AGENTS.md",
+    "USER.md",
+    "HEARTBEAT.md",
+    "RECENT_EVENTS.md",
+    "TOOLS.md",
+    "TROUBLESHOOTING.md",
+    "openclaw.json",
+    "evolver.json",
+    ".env",
+    "package.json",
+)
 
 
 def is_critical_protected_path(rel: str) -> bool:
@@ -27,10 +40,16 @@ def is_critical_protected_path(rel: str) -> bool:
 
 
 class GitWorkspace:
-    def __init__(self, root: str | Path, *, env: Optional[dict] = None) -> None:
+    def __init__(self, root: str | Path, *, env: dict | None = None) -> None:
         self.root = Path(root)
-        self.env = {**os.environ, "GIT_AUTHOR_NAME": "evomap", "GIT_AUTHOR_EMAIL": "evomap@localhost",
-                    "GIT_COMMITTER_NAME": "evomap", "GIT_COMMITTER_EMAIL": "evomap@localhost", **(env or {})}
+        self.env = {
+            **os.environ,
+            "GIT_AUTHOR_NAME": "evomap",
+            "GIT_AUTHOR_EMAIL": "evomap@localhost",
+            "GIT_COMMITTER_NAME": "evomap",
+            "GIT_COMMITTER_EMAIL": "evomap@localhost",
+            **(env or {}),
+        }
         self.log: list[str] = []
 
     def _git(self, *args: str, check: bool = False) -> subprocess.CompletedProcess:
@@ -47,7 +66,7 @@ class GitWorkspace:
         return self.root.is_dir() and self._git("rev-parse", "--git-dir").returncode == 0
 
     @classmethod
-    def init(cls, root: str | Path, files: Mapping[str, str], message: str = "baseline") -> "GitWorkspace":
+    def init(cls, root: str | Path, files: Mapping[str, str], message: str = "baseline") -> GitWorkspace:
         ws = cls(root)
         ws.root.mkdir(parents=True, exist_ok=True)
         ws._git("init", "-q", check=True)
@@ -56,13 +75,13 @@ class GitWorkspace:
         ws._git("commit", "-q", "-m", message, check=True)
         return ws
 
-    def write(self, files: Mapping[str, str], *, delete_missing_from: Optional[Mapping[str, str]] = None) -> None:
+    def write(self, files: Mapping[str, str], *, delete_missing_from: Mapping[str, str] | None = None) -> None:
         """Mirror a cycle's ``after`` map into the tree; delete paths of ``delete_missing_from`` it lacks."""
         for rel, text in files.items():
             p = self.root / rel
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(text)
-        for rel in (delete_missing_from or {}):
+        for rel in delete_missing_from or {}:
             if rel not in files and (self.root / rel).exists():
                 (self.root / rel).unlink()
 
@@ -71,8 +90,11 @@ class GitWorkspace:
 
     def changed_files(self) -> list[str]:
         """``gitListChangedFiles``: unstaged, staged and untracked paths."""
-        cmds = (("diff", "--name-only"), ("diff", "--cached", "--name-only"),
-                ("ls-files", "--others", "--exclude-standard"))
+        cmds = (
+            ("diff", "--name-only"),
+            ("diff", "--cached", "--name-only"),
+            ("ls-files", "--others", "--exclude-standard"),
+        )
         return list(dict.fromkeys(f for args in cmds for f in self._lines(*args)))
 
     def diff_snapshot(self) -> str:
@@ -86,6 +108,7 @@ class GitWorkspace:
     def blast_radius(self, policy=None) -> dict:
         """Files and ``--numstat`` lines (plus new untracked files' lines) under the counted-file policy."""
         from .solidify import CountedFilePolicy
+
         policy = policy or CountedFilePolicy()
         changed = self.changed_files()
         counted = [f for f in changed if policy.counts(f)]
@@ -118,7 +141,7 @@ class GitWorkspace:
         self._git("reset", "--hard")
         return "hard"
 
-    def remove_new_untracked(self, baseline_untracked=(), cycle_started_at: Optional[float] = None) -> dict:
+    def remove_new_untracked(self, baseline_untracked=(), cycle_started_at: float | None = None) -> dict:
         """``rollbackNewUntrackedFiles``: delete untracked files not in the baseline (never protected paths), then
         prune empty directories that contain a "/" (never top-level), deepest first."""
         baseline = {str(x) for x in baseline_untracked}

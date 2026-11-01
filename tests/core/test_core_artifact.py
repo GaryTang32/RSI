@@ -1,4 +1,5 @@
 """rsi.core.artifact: identity, edits, diffs, file blocks, directory round trips."""
+
 from __future__ import annotations
 
 import copy
@@ -18,7 +19,7 @@ def test_identity_is_content_addressed():
     assert len(a.id) == 64 and a.short_id == a.id[:10]
     assert list(a) == ["a.py", "b.py"]
     assert a != Artifact({"a.py": "1", "b.py": "3"})
-    assert a != {"a.py": "1", "b.py": "2"}              # only equal to artifacts
+    assert a != {"a.py": "1", "b.py": "2"}  # only equal to artifacts
     assert {a: 1}[b] == 1
     assert "a.py" in a and a.get("zzz") is None and len(a) == 2
 
@@ -59,7 +60,7 @@ def test_diff_and_diff_size_basic():
     assert "-b\n+B\n" in d and "+d\n" in d
     assert "--- a/gone.py" in d and "-x\n" in d
     assert "+++ b/new.py" in d and "+n\n" in d
-    assert a.diff_size(b) == 5                          # f.py: -b +B +d; gone.py: -x; new.py: +n
+    assert a.diff_size(b) == 5  # f.py: -b +B +d; gone.py: -x; new.py: +n
     assert a.diff(a) == "" and a.diff_size(a) == 0
 
 
@@ -71,7 +72,7 @@ def test_diff_without_trailing_newline_keeps_lines_apart():
     assert "\\ No newline at end of file" in d and d.endswith("\n")
     assert added_lines(d).splitlines() == ["x = 'SECRET'", "q"]
     assert a.diff_size(b) == 4
-    assert Artifact({"f": "z"}).diff_size(Artifact({"f": "z\n"})) == 2   # only the trailing newline changes
+    assert Artifact({"f": "z"}).diff_size(Artifact({"f": "z\n"})) == 2  # only the trailing newline changes
 
 
 def test_diff_size_counts_content_that_looks_like_headers():
@@ -93,12 +94,17 @@ def test_render_and_parse_file_blocks_roundtrip():
 
 
 def test_parse_file_blocks_fences_prose_and_crlf():
-    text = ("Here is my edit.\n"
-            "=== FILE: a.py ===\n```python\nprint(1)\n```\n\n"
-            "=== FILE: notes/b.md ===   \nplain text\n  indented\n\n\n"
-            "=== FILE: c.txt ===\r\nwindows\n")
-    assert parse_file_blocks(text) == {"a.py": "print(1)\n", "notes/b.md": "plain text\n  indented\n",
-                                       "c.txt": "windows\n"}
+    text = (
+        "Here is my edit.\n"
+        "=== FILE: a.py ===\n```python\nprint(1)\n```\n\n"
+        "=== FILE: notes/b.md ===   \nplain text\n  indented\n\n\n"
+        "=== FILE: c.txt ===\r\nwindows\n"
+    )
+    assert parse_file_blocks(text) == {
+        "a.py": "print(1)\n",
+        "notes/b.md": "plain text\n  indented\n",
+        "c.txt": "windows\n",
+    }
     assert parse_file_blocks("") == {} and parse_file_blocks(None) == {}
     assert parse_file_blocks("no blocks at all") == {}
     assert parse_file_blocks("=== FILE: d.py ===\n<<DELETE>>\n") == {"d.py": "<<DELETE>>\n"}

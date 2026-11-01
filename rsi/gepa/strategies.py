@@ -1,9 +1,10 @@
 """GEPA strategies (``gepa/strategies/*``), all drawing from the one shared seeded RNG."""
+
 from __future__ import annotations
 
 import random
 from collections import Counter
-from typing import Sequence
+from collections.abc import Sequence
 
 from .frontier import select_from_pareto_front
 
@@ -94,8 +95,13 @@ class BeamSearchSelector:
         self.t = int(d.get("t", 0))
 
 
-SELECTORS = {"pareto": ParetoSelector, "current_best": CurrentBestSelector, "epsilon_greedy": EpsilonGreedySelector,
-             "top_k_pareto": TopKParetoSelector, "beam_search": BeamSearchSelector}
+SELECTORS = {
+    "pareto": ParetoSelector,
+    "current_best": CurrentBestSelector,
+    "epsilon_greedy": EpsilonGreedySelector,
+    "top_k_pareto": TopKParetoSelector,
+    "beam_search": BeamSearchSelector,
+}
 
 
 def make_selector(name: str, rng: random.Random, *, epsilon: float = 0.1, top_k: int = 5, beam_n: int = 4):
@@ -161,11 +167,15 @@ class EpochShuffledBatchSampler:
             self.epoch = curr_epoch
             self._update_shuffled(ids)
         start = base % len(self.shuffled_ids)
-        return self.shuffled_ids[start:start + self.minibatch_size]
+        return self.shuffled_ids[start : start + self.minibatch_size]
 
     def get_state(self) -> dict:
-        return {"shuffled_ids": list(self.shuffled_ids), "epoch": self.epoch,
-                "id_freqs": [[k, v] for k, v in self.id_freqs.items()], "last_trainset_size": self.last_trainset_size}
+        return {
+            "shuffled_ids": list(self.shuffled_ids),
+            "epoch": self.epoch,
+            "id_freqs": [[k, v] for k, v in self.id_freqs.items()],
+            "last_trainset_size": self.last_trainset_size,
+        }
 
     def set_state(self, d: dict) -> None:
         self.shuffled_ids = list(d["shuffled_ids"])

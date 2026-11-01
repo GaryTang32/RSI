@@ -1,10 +1,10 @@
 """Deterministic offline improvers: every role reads its rendered evidence back and replies in the mission's format."""
+
 from __future__ import annotations
 
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Optional
 
 from ..core.llm import LLM, LLMResponse, Usage, estimate_tokens
 from . import context as C
@@ -17,13 +17,16 @@ BRACES = ("{{", "{%", "{#")
 class Lever:
     key: str
     line: str
-    why: str            # evidence predicate, see _evidence
+    why: str  # evidence predicate, see _evidence
 
 
 INV_LEVERS = (
     Lever("final-line", "End your reply with one final line of the form 'ANSWER: <value>'.", "unlabelled"),
-    Lever("check", "Before that final line, verify the result once more against the question and fix it if the "
-          "check fails.", "unchecked"),
+    Lever(
+        "check",
+        "Before that final line, verify the result once more against the question and fix it if the check fails.",
+        "unchecked",
+    ),
 )
 DOM_LEVERS = (
     Lever("steps", "Work through it step by step: name the quantities involved, then combine them.", "no-steps"),
@@ -40,7 +43,7 @@ def labelled(text: str) -> bool:
     return bool(LABELLED.match(last_line(text))) and text.strip() != "(nothing produced)"
 
 
-def _evidence(why: str, dels: dict[str, str], rolls: dict[str, str]) -> Optional[str]:
+def _evidence(why: str, dels: dict[str, str], rolls: dict[str, str]) -> str | None:
     base = {k: v for k, v in dels.items() if k.startswith("base")}
     if why == "unlabelled":
         bad = [k for k, v in base.items() if not labelled(v)]
@@ -57,7 +60,7 @@ def text_files(files: dict[str, str]) -> list[str]:
     return sorted(p for p in files if not p.endswith(".py"))
 
 
-def target_file(files: dict[str, str]) -> Optional[str]:
+def target_file(files: dict[str, str]) -> str | None:
     """The text file the code fills per task (one with a placeholder), else the first text file."""
     texts = text_files(files)
     return next((p for p in texts if re.search(r"\{[A-Za-z_]\w*\}", files[p])), texts[0] if texts else None)
@@ -67,16 +70,15 @@ def add_line(text: str, line: str) -> str:
     return text.rstrip("\n") + "\n" + line + "\n"
 
 
-def blocks(files: dict[str, Optional[str]]) -> str:
-    return "".join(f"=== FILE: {p} ===\n{'<<DELETE>>' if t is None else t.rstrip(chr(10))}\n"
-                   for p, t in files.items())
+def blocks(files: dict[str, str | None]) -> str:
+    return "".join(f"=== FILE: {p} ===\n{'<<DELETE>>' if t is None else t.rstrip(chr(10))}\n" for p, t in files.items())
 
 
 @dataclass
 class MockEditor:
     """INV/DOM editor: one evidence-backed lever per candidate; DOM copies library lines; may emit invalid trees."""
 
-    invalid: str = "never"          # never | first | always (adds a template brace to test retry and fallback)
+    invalid: str = "never"  # never | first | always (adds a template brace to test retry and fallback)
 
     def __call__(self, prompt: str) -> str:
         dim = "inv" if "# YOUR DIMENSION: INV" in prompt else "dom"
@@ -92,8 +94,11 @@ class MockEditor:
         notes = [f"repaired {target}: removed the template braces the validator rejected"] if rejected else []
         dels = {k.removesuffix(".md"): v for k, v in C.subtree(ctx, "context/deliverables").items()}
         rolls = C.subtree(ctx, "context/rollouts")
-        cands = [(lv, ev) for lv in (INV_LEVERS if dim == "inv" else DOM_LEVERS)
-                 if lv.line not in text and (ev := _evidence(lv.why, dels, rolls))]
+        cands = [
+            (lv, ev)
+            for lv in (INV_LEVERS if dim == "inv" else DOM_LEVERS)
+            if lv.line not in text and (ev := _evidence(lv.why, dels, rolls))
+        ]
         if cands:
             lv, ev = cands[(i - 1) % len(cands)]
             text = add_line(text, lv.line)
@@ -104,8 +109,10 @@ class MockEditor:
                     for ln in body.splitlines():
                         if ln.strip() and ln not in text:
                             text = add_line(text, ln)
-                            notes.append(f"{target}: copied '{ln}' from library {path.split('/')[1]}; re-checked "
-                                         "against this task's base rollouts")
+                            notes.append(
+                                f"{target}: copied '{ln}' from library {path.split('/')[1]}; re-checked "
+                                "against this task's base rollouts"
+                            )
         if self.invalid == "always" or (self.invalid == "first" and not rejected):
             text = add_line(text, "{{ note }}")
         if text.strip() == files[target].strip():
@@ -139,8 +146,11 @@ class MockComposer:
         diff = {p: t for p, t in merged.items() if t.strip() != base.get(p, "").strip()}
         if not diff:
             return "<notes>\nKEEP_BASE -- no candidate edit earned its place\n" + "\n".join(notes) + "\n</notes>"
-        same = [lab for lab, t in trees.items() if set(t) == set(merged)
-                and all(t[p].strip() == merged[p].strip() for p in t)]
+        same = [
+            lab
+            for lab, t in trees.items()
+            if set(t) == set(merged) and all(t[p].strip() == merged[p].strip() for p in t)
+        ]
         head = "<notes>\n" + "\n".join(notes) + "\n</notes>\n"
         return head + (f"ADOPT: {same[-1]}\n" if same else blocks(diff))
 
@@ -150,8 +160,10 @@ class MockSelector:
     """Selector: DELIVERY and FINISH first (a labelled final line), then the lowest id."""
 
     def __call__(self, prompt: str) -> str:
-        cands = {p.removesuffix(".md"): t.split("\n", 1)[-1]
-                 for p, t in C.subtree(C.parse(prompt), "context/candidates").items()}
+        cands = {
+            p.removesuffix(".md"): t.split("\n", 1)[-1]
+            for p, t in C.subtree(C.parse(prompt), "context/candidates").items()
+        }
         if not cands:
             return "<why>no candidates</why>"
         order = sorted(cands, key=lambda c: (not labelled(cands[c]), len(c), c))
@@ -165,7 +177,7 @@ class MockSelector:
 class MockReflector:
     """Reflector: a row per (component, form), verdict from deliverable contrasts; NO_ENTRY unless one helped."""
 
-    force: Optional[str] = None     # None | "none" (always NO_ENTRY)
+    force: str | None = None  # None | "none" (always NO_ENTRY)
 
     def __call__(self, prompt: str) -> str:
         ctx = C.parse(prompt)
@@ -192,24 +204,35 @@ class MockReflector:
                 verdict = "helped"
             else:
                 verdict = "no observed effect"
-            obs = (f"{', '.join(gained)} ended with a labelled final line; base rollouts {', '.join(base_bad)} did not"
-                   if verdict == "helped" else "no difference in the deliverables' final line")
-            rows.append(f"component: {p}\ncandidates: {', '.join(labs)}\nchange: added {added[:3]}\n"
-                        f"observed: {obs}\nverdict: {verdict}")
+            obs = (
+                f"{', '.join(gained)} ended with a labelled final line; base rollouts {', '.join(base_bad)} did not"
+                if verdict == "helped"
+                else "no difference in the deliverables' final line"
+            )
+            rows.append(
+                f"component: {p}\ncandidates: {', '.join(labs)}\nchange: added {added[:3]}\n"
+                f"observed: {obs}\nverdict: {verdict}"
+            )
             if verdict == "helped" and adopted.get(p, "").strip() != base.get(p, "").strip() and added:
                 helped.append((p, labs, added[0], obs))
         edits = "<edits>\n" + "\n\n".join(rows) + "\n</edits>\n"
         if self.force == "none" or not helped:
             return edits + "NO_ENTRY\n"
         p, labs, line, obs = helped[0]
-        return edits + (f"<experience>\ncue: base runs end in free prose although the request wants one final value\n"
-                        f"lesson: in {p}, ask for one labelled final line ({line!r}) and keep the rest unchanged\n"
-                        f"evidence: row {p} [{', '.join(labs)}]: helped -- {obs}\n"
-                        "confidence: medium, one rollout per candidate\n</experience>\n")
+        return edits + (
+            f"<experience>\ncue: base runs end in free prose although the request wants one final value\n"
+            f"lesson: in {p}, ask for one labelled final line ({line!r}) and keep the rest unchanged\n"
+            f"evidence: row {p} [{', '.join(labs)}]: helped -- {obs}\n"
+            "confidence: medium, one rollout per candidate\n</experience>\n"
+        )
 
 
-ROUTES = (("You are adapting an autonomous agent's harness.", "editor"), ("You are composing", "composer"),
-          ("You are choosing which of", "selector"), ("You are reading the complete record", "reflector"))
+ROUTES = (
+    ("You are adapting an autonomous agent's harness.", "editor"),
+    ("You are composing", "composer"),
+    ("You are choosing which of", "selector"),
+    ("You are reading the complete record", "reflector"),
+)
 
 
 @dataclass
@@ -233,8 +256,9 @@ class MockImprover(LLM):
         role = self.route(prompt)
         self.roles.append(role)
         text = getattr(self, role)(prompt) if role != "unknown" else "unknown prompt"
-        return LLMResponse(text=text, usage=Usage(1, estimate_tokens((system or "") + prompt), estimate_tokens(text)),
-                           model=self.name)
+        return LLMResponse(
+            text=text, usage=Usage(1, estimate_tokens((system or "") + prompt), estimate_tokens(text)), model=self.name
+        )
 
 
 def adoption_of(prompt: str) -> dict:

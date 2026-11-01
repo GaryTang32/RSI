@@ -2,6 +2,7 @@
 
 Usage: python experiments/autoresearch/validate_prompts.py
 """
+
 import json
 import sys
 from pathlib import Path
@@ -36,8 +37,11 @@ def main() -> dict:
         tsv = txt.split("--- results.tsv (tail) ---\n", 1)[1].split("\n--- git log (kept chain) ---\n", 1)[0]
         glog = txt.split("\n--- git log (kept chain) ---\n", 1)[1]
         props = [x["data"] for x in ev if x["kind"] == "proposal" and x["round"] == r]
-        inc = next(store.get(p.name.split(".")[0]) for p in (RUN / "artifacts").glob("*/*.json")
-                   if p.name.startswith(props[0]["parent"]))
+        inc = next(
+            store.get(p.name.split(".")[0])
+            for p in (RUN / "artifacts").glob("*/*.json")
+            if p.name.startswith(props[0]["parent"])
+        )
         instr = PROPOSE.format(program=program, brief=brief, metric="val_bpb", best=f"{best:.6f}", n=r)
         prompt = ed.build_prompt(inc, instr, {"results.tsv": tsv, "git_log.txt": glog}, None)
         seed = 0 * 100003 + r
@@ -45,11 +49,17 @@ def main() -> dict:
         resp = llm.complete(prompt, system=SYSTEM, seed=seed)
         cand = parse_proposal(inc, resp.text).artifact if resp.ok else None
         diff_ok = cand is not None and inc.diff(cand) == props[0]["diff"]
-        rec = {"round": r, "call": "propose", "cache_hit": hit, "prompt_chars": len(prompt),
-               "tsv_rows_in_prompt": tsv.count("\n") - 1, "tsv_in_prompt": tsv in prompt,
-               "sealed_numbers_in_prompt": [s for s in sealed if f"{s:.4f}" in prompt or f"{s:.6f}" in prompt],
-               "sealed_words_in_prompt": [w for w in ("test_iid", "test_shift") if w in prompt],
-               "reply_diff_equals_trace": diff_ok}
+        rec = {
+            "round": r,
+            "call": "propose",
+            "cache_hit": hit,
+            "prompt_chars": len(prompt),
+            "tsv_rows_in_prompt": tsv.count("\n") - 1,
+            "tsv_in_prompt": tsv in prompt,
+            "sealed_numbers_in_prompt": [s for s in sealed if f"{s:.4f}" in prompt or f"{s:.6f}" in prompt],
+            "sealed_words_in_prompt": [w for w in ("test_iid", "test_shift") if w in prompt],
+            "reply_diff_equals_trace": diff_ok,
+        }
         out.append(rec)
         print(rec, flush=True)
         cur = cand
@@ -66,10 +76,17 @@ def main() -> dict:
             fhit = llm._key(fprompt, SYSTEM, None, fseed).exists()
             fresp = llm.complete(fprompt, system=SYSTEM, seed=fseed)
             nxt = parse_proposal(cur, fresp.text).artifact if fresp.ok else None
-            out.append({"round": r, "call": f"fix{k}", "cache_hit": fhit, "prompt_chars": len(fprompt),
-                        "sealed_numbers_in_prompt": [s for s in sealed if f"{s:.4f}" in fprompt],
-                        "reply_diff_equals_trace": nxt is not None and cur.diff(nxt) == p["diff"],
-                        "reply_tail": fresp.text.rstrip()[-160:] if k == 1 else None})
+            out.append(
+                {
+                    "round": r,
+                    "call": f"fix{k}",
+                    "cache_hit": fhit,
+                    "prompt_chars": len(fprompt),
+                    "sealed_numbers_in_prompt": [s for s in sealed if f"{s:.4f}" in fprompt],
+                    "reply_diff_equals_trace": nxt is not None and cur.diff(nxt) == p["diff"],
+                    "reply_tail": fresp.text.rstrip()[-160:] if k == 1 else None,
+                }
+            )
             cur = nxt
     res = {"calls": out, "all_hit": all(o["cache_hit"] for o in out), "hits": llm.hits, "misses": llm.misses}
     print(json.dumps(res, indent=1, default=str))

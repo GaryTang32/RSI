@@ -1,11 +1,13 @@
 """GEP 1.14.0 content addressing: ``asset_id = "sha256:" + hex(sha256(canonicalize(x without asset_id)))``."""
+
 from __future__ import annotations
 
 import hashlib
 import json
 import math
+from collections.abc import Iterable
 from decimal import Decimal
-from typing import Any, Iterable
+from typing import Any
 
 SCHEMA_VERSION = "1.14.0"
 ASSET_ID_PREFIX = "sha256:"
@@ -14,7 +16,7 @@ ASSET_ID_PREFIX = "sha256:"
 def _js_number(x: float) -> str:
     """JavaScript ``String(x)`` (ECMA-262 Number::toString)."""
     if isinstance(x, int):
-        if abs(x) < 2 ** 53:
+        if abs(x) < 2**53:
             return str(x)
         try:  # a JS number is a double: large ints round as JSON.parse would
             x = float(x)

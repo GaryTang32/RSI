@@ -1,10 +1,11 @@
 """The Meta-Harness outer loop: propose k harnesses from the history, evaluate and keep all, report the frontier."""
+
 from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
 import numpy as np
 
@@ -23,21 +24,31 @@ from .validate import InterfaceValidator, LeakageScreen
 
 _COST_METRICS = {
     "context_chars": "characters injected into the model's prompt(s) besides the input, summed over every model "
-                     "call made for one query",
+    "call made for one query",
     "context_chars_last_call": "characters injected into the LAST model prompt of a query besides the input",
-    "tokens": "model tokens per task"}
+    "tokens": "model tokens per task",
+}
 
 
 class MetaHarnessLoop:
     """Stateful loop over one :class:`ExperienceStore` (resumable, finalised once)."""
 
-    def __init__(self, domain: Domain, *, llm_task: Optional[LLM], proposer: Proposer, config: Config,
-                 out_dir: str | Path, baselines: dict[str, Artifact],
-                 summarizer: Optional[Callable[[dict], str]] = None,
-                 leakage_screen: Optional[LeakageScreen] = None,
-                 validator: Optional[InterfaceValidator] = None,
-                 on_eval: Optional[Callable[[dict], None]] = None,
-                 seed_names: Optional[list[str]] = None, tracer: Optional[MHTracer] = None) -> None:
+    def __init__(
+        self,
+        domain: Domain,
+        *,
+        llm_task: LLM | None,
+        proposer: Proposer,
+        config: Config,
+        out_dir: str | Path,
+        baselines: dict[str, Artifact],
+        summarizer: Callable[[dict], str] | None = None,
+        leakage_screen: LeakageScreen | None = None,
+        validator: InterfaceValidator | None = None,
+        on_eval: Callable[[dict], None] | None = None,
+        seed_names: list[str] | None = None,
+        tracer: MHTracer | None = None,
+    ) -> None:
         self.domain = domain
         self.llm_task = llm_task
         self.proposer = proposer
@@ -46,7 +57,7 @@ class MetaHarnessLoop:
         self.store = ExperienceStore(self.out / "store")
         self.ledger = Ledger(self.out / "ledger.jsonl")
         self.baselines = dict(baselines)
-        self.seed_names = list(seed_names) if seed_names else list(self.baselines)   # what seed_only shows
+        self.seed_names = list(seed_names) if seed_names else list(self.baselines)  # what seed_only shows
         self.summarizer = summarizer
         if config.leakage_screen and leakage_screen is None:
             leakage_screen = LeakageScreen.for_domain(domain)
@@ -58,12 +69,12 @@ class MetaHarnessLoop:
         cands = self.ledger.nodes(kind="candidate")
         self.n_evaluated = sum(n.status == "evaluated" for n in cands)
         self.n_proposed = len(cands)
-        self.curve: list[dict] = []          # one row per evaluation: best-so-far vs #evaluations
+        self.curve: list[dict] = []  # one row per evaluation: best-so-far vs #evaluations
         self.iter_rows: list[dict] = []
         self.proposer_usage = Usage()
         self.n_reevaluations = 0
         self.order = len(self.store.names())
-        self.tr = tracer or MHTracer(self, RunTracer(None, "metaharness"))   # write-only audit trace
+        self.tr = tracer or MHTracer(self, RunTracer(None, "metaharness"))  # write-only audit trace
         self.tr.loop = self
 
     def _cost(self, ev: EvalResult) -> dict[str, float]:
@@ -79,7 +90,7 @@ class MetaHarnessLoop:
         if self.summarizer is not None and self._want_summaries():
             self.store.write_summary_text(name, self.summarizer(self.store.traces(name)))
 
-    def _evaluate(self, name: str, artifact: Artifact, t: Optional[int] = None) -> dict:
+    def _evaluate(self, name: str, artifact: Artifact, t: int | None = None) -> dict:
         ev = self.evaluator.evaluate(artifact, self.cfg.search_split, k=self.cfg.trials)
         scores = self.store.write_eval(name, ev, cost=self._cost(ev))
         if t is None:
@@ -101,11 +112,11 @@ class MetaHarnessLoop:
             old = self.store.scores(name) or {}
             if int(old.get("k", self.cfg.trials)) >= n_total:
                 break
-            ev = self.evaluator.evaluate(self.store.artifact(name), self.cfg.search_split,
-                                         seeds=list(range(n_total)))
+            ev = self.evaluator.evaluate(self.store.artifact(name), self.cfg.search_split, seeds=list(range(n_total)))
             first = old.get("single_seed_score", old.get("score"))
-            scores = self.store.write_eval(name, ev, cost=self._cost(ev),
-                                           extra={"single_seed_score": first, "reevaluated_at_iteration": t})
+            scores = self.store.write_eval(
+                name, ev, cost=self._cost(ev), extra={"single_seed_score": first, "reevaluated_at_iteration": t}
+            )
             self._summarize(name)
             self.store.update_meta(name, reevaluated_at_iteration=t, n_seeds=n_total)
             self.n_reevaluations += 1
@@ -117,10 +128,12 @@ class MetaHarnessLoop:
         """The objective statement given to the proposer (with ``Config.tradeoff`` when set)."""
         if "context_cost" in self.cfg.objectives:
             metric = _COST_METRICS.get(self.cfg.cost_metric, self.cfg.cost_metric)
-            txt = ("## Objective\nCandidates are compared by Pareto dominance on (search score: higher is better; "
-                   f"context cost = {metric}: lower is better). Every non-dominated harness is kept on the frontier, "
-                   "so accurate-but-costly and cheap-but-weaker designs are both useful; the highest-score frontier "
-                   "point is reported as the best.")
+            txt = (
+                "## Objective\nCandidates are compared by Pareto dominance on (search score: higher is better; "
+                f"context cost = {metric}: lower is better). Every non-dominated harness is kept on the frontier, "
+                "so accurate-but-costly and cheap-but-weaker designs are both useful; the highest-score frontier "
+                "point is reported as the best."
+            )
         else:
             txt = "## Objective\nMaximise the search score (context cost is not an objective)."
         if self.cfg.tradeoff:
@@ -128,8 +141,9 @@ class MetaHarnessLoop:
         return txt
 
     def _want_summaries(self) -> bool:
-        return self.cfg.summaries == "always" or (self.cfg.summaries == "auto" and
-                                                   self.cfg.history_mode == "scores_summary")
+        return self.cfg.summaries == "always" or (
+            self.cfg.summaries == "auto" and self.cfg.history_mode == "scores_summary"
+        )
 
     def _cost_value(self, scores: dict) -> float:
         return float(scores["context_cost"]) if "context_cost" in self.cfg.objectives else 0.0
@@ -146,8 +160,9 @@ class MetaHarnessLoop:
             per_unit[n] = {u: (v, pu_cost.get(u, 0.0) if with_cost else 0.0) for u, v in s["per_unit"].items()}
         front = pareto_frontier(pts)
         fr: dict = dict(per_unit_best(per_unit))
-        fr["_pareto"] = [{"system": n, "score": s, "val_accuracy": round(100 * s, 1), "context_cost": c}
-                         for n, s, c in front]
+        fr["_pareto"] = [
+            {"system": n, "score": s, "val_accuracy": round(100 * s, 1), "context_cost": c} for n, s, c in front
+        ]
         fr["_best"] = {"system": front[0][0], "score": front[0][1]} if front else None
         if pts:
             ref = max(p[2] for p in pts) * 1.1 + 1.0
@@ -167,15 +182,34 @@ class MetaHarnessLoop:
             self.store.add_candidate(name, art, {"iteration": 0, "kind": "baseline", "order": self._next_order()})
             scores = self._evaluate(name, art)
             self.store.update_meta(name, status="evaluated")
-            node = self.ledger.add(Node(id=f"mh_{safe_name(name)}", parent=None, round=0, kind="baseline",
-                                        status="evaluated", score=scores["score"], cost=scores["context_cost"],
-                                        change=f"baseline {name}", artifact_id=art.id,
-                                        metrics=scores["per_unit"], meta={"system": name}))
+            node = self.ledger.add(
+                Node(
+                    id=f"mh_{safe_name(name)}",
+                    parent=None,
+                    round=0,
+                    kind="baseline",
+                    status="evaluated",
+                    score=scores["score"],
+                    cost=scores["context_cost"],
+                    change=f"baseline {name}",
+                    artifact_id=art.id,
+                    metrics=scores["per_unit"],
+                    meta={"system": name},
+                )
+            )
             self.node_of[name] = node.id
-            self.store.append_summary({"iteration": 0, "system": name, "avg_val": scores["avg_val"],
-                                       "axis": "baseline", "hypothesis": "baseline", "delta": None,
-                                       "outcome": f"{scores['avg_val']:.1f}% (baseline)",
-                                       "context_cost": scores["context_cost"]})
+            self.store.append_summary(
+                {
+                    "iteration": 0,
+                    "system": name,
+                    "avg_val": scores["avg_val"],
+                    "axis": "baseline",
+                    "hypothesis": "baseline",
+                    "delta": None,
+                    "outcome": f"{scores['avg_val']:.1f}% (baseline)",
+                    "context_cost": scores["context_cost"],
+                }
+            )
         self._reeval_incumbent(0, self.recompute_frontier())
         self.tr.after_baselines()
 
@@ -183,7 +217,7 @@ class MetaHarnessLoop:
         self.order += 1
         return self.order
 
-    def budget_left(self) -> Optional[int]:
+    def budget_left(self) -> int | None:
         return None if self.cfg.eval_budget is None else max(0, self.cfg.eval_budget - self.n_evaluated)
 
     def iterate(self, t: int) -> list[dict]:
@@ -192,17 +226,29 @@ class MetaHarnessLoop:
         self.store.clear_pending()
         pre_best = self.best_score()
         pre_best_name = (self.store.frontier().get("_best") or {}).get("system")
-        view = self.store.view(self.cfg.history_mode, window=self.cfg.window, seeds=self.seed_names,
-                               strip_volatile=self.cfg.deterministic_view)
-        visible = {n: self.store.artifact(n) for n in self.store.names()
-                   if any(p.startswith(f"candidates/{safe_name(n)}/src/") for p in view)}
+        view = self.store.view(
+            self.cfg.history_mode,
+            window=self.cfg.window,
+            seeds=self.seed_names,
+            strip_volatile=self.cfg.deterministic_view,
+        )
+        visible = {
+            n: self.store.artifact(n)
+            for n in self.store.names()
+            if any(p.startswith(f"candidates/{safe_name(n)}/src/") for p in view)
+        }
         left = self.budget_left()
         k = self.cfg.k if left is None else min(self.cfg.k, left)
         self.tr.round_start(t, view, sorted(visible), k)
         t0 = time.time()
-        batch = self.proposer.propose(iteration=t, view=view, k=k,
-                                      brief=self.domain.describe() + "\n\n" + self.objective_text(),
-                                      artifacts=visible, seed=self.cfg.seed)
+        batch = self.proposer.propose(
+            iteration=t,
+            view=view,
+            k=k,
+            brief=self.domain.describe() + "\n\n" + self.objective_text(),
+            artifacts=visible,
+            seed=self.cfg.seed,
+        )
         t_prop = time.time() - t0
         self.proposer_usage = self.proposer_usage + batch.usage
         view_chars = sum(len(v) for v in view.values())
@@ -210,15 +256,30 @@ class MetaHarnessLoop:
         scanned = list(getattr(batch, "files_scanned", []) or [])
         pending = [c.pending_row() for c in batch.candidates]
         reports_written = self.store.write_reports(getattr(batch, "reports", {}) or {})
-        self.store.log_session(t, prompt=batch.prompt, response=batch.transcript, meta={
-            "iteration": t, "history_mode": self.cfg.history_mode, "usage": batch.usage.to_dict(),
-            "files_read": batch.files_read, "n_files_read": len(batch.files_read),
-            "files_read_by_kind": _kinds(batch.files_read), "files_scanned": scanned,
-            "n_files_scanned": len(scanned), "scanned_chars": sum(len(view.get(p, "")) for p in scanned),
-            "view_files": len(view), "view_chars": view_chars,
-            "read_chars": read_chars, "error": batch.error, "seconds": round(t_prop, 3),
-            "reports_written": reports_written,
-            "proposer_meta": _jsonable(batch.meta), "candidates": pending})
+        self.store.log_session(
+            t,
+            prompt=batch.prompt,
+            response=batch.transcript,
+            meta={
+                "iteration": t,
+                "history_mode": self.cfg.history_mode,
+                "usage": batch.usage.to_dict(),
+                "files_read": batch.files_read,
+                "n_files_read": len(batch.files_read),
+                "files_read_by_kind": _kinds(batch.files_read),
+                "files_scanned": scanned,
+                "n_files_scanned": len(scanned),
+                "scanned_chars": sum(len(view.get(p, "")) for p in scanned),
+                "view_files": len(view),
+                "view_chars": view_chars,
+                "read_chars": read_chars,
+                "error": batch.error,
+                "seconds": round(t_prop, 3),
+                "reports_written": reports_written,
+                "proposer_meta": _jsonable(batch.meta),
+                "candidates": pending,
+            },
+        )
         self.store.write_pending(t, pending)
         self.tr.proposals(t, batch)
         t1 = time.time()
@@ -227,22 +288,36 @@ class MetaHarnessLoop:
         post_best = float(post["_best"]["score"]) if post.get("_best") else 0.0
         for i, r in enumerate(rows):
             if r["outcome"] != "failed":
-                r["delta"] = round(r["avg_val"] - 100 * post_best, 1)          # release quirk: post-iteration best
+                r["delta"] = round(r["avg_val"] - 100 * post_best, 1)  # release quirk: post-iteration best
                 r["outcome"] = f"{r['avg_val']:.1f}% ({r['avg_val'] - 100 * post_best:+.1f})"
             if i == 0:
-                r["timing_s"] = {"propose": round(t_prop, 2), "bench": round(time.time() - t1, 2),
-                                 "wall": round(time.time() - t0, 2)}
+                r["timing_s"] = {
+                    "propose": round(t_prop, 2),
+                    "bench": round(time.time() - t1, 2),
+                    "wall": round(time.time() - t0, 2),
+                }
             self.store.append_summary(r)
         self.tr.decision(t, rows, pre_best_name, pre_best, post)
-        self.iter_rows.append({"iteration": t, "best_score": post_best, "n_candidates": len(batch.candidates),
-                               "n_valid": sum(r["outcome"] != "failed" for r in rows),
-                               "n_evaluated": self.n_evaluated, "frontier_size": len(post.get("_pareto", [])),
-                               "hypervolume": post.get("_hypervolume"), "files_read": len(batch.files_read),
-                               "files_scanned": len(scanned), "reports_written": len(reports_written),
-                               "n_reevaluations": self.n_reevaluations,
-                               "view_chars": view_chars, "read_chars": read_chars,
-                               "proposer_tokens": batch.usage.total_tokens, "proposer_usd": batch.usage.cost_usd,
-                               "error": batch.error})
+        self.iter_rows.append(
+            {
+                "iteration": t,
+                "best_score": post_best,
+                "n_candidates": len(batch.candidates),
+                "n_valid": sum(r["outcome"] != "failed" for r in rows),
+                "n_evaluated": self.n_evaluated,
+                "frontier_size": len(post.get("_pareto", [])),
+                "hypervolume": post.get("_hypervolume"),
+                "files_read": len(batch.files_read),
+                "files_scanned": len(scanned),
+                "reports_written": len(reports_written),
+                "n_reevaluations": self.n_reevaluations,
+                "view_chars": view_chars,
+                "read_chars": read_chars,
+                "proposer_tokens": batch.usage.total_tokens,
+                "proposer_usd": batch.usage.cost_usd,
+                "error": batch.error,
+            }
+        )
         self.tr.state(t, self.iter_rows[-1])
         return rows
 
@@ -252,17 +327,41 @@ class MetaHarnessLoop:
             name = f"{name}_x"
         c.name = name
         self.n_proposed += 1
-        self.store.add_candidate(name, c.artifact, {
-            "iteration": t, "kind": "candidate", "base_system": c.base_system, "hypothesis": c.hypothesis,
-            "axis": c.axis, "components": c.components, "parents_read": c.parents_read,
-            "order": self._next_order(), **{k: v for k, v in c.meta.items() if isinstance(v, (str, int, float))}})
+        self.store.add_candidate(
+            name,
+            c.artifact,
+            {
+                "iteration": t,
+                "kind": "candidate",
+                "base_system": c.base_system,
+                "hypothesis": c.hypothesis,
+                "axis": c.axis,
+                "components": c.components,
+                "parents_read": c.parents_read,
+                "order": self._next_order(),
+                **{k: v for k, v in c.meta.items() if isinstance(v, (str, int, float))},
+            },
+        )
         if c.meta.get("base_fallback"):
-            self.tr.note(t, "unknown base_system", candidate=name, claimed=c.meta.get("claimed_base_system"),
-                         completed_from=c.base_system)
+            self.tr.note(
+                t,
+                "unknown base_system",
+                candidate=name,
+                claimed=c.meta.get("claimed_base_system"),
+                completed_from=c.base_system,
+            )
         parent_node = self.node_of.get(c.base_system)
         base_art = self.store.artifact(c.base_system) if c.base_system and self.store.has(c.base_system) else None
-        row = {"iteration": t, "system": name, "avg_val": 0.0, "axis": c.axis, "hypothesis": c.hypothesis,
-               "components": c.components, "delta": None, "outcome": "failed"}
+        row = {
+            "iteration": t,
+            "system": name,
+            "avg_val": 0.0,
+            "axis": c.axis,
+            "hypothesis": c.hypothesis,
+            "components": c.components,
+            "delta": None,
+            "outcome": "failed",
+        }
         status, reason, scores, validated = "evaluated", "", None, None
         if self.screen is not None:
             r = self.screen.check(c.artifact, base_art)
@@ -277,26 +376,54 @@ class MetaHarnessLoop:
         if status == "evaluated":
             scores = self._evaluate(name, c.artifact, t)
             self.n_evaluated += 1
-            row.update(avg_val=scores["avg_val"], delta_pre=round(scores["avg_val"] - 100 * pre_best, 1),
-                       context_cost=scores["context_cost"], outcome="ok")
+            row.update(
+                avg_val=scores["avg_val"],
+                delta_pre=round(scores["avg_val"] - 100 * pre_best, 1),
+                context_cost=scores["context_cost"],
+                outcome="ok",
+            )
             best = max(pre_best, max((r["score"] for r in self.curve), default=0.0), scores["score"])
-            self.curve.append({"n_eval": self.n_evaluated, "iteration": t, "system": name, "score": scores["score"],
-                               "context_cost": scores["context_cost"], "best_so_far": best})
+            self.curve.append(
+                {
+                    "n_eval": self.n_evaluated,
+                    "iteration": t,
+                    "system": name,
+                    "score": scores["score"],
+                    "context_cost": scores["context_cost"],
+                    "best_so_far": best,
+                }
+            )
             if self.on_eval:
                 self.on_eval(self.curve[-1])
         self.store.update_meta(name, status=status, reason=reason)
         diff = base_art.diff(c.artifact)[:20000] if base_art is not None else ""
-        node = self.ledger.add(Node(
-            id=f"mh_{safe_name(name)}", parent=parent_node, round=t, kind="candidate", status=status,
-            score=scores["score"] if scores else None, cost=scores["context_cost"] if scores else None,
-            change=(c.hypothesis or "")[:300], artifact_id=c.artifact.id, diff=diff,
-            metrics=scores["per_unit"] if scores else {},
-            meta={"system": name, "axis": c.axis, "components": c.components, "base_system": c.base_system,
-                  "parents_read": c.parents_read, "reason": reason}))
+        node = self.ledger.add(
+            Node(
+                id=f"mh_{safe_name(name)}",
+                parent=parent_node,
+                round=t,
+                kind="candidate",
+                status=status,
+                score=scores["score"] if scores else None,
+                cost=scores["context_cost"] if scores else None,
+                change=(c.hypothesis or "")[:300],
+                artifact_id=c.artifact.id,
+                diff=diff,
+                metrics=scores["per_unit"] if scores else {},
+                meta={
+                    "system": name,
+                    "axis": c.axis,
+                    "components": c.components,
+                    "base_system": c.base_system,
+                    "parents_read": c.parents_read,
+                    "reason": reason,
+                },
+            )
+        )
         self.node_of[name] = node.id
         return row
 
-    def run(self, iterations: Optional[int] = None) -> list[dict]:
+    def run(self, iterations: int | None = None) -> list[dict]:
         self.run_baselines()
         start = self.store.last_iteration() + 1
         n = self.cfg.iterations if iterations is None else iterations
@@ -306,12 +433,17 @@ class MetaHarnessLoop:
             self.iterate(t)
         return self.iter_rows
 
-    def finalize(self, splits: Optional[tuple[str, ...]] = None, llm: Optional[LLM] = None) -> dict:
+    def finalize(self, splits: tuple[str, ...] | None = None, llm: LLM | None = None) -> dict:
         """Evaluate baselines, Pareto systems and per-unit bests once on the test split(s), then lock evolution."""
         splits = tuple(splits or self.cfg.test_splits)
         fr = self.recompute_frontier()
-        systems = list(dict.fromkeys(list(self.baselines) + [p["system"] for p in fr.get("_pareto", [])] +
-                                     [v["best_system"] for u, v in fr.items() if not u.startswith("_")]))
+        systems = list(
+            dict.fromkeys(
+                list(self.baselines)
+                + [p["system"] for p in fr.get("_pareto", [])]
+                + [v["best_system"] for u, v in fr.items() if not u.startswith("_")]
+            )
+        )
         if self.store.is_finalized():
             return {**self._final_report(splits, systems), "status": "complete"}
         self.store.write_finalized("in_progress", systems)
@@ -324,13 +456,13 @@ class MetaHarnessLoop:
                 try:
                     r = ev.evaluate(self.store.artifact(s), split, k=self.cfg.trials)
                     self.store.write_test_result(split, s, r, self._cost(r))
-                    if r.n_missing:     # complete only if every (system, unit) has a test result
+                    if r.n_missing:  # complete only if every (system, unit) has a test result
                         failures.append(f"{s}/{split}: {r.n_missing} missing trials (infrastructure errors)")
                 except Exception as e:  # noqa: BLE001
                     failures.append(f"{s}/{split}: {e}")
         rep = self._final_report(splits, systems)
         (self.store.root / "frontier.json").write_text(json.dumps(rep, indent=1, default=float))
-        status = "incomplete" if failures else "complete"     # incomplete leaves evolution allowed
+        status = "incomplete" if failures else "complete"  # incomplete leaves evolution allowed
         self.store.write_finalized(status, systems, failures=failures)
         self.tr.finalize(rep, status, failures)
         return {**rep, "status": status, "failures": failures}
@@ -339,10 +471,14 @@ class MetaHarnessLoop:
         out = {"systems": systems, "splits": {}}
         for split in splits:
             rows = {s: r for s in systems if (r := self.store.test_result(split, s))}
-            pts = [(s, r["score"], r["context_cost"] if "context_cost" in self.cfg.objectives else 0.0)
-                   for s, r in rows.items()]
-            out["splits"][split] = {"results": rows, "_pareto": [{"system": n, "test_accuracy": sc, "context_cost": c}
-                                                                 for n, sc, c in pareto_frontier(pts)]}
+            pts = [
+                (s, r["score"], r["context_cost"] if "context_cost" in self.cfg.objectives else 0.0)
+                for s, r in rows.items()
+            ]
+            out["splits"][split] = {
+                "results": rows,
+                "_pareto": [{"system": n, "test_accuracy": sc, "context_cost": c} for n, sc, c in pareto_frontier(pts)],
+            }
         return out
 
 

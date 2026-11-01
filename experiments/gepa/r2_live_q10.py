@@ -2,6 +2,7 @@
 
 Run: python experiments/gepa/r2_live_q10.py [--seeds 8] [--max-usd 3.5] [--offline]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -9,8 +10,9 @@ import json
 import time
 from multiprocessing import get_context
 
-from _common import RESULTS, reflection_llm, save
 import r2_paper_regime as R
+from _common import RESULTS, reflection_llm, save
+
 from rsi.core import CachedLLM, ClaudeCLI, paired_diff_ci
 from rsi.gepa import Config, FewShotConfig, run, run_fewshot
 
@@ -35,12 +37,22 @@ def job(spec):
     else:
         res = run_fewshot(d, d.seed_artifact(), llm_propose=llm, config=FewShotConfig(max_metric_calls=B, seed=seed))
     tot = res.usage.get("_total", {})
-    return {"arm": arm, "proposer": kind, "seed": seed, "B": B, "final_test": d.expected(res.best, "test"),
-            "best_val": res.meta.get("best_val"), "seed_test": d.expected(d.seed_artifact(), "test"),
-            "oracle_test": d.expected(d.oracle_artifact(), "test"), "tokens": R.prompt_tokens(res.best),
-            "llm_calls": int(tot.get("calls", 0)), "cost_usd": float(tot.get("cost_usd", 0.0)),
-            "cache_hits": getattr(llm, "hits", None), "wall_s": round(time.time() - t0, 1),
-            "best_prompts": {k: v[:4000] for k, v in res.best.files.items() if k.startswith("prompts/")}}
+    return {
+        "arm": arm,
+        "proposer": kind,
+        "seed": seed,
+        "B": B,
+        "final_test": d.expected(res.best, "test"),
+        "best_val": res.meta.get("best_val"),
+        "seed_test": d.expected(d.seed_artifact(), "test"),
+        "oracle_test": d.expected(d.oracle_artifact(), "test"),
+        "tokens": R.prompt_tokens(res.best),
+        "llm_calls": int(tot.get("calls", 0)),
+        "cost_usd": float(tot.get("cost_usd", 0.0)),
+        "cache_hits": getattr(llm, "hits", None),
+        "wall_s": round(time.time() - t0, 1),
+        "best_prompts": {k: v[:4000] for k, v in res.best.files.items() if k.startswith("prompts/")},
+    }
 
 
 def diff(rows, a, b):
@@ -51,10 +63,12 @@ def diff(rows, a, b):
 
 
 def analyse(rows):
-    A = {"D1_gepa_live_minus_mipro_live": diff(rows, ("mipro", "live"), ("gepa", "live")),
-         "mock_gepa_minus_mipro": diff(rows, ("mipro", "mock"), ("gepa", "mock")),
-         "gepa_live_minus_gepa_mock": diff(rows, ("gepa", "mock"), ("gepa", "live")),
-         "mipro_live_minus_mipro_mock": diff(rows, ("mipro", "mock"), ("mipro", "live"))}
+    A = {
+        "D1_gepa_live_minus_mipro_live": diff(rows, ("mipro", "live"), ("gepa", "live")),
+        "mock_gepa_minus_mipro": diff(rows, ("mipro", "mock"), ("gepa", "mock")),
+        "gepa_live_minus_gepa_mock": diff(rows, ("gepa", "mock"), ("gepa", "live")),
+        "mipro_live_minus_mipro_mock": diff(rows, ("mipro", "mock"), ("mipro", "live")),
+    }
     seeds = sorted({r["seed"] for r in rows if r["proposer"] == "live"})
     g = {(r["arm"], r["proposer"], r["seed"]): r["final_test"] for r in rows}
     ok = [s for s in seeds if all((a, p, s) in g for a in ("gepa", "mipro") for p in ("live", "mock"))]
@@ -68,17 +82,28 @@ def analyse(rows):
     live = [r for r in rows if r["proposer"] == "live"]
     A["live_spend_usd"] = sum(r["cost_usd"] for r in live)
     A["live_calls"] = sum(r["llm_calls"] for r in live)
-    A["decision"] = ("mock negative confirmed (MIPRO-lite significantly ahead with a live proposer): Q10 stays NOT "
-                     "REPRODUCED (d)" if A["D1_gepa_live_minus_mipro_live"].get("hi", 1) < 0 else
-                     "mock negative not confirmed with a live proposer: Q10 root cause (b), PARTIAL; L10 PARTIAL")
+    A["decision"] = (
+        "mock negative confirmed (MIPRO-lite significantly ahead with a live proposer): Q10 stays NOT REPRODUCED (d)"
+        if A["D1_gepa_live_minus_mipro_live"].get("hi", 1) < 0
+        else "mock negative not confirmed with a live proposer: Q10 root cause (b), PARTIAL; L10 PARTIAL"
+    )
     return A
 
 
 def save_rows(rows: list[dict], partial: bool) -> dict:
     A = analyse(rows)
-    save("r2_live_q10", {"experiment": "R2-D live-proposer check of the Q10 negative", "setting": SETTING,
-                         "model": MODEL, "llm": "claude-cli:haiku (CachedLLM, results/gepa/r2d_live_cache)",
-                         "partial": partial, "analysis": A, "raw": rows})
+    save(
+        "r2_live_q10",
+        {
+            "experiment": "R2-D live-proposer check of the Q10 negative",
+            "setting": SETTING,
+            "model": MODEL,
+            "llm": "claude-cli:haiku (CachedLLM, results/gepa/r2d_live_cache)",
+            "partial": partial,
+            "analysis": A,
+            "raw": rows,
+        },
+    )
     return A
 
 
@@ -99,9 +124,15 @@ def main():
             out = p.map(job, [("gepa", "live", s, a.offline), ("mipro", "live", s, a.offline)], chunksize=1)
             rows += out
             spent += sum(r["cost_usd"] for r in out)
-            print(f"seed {s}: " + ", ".join(f"{r['arm']} {r['final_test']:.3f} ({r['llm_calls']} calls, "
-                                             f"${r['cost_usd']:.3f}, {r['wall_s']}s)" for r in out)
-                  + f"; spend so far ${spent:.2f}", flush=True)
+            print(
+                f"seed {s}: "
+                + ", ".join(
+                    f"{r['arm']} {r['final_test']:.3f} ({r['llm_calls']} calls, ${r['cost_usd']:.3f}, {r['wall_s']}s)"
+                    for r in out
+                )
+                + f"; spend so far ${spent:.2f}",
+                flush=True,
+            )
             save_rows(rows, partial=True)
     print(json.dumps(save_rows(rows, partial=False), indent=1, default=str))
 

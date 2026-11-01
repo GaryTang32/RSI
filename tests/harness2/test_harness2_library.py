@@ -1,4 +1,5 @@
 """Harnessing-level recursion: the per-domain library is updated after each task and reused by later ones."""
+
 from __future__ import annotations
 
 from harness2_helpers import RecordingImprover
@@ -26,9 +27,9 @@ def test_library_is_updated_after_each_task_and_read_by_later_tasks_of_its_domai
             ctx = C.parse(prompt)
             lib = {k.split("/")[3] for k in ctx if k.startswith("context/library/harnesses/")}
             if role in ("editor", "composer"):
-                assert lib == set(earlier)                   # exactly the earlier entries of THIS domain
+                assert lib == set(earlier)  # exactly the earlier entries of THIS domain
                 assert ("context/library/INDEX.md" in ctx) == bool(earlier)
-            else:                                            # selector and reflector get no library
+            else:  # selector and reflector get no library
                 assert not lib and "context/library/INDEX.md" not in ctx
         if rec.library_added:
             earlier.append(rec.task_id)
@@ -45,8 +46,14 @@ def test_library_entries_hold_the_whole_adopted_tree_and_experience(go):
     entry = lib.dir(rec.domain_key) / "harnesses" / rec.task_id
     assert Artifact.from_dir(entry / "harness") == rec.adopted_tree
     md = (entry / "EXPERIENCE.md").read_text()
-    for part in (f"# {rec.task_id}", f"adopted: `{rec.adopted}`", "## What each edit did", "**cue**", "**lesson**",
-                 "**evidence**"):
+    for part in (
+        f"# {rec.task_id}",
+        f"adopted: `{rec.adopted}`",
+        "## What each edit did",
+        "**cue**",
+        "**lesson**",
+        "**evidence**",
+    ):
         assert part in md
     index = (lib.dir(rec.domain_key) / "INDEX.md").read_text()
     assert f"harnesses/{rec.task_id}/harness/" in index and "cue:" in index
@@ -80,7 +87,7 @@ def test_library_starts_empty_and_modes_are_separate(go, tmp_path):
     stale.parent.mkdir(parents=True)
     stale.write_text("# old\n- **cue**: x\n")
     res, imp = go(k=1, library_dir=str(root), max_tasks=2)
-    assert not stale.exists()                                # emptied at the start of the stream
+    assert not stale.exists()  # emptied at the start of the stream
     assert not any("harnesses/old" in p for _, p in imp.prompts)
     res2, _ = go(k=1, library_dir=str(root), max_tasks=2, mode="sequential", out="seq")
     assert res.meta["library_dir"].endswith("agg") and res2.meta["library_dir"].endswith("seq")

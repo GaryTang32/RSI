@@ -1,30 +1,41 @@
 """Shared helpers for the SoL-Pi experiment scripts (S1-S7) on AgentWorld."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
 
 import numpy as np
-
 from _common import live_llm, paired, parse_args, summarize
+
 from rsi.core import Evaluator
 from rsi.domains.agentworld import MockAgentLLM, make_domain
 from rsi.solpi import AGENTWORLD_IDEAS
 from rsi.solpi.meter import PRICES
 
-SPLITS = ("evolve", "ood")          # training families + held-out families (report-only measurement)
+SPLITS = ("evolve", "ood")  # training families + held-out families (report-only measurement)
 TINY = {"n_train": 1, "n_final": 1, "n_accept": 1, "n_test": 0, "subtasks": (2, 2), "max_turns": 30}
 IDEAS = {i.id: i for i in AGENTWORLD_IDEAS}
 KIND = {i.id: i.kind for i in AGENTWORLD_IDEAS}
-POWER_KEYS = ("A_nofw_capability", "B_nofw_capability", "A_fw_capability", "B_fw_capability", "A_nofw_eta_saving",
-              "B_nofw_eta_saving", "A_fw_eta_saving", "B_fw_eta_saving")
+POWER_KEYS = (
+    "A_nofw_capability",
+    "B_nofw_capability",
+    "A_fw_capability",
+    "B_fw_capability",
+    "A_nofw_eta_saving",
+    "B_nofw_eta_saving",
+    "A_fw_eta_saving",
+    "B_fw_eta_saving",
+)
 
 
 def parse_seeded(desc: str, default_seeds: int, extra: Callable | None = None) -> tuple:
     """``parse_args`` plus ``--seed-offset``; returns (args, seed list)."""
+
     def add(ap):
         ap.add_argument("--seed-offset", type=int, default=10)
         if extra:
             extra(ap)
+
     a = parse_args(desc, default_seeds=default_seeds, extra=add)
     return a, list(range(a.seed_offset, a.seed_offset + a.seeds))
 
@@ -44,18 +55,31 @@ def domain(args, seed: int, **kw):
 
 def trials_of(dom, llm, art, splits=SPLITS, k: int = 1) -> list:
     ev = Evaluator(dom, llm, workers=1, allow_sealed=True)
-    return [t for sp in splits if dom.tasks.splits.get(sp)
-            for trs in ev.evaluate(art, sp, k=k).trials.values() for t in trs]
+    return [
+        t for sp in splits if dom.tasks.splits.get(sp) for trs in ev.evaluate(art, sp, k=k).trials.values() for t in trs
+    ]
 
 
 def row(t) -> dict:
     m = t.meta or {}
-    return {"task": t.task_id, "seed": t.seed, "family": t.family, "score": t.score, "tokens": t.tokens,
-            "cost": t.cost_usd, "requests": t.steps, "cache_read": m.get("cache_read", 0),
-            "cache_write": m.get("cache_write", 0), "output": m.get("output", 0),
-            "compactions": m.get("compactions", 0), "overflow": bool(m.get("overflow")),
-            "triggers": m.get("triggers", {}), "oracle": m.get("oracle", {}), "audit": m.get("audit", {}),
-            "max_context": m.get("max_context", 0)}
+    return {
+        "task": t.task_id,
+        "seed": t.seed,
+        "family": t.family,
+        "score": t.score,
+        "tokens": t.tokens,
+        "cost": t.cost_usd,
+        "requests": t.steps,
+        "cache_read": m.get("cache_read", 0),
+        "cache_write": m.get("cache_write", 0),
+        "output": m.get("output", 0),
+        "compactions": m.get("compactions", 0),
+        "overflow": bool(m.get("overflow")),
+        "triggers": m.get("triggers", {}),
+        "oracle": m.get("oracle", {}),
+        "audit": m.get("audit", {}),
+        "max_context": m.get("max_context", 0),
+    }
 
 
 def trial_rows(dom, llm, art, splits=SPLITS) -> list[dict]:
@@ -87,8 +111,9 @@ def trigger_mean(rows: list[dict], mechanism: str, key: str) -> float:
 def replay_read_ceiling(rows: list[dict], prices: str) -> float:
     """Cache-read cost of large outputs replayed after their first sends, as a share of each task's bill."""
     read = PRICES[prices].read / 1e6
-    return float(np.mean([r["oracle"].get("replayed_large_outputs", 0) * read / r["cost"]
-                          for r in rows if r["cost"] > 0]))
+    return float(
+        np.mean([r["oracle"].get("replayed_large_outputs", 0) * read / r["cost"] for r in rows if r["cost"] > 0])
+    )
 
 
 def kind_counts(ids) -> dict:
@@ -101,8 +126,11 @@ def frozen_variants(dom, r: dict) -> dict:
     change = dict(n.split(":", 1) for n in r["frozen"])
     out = {}
     for iid in r["frozen_ideas"]:
-        it = [x for x in lineages[iid]["iterations"]
-              if x.get("outcome") == "frozen" and x.get("change") == change.get(iid)][-1]
+        it = [
+            x
+            for x in lineages[iid]["iterations"]
+            if x.get("outcome") == "frozen" and x.get("change") == change.get(iid)
+        ][-1]
         idea = IDEAS[iid]
         params = idea.grid[it["variant"]] if idea.grid else {}
         out[iid] = (dom.harness(idea.mechanism, **{idea.mechanism: params}), params)
@@ -121,8 +149,10 @@ def power_compare(rows: list[dict], seeds: list, protos: tuple) -> tuple[dict, d
 
 def pooled_capability(first: dict, second: dict, seeds: list, tag: str) -> tuple[list, list]:
     """Per seed, the held-out capability ratio averaged over backends A and B."""
+
     def mean_ab(r):
         return (r[f"A_{tag}_capability"] + r[f"B_{tag}_capability"]) / 2
+
     return [mean_ab(first[s]) for s in seeds], [mean_ab(second[s]) for s in seeds]
 
 

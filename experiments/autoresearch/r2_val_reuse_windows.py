@@ -2,6 +2,7 @@
 
 Usage: python experiments/autoresearch/r2_val_reuse_windows.py --only 8,9,... (resumable nights) | --analyze
 """
+
 from _common import SCRATCH, cached_json, claim, hardened_audit, insert_audit_code, scored_keeps, write  # noqa: I001
 
 import argparse
@@ -19,7 +20,7 @@ WINDOWS = ("V0", "V1", "T0", "T1")  # disjoint 32768-byte windows: val[0:], val[
 SEEDS = tuple(range(8, 20))  # WINDOWS[seed % 4]: each window selects in 3 nights (balanced rotation)
 OUT = SCRATCH / "r2_val_reuse_windows"
 
-_WIN = '''    if _CONST["MODE"] == "audit" and os.environ.get("RSI_AR_SEL_WINDOW", "") != "":
+_WIN = """    if _CONST["MODE"] == "audit" and os.environ.get("RSI_AR_SEL_WINDOW", "") != "":
         # measurement-only (retry round 2, X4c): score four disjoint, equally sized windows on the same
         # weights; the loop's val_bpb is the selected one. TOKEN_BYTES mask as in _bpb_locked.
         _seq, _ev, _rows = _CONST["SEQ_LEN"], _CONST["EVAL_BYTES"], _CONST["HARDENED_EVAL_ROWS"]
@@ -42,7 +43,7 @@ _WIN = '''    if _CONST["MODE"] == "audit" and os.environ.get("RSI_AR_SEL_WINDOW
         record.setdefault("audit", {})["windows"] = _wins
         val_bpb = _wins[os.environ["RSI_AR_SEL_WINDOW"]]
         record["val_bpb"] = val_bpb
-'''
+"""
 
 
 def variant_prepare() -> str:
@@ -53,8 +54,11 @@ class WindowsTask(TinyLMTask):
     """tinylm scored in audit mode on four windows; the loop sees only the selected window's bpb."""
 
     def __init__(self, sel: str, budget_s: float = 2.0):
-        files = {"prepare.py": variant_prepare(), "train.py": (DOMAIN_DIR / "train.py").read_text(),
-                 "README.md": (DOMAIN_DIR / "README.md").read_text()}
+        files = {
+            "prepare.py": variant_prepare(),
+            "train.py": (DOMAIN_DIR / "train.py").read_text(),
+            "README.md": (DOMAIN_DIR / "README.md").read_text(),
+        }
         super().__init__(budget_s=budget_s, files=files)
         assert sel in WINDOWS
         self.sel = sel
@@ -80,22 +84,38 @@ def o_value(base: dict, inc: dict, sel: str) -> dict:
 def _night(seed: int, n_exp: int) -> dict:
     sel = WINDOWS[seed % 4]
     task = WindowsTask(sel)
-    cfg = Config(max_experiments=n_exp, seed=seed, shadow_monitor=False, hidden_audit=False, plot=False,
-                 overwrite=True, tag=f"r2-valwin-{seed}")
+    cfg = Config(
+        max_experiments=n_exp,
+        seed=seed,
+        shadow_monitor=False,
+        hidden_audit=False,
+        plot=False,
+        overwrite=True,
+        tag=f"r2-valwin-{seed}",
+    )
     loop = AutoresearchLoop(task, MockResearchAgent(task.mock_edit_pool(), seed=seed), cfg, out_dir=OUT / f"seed{seed}")
     nodes, matched = scored_keeps(loop.run(), task.scored)
-    keeps = [{"exp": nd.round, "sel": nd.score, "windows": h and h["windows"], "change": nd.change}
-             for nd, h in matched]
+    keeps = [
+        {"exp": nd.round, "sel": nd.score, "windows": h and h["windows"], "change": nd.change} for nd, h in matched
+    ]
     base = keeps[0]
     assert abs(base["windows"][sel] - base["sel"]) < 1e-9
     rows = {}
     for k in CHECKPOINTS:
         inc = [kk for kk in keeps if kk["exp"] <= k][-1]
         rows[str(k)] = {"exp_of_incumbent": inc["exp"], **o_value(base["windows"], inc["windows"], sel)}
-    return {"seed": seed, "sel_window": sel, "n_turns": loop.n_rounds, "n_runs": loop.n_runs,
-            "n_experiments_run": sum(1 for nd in nodes if nd.status in ("keep", "discard", "crash")),
-            "n_keeps": len(keeps) - 1, "counters": dict(loop.counters), "keeps": keeps, "checkpoints": rows,
-            "unmatched_keeps": sum(1 for kk in keeps if kk["windows"] is None)}
+    return {
+        "seed": seed,
+        "sel_window": sel,
+        "n_turns": loop.n_rounds,
+        "n_runs": loop.n_runs,
+        "n_experiments_run": sum(1 for nd in nodes if nd.status in ("keep", "discard", "crash")),
+        "n_keeps": len(keeps) - 1,
+        "counters": dict(loop.counters),
+        "keeps": keeps,
+        "checkpoints": rows,
+        "unmatched_keeps": sum(1 for kk in keeps if kk["windows"] is None),
+    }
 
 
 def night(seed: int, n_exp: int = 300) -> dict:
@@ -122,10 +142,23 @@ def balanced_test(values: list[float], windows: list[str]) -> dict:
     n, m, sd = len(x), float(x.mean()), float(x.std(ddof=1))
     t1 = m / (sd / math.sqrt(n))
     h1 = float(stats.t.ppf(0.975, n - 1)) * sd / math.sqrt(n)
-    return {"tau": tau, "se": se, "df": df, "t": t, "p_one_sided": p, "t_ci95": [tau - h, tau + h],
-            "mde_80pct_power": float(mde), "per_window_mean": means, "pass": bool(tau > 0 and p < 0.05),
-            "plain_one_sample": {"mean": m, "sd": sd, "p_one_sided": float(stats.t.sf(t1, n - 1)),
-                                 "t_ci95": [m - h1, m + h1]}}
+    return {
+        "tau": tau,
+        "se": se,
+        "df": df,
+        "t": t,
+        "p_one_sided": p,
+        "t_ci95": [tau - h, tau + h],
+        "mde_80pct_power": float(mde),
+        "per_window_mean": means,
+        "pass": bool(tau > 0 and p < 0.05),
+        "plain_one_sample": {
+            "mean": m,
+            "sd": sd,
+            "p_one_sided": float(stats.t.sf(t1, n - 1)),
+            "t_ci95": [m - h1, m + h1],
+        },
+    }
 
 
 def analyze(nights: list[dict]) -> dict:
@@ -139,14 +172,22 @@ def analyze(nights: list[dict]) -> dict:
     for w in WINDOWS:
         sel = [nt["checkpoints"][k1]["gains"][w] for nt in nights if nt["sel_window"] == w]
         held = [nt["checkpoints"][k1]["gains"][w] for nt in nights if nt["sel_window"] != w]
-        same_window[w] = {"gain_when_selected": float(np.mean(sel)), "gain_when_held_out": float(np.mean(held)),
-                          "diff": float(np.mean(sel) - np.mean(held))}
+        same_window[w] = {
+            "gain_when_selected": float(np.mean(sel)),
+            "gain_when_held_out": float(np.mean(held)),
+            "diff": float(np.mean(sel) - np.mean(held)),
+        }
     keeps = [nt["n_keeps"] for nt in nights]
-    return {"H1c_tau_end_gt_0": h1, "H2c_growth_gt_0": h2, "tau_by_checkpoint": curve,
-            "same_window_contrast": same_window, "mean_keeps": float(np.mean(keeps)),
-            "keeps_range": [min(keeps), max(keeps)],
-            "unmatched_keeps": int(sum(nt["unmatched_keeps"] for nt in nights)),
-            "o26_rule": ("REPRODUCED" if h1["pass"] and h2["pass"] else "PARTIAL")}
+    return {
+        "H1c_tau_end_gt_0": h1,
+        "H2c_growth_gt_0": h2,
+        "tau_by_checkpoint": curve,
+        "same_window_contrast": same_window,
+        "mean_keeps": float(np.mean(keeps)),
+        "keeps_range": [min(keeps), max(keeps)],
+        "unmatched_keeps": int(sum(nt["unmatched_keeps"] for nt in nights)),
+        "o26_rule": ("REPRODUCED" if h1["pass"] and h2["pass"] else "PARTIAL"),
+    }
 
 
 def main() -> None:
@@ -164,12 +205,23 @@ def main() -> None:
     if a.analyze:
         nights = [night(s, a.experiments) for s in SEEDS]
         verdict = analyze(nights)
-        out = {"config": {"task": "tinylm", "budget_s": 2.0, "budget_kind": "wallclock", "mode": "hardened (runs "
-                          "scored in audit mode; agent sees the selected window's val_bpb only)",
-                          "agent": "MockResearchAgent greedy", "keep_rule": "upstream", "experiments": a.experiments,
-                          "seeds": list(SEEDS), "windows": WINDOWS, "selection": "WINDOWS[seed % 4]",
-                          "checkpoints": CHECKPOINTS},
-               "nights": nights, "verdict": verdict}
+        out = {
+            "config": {
+                "task": "tinylm",
+                "budget_s": 2.0,
+                "budget_kind": "wallclock",
+                "mode": "hardened (runs scored in audit mode; agent sees the selected window's val_bpb only)",
+                "agent": "MockResearchAgent greedy",
+                "keep_rule": "upstream",
+                "experiments": a.experiments,
+                "seeds": list(SEEDS),
+                "windows": WINDOWS,
+                "selection": "WINDOWS[seed % 4]",
+                "checkpoints": CHECKPOINTS,
+            },
+            "nights": nights,
+            "verdict": verdict,
+        }
         write("r2_val_reuse_windows", out)
         print(json.dumps({k: v for k, v in verdict.items() if k != "tau_by_checkpoint"}, indent=1, default=str))
 

@@ -2,6 +2,7 @@
 
 python scripts/release_notes.py 0.1.0
 """
+
 import re
 import sys
 from pathlib import Path

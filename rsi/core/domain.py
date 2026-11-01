@@ -1,4 +1,5 @@
 """The problem interface: a Domain runs an artifact on a task (``execute``) and owns the locked grader (``grade``)."""
+
 from __future__ import annotations
 
 import copy
@@ -6,8 +7,9 @@ import json
 import math
 import time
 import traceback
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 from .artifact import Artifact
 from .llm import LLM
@@ -20,10 +22,10 @@ class Execution:
 
     output: Any = None
     trace: str = ""
-    tokens: int = 0           # model tokens consumed by the artifact (its inference cost)
+    tokens: int = 0  # model tokens consumed by the artifact (its inference cost)
     cost_usd: float = 0.0
     steps: int = 0
-    error: Optional[str] = None
+    error: str | None = None
     meta: dict = field(default_factory=dict)
 
 
@@ -33,7 +35,7 @@ class Trial:
 
     task_id: str
     seed: int
-    score: float              # in the domain's score_range; larger is better
+    score: float  # in the domain's score_range; larger is better
     feedback: str = ""
     output: Any = None
     trace: str = ""
@@ -41,7 +43,7 @@ class Trial:
     cost_usd: float = 0.0
     steps: int = 0
     latency_s: float = 0.0
-    error: Optional[str] = None
+    error: str | None = None
     family: str = "default"
     meta: dict = field(default_factory=dict)
 
@@ -86,7 +88,7 @@ class Domain:
     def __init__(self, tasks: TaskSuite) -> None:
         self.tasks = tasks
 
-    def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: Optional[LLM]) -> Execution:
+    def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: LLM | None) -> Execution:
         raise NotImplementedError
 
     def grade(self, task: Task, execution: Execution) -> tuple[float, str]:
@@ -98,7 +100,7 @@ class Domain:
         """Score of a failed rollout: the bottom of :attr:`score_range`, so a crash never outscores a working one."""
         return float(self.score_range[0])
 
-    def rollout(self, artifact: Artifact, task: Task, *, seed: int = 0, llm: Optional[LLM] = None) -> Execution:
+    def rollout(self, artifact: Artifact, task: Task, *, seed: int = 0, llm: LLM | None = None) -> Execution:
         """Execute one rollout without grading; a crash becomes an :class:`Execution` with ``error`` set."""
         try:
             ex = self.execute(artifact, task, seed=seed, llm=llm)
@@ -124,14 +126,26 @@ class Domain:
             score, feedback = fail, f"grader error: {type(e).__name__}: {e}"
         return score, feedback
 
-    def run(self, artifact: Artifact, task: Task, *, seed: int = 0, llm: Optional[LLM] = None) -> Trial:
+    def run(self, artifact: Artifact, task: Task, *, seed: int = 0, llm: LLM | None = None) -> Trial:
         """:meth:`rollout` then :meth:`grade_execution`: one graded :class:`Trial`."""
         t0 = time.time()
         ex = self.rollout(artifact, task, seed=seed, llm=llm)
         score, feedback = self.grade_execution(task, ex)
-        return Trial(task_id=task.id, seed=seed, score=score, feedback=feedback, output=ex.output, trace=ex.trace,
-                     tokens=ex.tokens, cost_usd=ex.cost_usd, steps=ex.steps, latency_s=time.time() - t0,
-                     error=ex.error, family=task.family, meta=ex.meta)
+        return Trial(
+            task_id=task.id,
+            seed=seed,
+            score=score,
+            feedback=feedback,
+            output=ex.output,
+            trace=ex.trace,
+            tokens=ex.tokens,
+            cost_usd=ex.cost_usd,
+            steps=ex.steps,
+            latency_s=time.time() - t0,
+            error=ex.error,
+            family=task.family,
+            meta=ex.meta,
+        )
 
     def describe(self) -> str:
         """Short brief for proposer LLMs: what the artifact is and how it is graded."""
@@ -147,7 +161,7 @@ class Domain:
             terms.extend(str(x) for x in t.meta.get("entities", []))
         return sorted(set(terms))
 
-    def smoke(self, artifact: Artifact, llm: Optional[LLM] = None) -> Optional[str]:
+    def smoke(self, artifact: Artifact, llm: LLM | None = None) -> str | None:
         """Run one smoke (or first evolve) task; return its error or None."""
         ids = self.tasks.splits.get("smoke") or self.tasks.splits.get("evolve", [])[:1]
         return (self.run(artifact, self.tasks.get(ids[0]), seed=0, llm=llm).error or None) if ids else None
@@ -156,8 +170,15 @@ class Domain:
 class FunctionDomain(Domain):
     """A Domain from ``execute_fn(artifact, task, seed, llm)`` and ``grade_fn(task, output) -> score | (score, fb)``."""
 
-    def __init__(self, tasks: TaskSuite, execute_fn: Callable[..., Any], grade_fn: Callable[..., Any], *,
-                 name: str = "function-domain", description: str = "") -> None:
+    def __init__(
+        self,
+        tasks: TaskSuite,
+        execute_fn: Callable[..., Any],
+        grade_fn: Callable[..., Any],
+        *,
+        name: str = "function-domain",
+        description: str = "",
+    ) -> None:
         super().__init__(tasks)
         self.execute_fn = execute_fn
         self.grade_fn = grade_fn

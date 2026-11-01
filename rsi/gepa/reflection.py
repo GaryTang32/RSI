@@ -1,10 +1,12 @@
 """Reflection: GEPA's meta-prompts (verbatim, paper App. C), record rendering, fenced parsing and the proposer."""
+
 from __future__ import annotations
 
 import hashlib
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any
 
 from ..core.artifact import Artifact
 from ..core.llm import LLM
@@ -69,8 +71,10 @@ def render_value(value: Any, level: int = 3) -> str:
 
 def render_samples(samples: Sequence[Mapping[str, Any]]) -> str:
     """Markdown rendering of reflective records (the reference ``format_samples``)."""
-    return "\n\n".join(f"# Example {n}\n" + "".join(f"## {k}\n" + render_value(v, level=3) for k, v in s.items())
-                       for n, s in enumerate(samples, 1))
+    return "\n\n".join(
+        f"# Example {n}\n" + "".join(f"## {k}\n" + render_value(v, level=3) for k, v in s.items())
+        for n, s in enumerate(samples, 1)
+    )
 
 
 def parse_side_info(side: str) -> list[dict]:
@@ -91,7 +95,7 @@ def _has_fence_pair(out: str) -> bool:
     return (out.find("```") + 3) < out.rfind("```")
 
 
-def is_known_truncated(out: str, finish_reason: Optional[str] = None, tags: Sequence[str] = ("think",)) -> bool:
+def is_known_truncated(out: str, finish_reason: str | None = None, tags: Sequence[str] = ("think",)) -> bool:
     if _has_fence_pair(out):
         return False
     if finish_reason in {"length", "max_tokens"}:
@@ -100,7 +104,7 @@ def is_known_truncated(out: str, finish_reason: Optional[str] = None, tags: Sequ
     return any(stripped.startswith(f"<{t}>") and out.count(f"<{t}>") > out.count(f"</{t}>") for t in tags)
 
 
-def response_finish_reason(resp) -> Optional[str]:
+def response_finish_reason(resp) -> str | None:
     """The provider's stop reason: ``raw["stop_reason"]``, ``raw["finish_reason"]`` or ``resp.finish_reason``."""
     raw = getattr(resp, "raw", None)
     if isinstance(raw, dict):
@@ -112,21 +116,21 @@ def response_finish_reason(resp) -> Optional[str]:
     return v if isinstance(v, str) else None
 
 
-def parse_fenced(out: str, finish_reason: Optional[str] = None) -> tuple[Optional[str], Optional[str]]:
+def parse_fenced(out: str, finish_reason: str | None = None) -> tuple[str | None, str | None]:
     """``(text, error)`` with the reference ``ProposalAdapter.parse`` semantics."""
     out = (out or "").strip()
     if is_known_truncated(out, finish_reason):
         detail = f"finish_reason={finish_reason!r}" if finish_reason else "unterminated reasoning block"
         return None, f"reflection output is incomplete ({detail})"
     if _has_fence_pair(out):
-        content = out[out.find("```") + 3: out.rfind("```")]
+        content = out[out.find("```") + 3 : out.rfind("```")]
         m = re.match(r"^\S*\n", content)
-        return (content[m.end():] if m else content).strip(), None
+        return (content[m.end() :] if m else content).strip(), None
     value = out
     if value.startswith("```"):
         m = re.match(r"^```\S*\n?", value)
         if m:
-            value = value[m.end():].strip()
+            value = value[m.end() :].strip()
     elif value.endswith("```"):
         value = value[:-3].strip()
     return value, None
@@ -140,7 +144,7 @@ def reflection_seed(run_seed: int, iteration: int, component: str, attempt: int 
 
 def rollout_seed(*parts) -> int:
     """Deterministic rollout seed in [1, 2**31 - 2] from ``"|".join(parts)``."""
-    return 1 + int(hashlib.sha256("|".join(map(str, parts)).encode()).hexdigest()[:8], 16) % (2 ** 31 - 2)
+    return 1 + int(hashlib.sha256("|".join(map(str, parts)).encode()).hexdigest()[:8], 16) % (2**31 - 2)
 
 
 @dataclass
@@ -148,17 +152,24 @@ class ReflectionResult:
     new_texts: dict[str, str] = field(default_factory=dict)
     prompts: dict[str, str] = field(default_factory=dict)
     raw: dict[str, str] = field(default_factory=dict)
-    rejected: dict[str, str] = field(default_factory=dict)           # component -> reason
-    finish: dict[str, Optional[str]] = field(default_factory=dict)   # component -> provider stop reason
+    rejected: dict[str, str] = field(default_factory=dict)  # component -> reason
+    finish: dict[str, str | None] = field(default_factory=dict)  # component -> provider stop reason
     calls: int = 0
 
 
 class ReflectionProposer:
     """One reflection-LM call per selected component; ``template`` is a string or ``{component: template}``."""
 
-    def __init__(self, llm: LLM, template: str | Mapping[str, str] | None = None, *, role: str = "reflection",
-                 system: Optional[str] = None, max_tokens: Optional[int] = None,
-                 keep_trailing_newline: bool = True) -> None:
+    def __init__(
+        self,
+        llm: LLM,
+        template: str | Mapping[str, str] | None = None,
+        *,
+        role: str = "reflection",
+        system: str | None = None,
+        max_tokens: int | None = None,
+        keep_trailing_newline: bool = True,
+    ) -> None:
         self.llm = llm
         if template is None or isinstance(template, str):
             t = TEMPLATES.get(template or "default", template or DEFAULT_TEMPLATE)
@@ -178,18 +189,25 @@ class ReflectionProposer:
     def template_for(self, component: str) -> str:
         return self.templates.get(component, self.default)
 
-    def propose(self, candidate: Artifact, reflective_dataset: Mapping[str, list], components: Sequence[str], *,
-                seed_fn=None) -> ReflectionResult:
+    def propose(
+        self, candidate: Artifact, reflective_dataset: Mapping[str, list], components: Sequence[str], *, seed_fn=None
+    ) -> ReflectionResult:
         res = ReflectionResult()
         for comp in components:
             records = reflective_dataset.get(comp) or []
             if not records:
                 continue
             current = candidate.get(comp, "")
-            prompt = build_prompt(self.template_for(comp), current.rstrip("\n") if self.keep_trailing_newline
-                                  else current, records)
-            resp = self.llm.complete(prompt, system=self.system, max_tokens=self.max_tokens,
-                                     seed=seed_fn(comp) if seed_fn else None, role=self.role)
+            prompt = build_prompt(
+                self.template_for(comp), current.rstrip("\n") if self.keep_trailing_newline else current, records
+            )
+            resp = self.llm.complete(
+                prompt,
+                system=self.system,
+                max_tokens=self.max_tokens,
+                seed=seed_fn(comp) if seed_fn else None,
+                role=self.role,
+            )
             res.calls += 1
             res.prompts[comp] = prompt
             res.raw[comp] = resp.text

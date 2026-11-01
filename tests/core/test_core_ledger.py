@@ -1,4 +1,5 @@
 """rsi.core.ledger: append-only JSONL tree, resume, update, lineage, exports, content-addressed ArtifactStore."""
+
 from __future__ import annotations
 
 import csv
@@ -56,7 +57,7 @@ def test_update_merges_dicts_and_persists(tmp_path):
     led.update("n1", status="keep", score=0.9, metrics={"b": 2}, meta={"y": 2})
     n = led["n1"]
     assert (n.status, n.score, n.metrics, n.meta) == ("keep", 0.9, {"a": 1, "b": 2}, {"x": 1, "y": 2})
-    assert len(p.read_text().splitlines()) == 2               # append-only: a second record
+    assert len(p.read_text().splitlines()) == 2  # append-only: a second record
     again = Ledger(p)
     assert again["n1"].metrics == {"a": 1, "b": 2} and again["n1"].status == "keep" and len(again) == 1
     with pytest.raises(KeyError):
@@ -84,10 +85,10 @@ def test_resume_after_torn_write(tmp_path):
     p = tmp_path / "l.jsonl"
     Ledger(p).add(Node("a", None, score=1.0))
     with p.open("a") as f:
-        f.write('{"id": "b", "parent": "a", "sco')             # torn line, no newline
+        f.write('{"id": "b", "parent": "a", "sco')  # torn line, no newline
     led = Ledger(p)
     assert _ids(led.nodes()) == ["a"] and led.n_corrupt_lines == 1
-    led.add(Node("c", "a"))                                   # new records start on a fresh line
+    led.add(Node("c", "a"))  # new records start on a fresh line
     again = Ledger(p)
     assert _ids(again.nodes()) == ["a", "c"] and again.n_corrupt_lines == 1
 
@@ -104,8 +105,20 @@ def test_readd_existing_id_keeps_creation_order(tmp_path):
 
 
 def test_node_json_roundtrip_ignores_unknown_keys():
-    n = Node("x", "p", round=3, kind="merge", status="keep", score=0.1, cost=2.0, change="c", artifact_id="aid",
-             diff="d", metrics={"m": 1}, meta={"k": "v"})
+    n = Node(
+        "x",
+        "p",
+        round=3,
+        kind="merge",
+        status="keep",
+        score=0.1,
+        cost=2.0,
+        change="c",
+        artifact_id="aid",
+        diff="d",
+        metrics={"m": 1},
+        meta={"k": "v"},
+    )
     d = n.to_json()
     assert Node.from_json(d) == n
     d["from_the_future"] = 1
@@ -130,17 +143,26 @@ def test_render_and_to_json():
 def test_results_tsv_autoresearch_format(tmp_path):
     led = _chain(Ledger())
     led["c1"].metrics["memory_gb"] = 44.04
-    led.add(Node("c5", "c2", status="keep", score=0.7, change="multi\nline\tdescription", artifact_id="abcdef123456",
-                 metrics={"memory_gb": None}))
+    led.add(
+        Node(
+            "c5",
+            "c2",
+            status="keep",
+            score=0.7,
+            change="multi\nline\tdescription",
+            artifact_id="abcdef123456",
+            metrics={"memory_gb": None},
+        )
+    )
     out = tmp_path / "results.tsv"
     led.to_results_tsv(out)
     lines = out.read_text().splitlines()
     assert lines[0].split("\t") == ["commit", "score", "memory_gb", "status", "description"]
-    assert len(lines) == 6                                    # one line per attempt, even multi-line changes
+    assert len(lines) == 6  # one line per attempt, even multi-line changes
     rows = list(csv.reader(out.open(), delimiter="\t"))
     assert rows[1] == ["root"[:7], "0.500000", "0.0", "keep", "baseline"]
     assert rows[2][2] == "44.0"
-    assert rows[4][1] == "0.000000" and rows[4][3] == "crash"   # crashes log 0.000000
+    assert rows[4][1] == "0.000000" and rows[4][3] == "crash"  # crashes log 0.000000
     assert rows[5][0] == "abcdef1" and rows[5][4] == "multi line description"
 
 
@@ -167,6 +189,6 @@ def test_artifact_store(tmp_path):
     assert aid == a.id and st.has(aid) and not st.has("0" * 64)
     b = st.get(aid)
     assert b == a and b.meta == {"origin": "seed"}
-    assert st.put(a) == aid                                    # idempotent
+    assert st.put(a) == aid  # idempotent
     assert len(list((tmp_path / "store").rglob("*.json"))) == 1
     assert not list((tmp_path / "store").rglob("*.tmp"))

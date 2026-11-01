@@ -1,4 +1,5 @@
 """Meta-Harness LLM summariser and the structured comparison optimisers of paper Table 4."""
+
 import json
 
 import pytest
@@ -10,10 +11,21 @@ from rsi.metaharness.baselines import OE_ARTIFACT_BYTES, _Prog, programs_in
 
 
 def _trace(unit: str) -> str:
-    train = [{"type": "step", "phase": "train", "step": i, "ok": i % 3 == 0, "calls": [{"prompt": "x" * 400}]}
-             for i in range(400)]
-    evals = [{"type": "eval_step", "step": i, "ok": i % 2 == 0, "pred": f"p{i}", "tgt": f"{unit}-gold-{i}",
-              "prompt_len": 900} for i in range(40)]
+    train = [
+        {"type": "step", "phase": "train", "step": i, "ok": i % 3 == 0, "calls": [{"prompt": "x" * 400}]}
+        for i in range(400)
+    ]
+    evals = [
+        {
+            "type": "eval_step",
+            "step": i,
+            "ok": i % 2 == 0,
+            "pred": f"p{i}",
+            "tgt": f"{unit}-gold-{i}",
+            "prompt_len": 900,
+        }
+        for i in range(40)
+    ]
     return "\n".join(json.dumps(r) for r in [{"type": "meta", "unit": unit}, *train, *evals])
 
 
@@ -28,9 +40,14 @@ def _traces(sub: dict[str, str]) -> dict[str, str]:
 @pytest.fixture(scope="module")
 def small_run(tmp_path_factory):
     dom = make_domain(seed=3, scale=0.3)
-    res = run(dom, dom.seed_artifact("fewshot_all"), llm_task=dom.make_model("A"),
-              config=Config(iterations=2, k=2, seed=3, shadow_monitor=False, finalize=False),
-              out_dir=tmp_path_factory.mktemp("mh_r2"), baselines=dom.baselines())
+    res = run(
+        dom,
+        dom.seed_artifact("fewshot_all"),
+        llm_task=dom.make_model("A"),
+        config=Config(iterations=2, k=2, seed=3, shadow_monitor=False, finalize=False),
+        out_dir=tmp_path_factory.mktemp("mh_r2"),
+        baselines=dom.baselines(),
+    )
     return dom, res
 
 

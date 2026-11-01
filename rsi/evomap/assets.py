@@ -1,4 +1,5 @@
 """GEP 1.14.0 asset dataclasses plus the extra fields the engine writes; unknown keys round-trip via ``extra``."""
+
 from __future__ import annotations
 
 import copy
@@ -6,7 +7,7 @@ import dataclasses
 import datetime as _dt
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from .hashing import SCHEMA_VERSION, asset_id, verify_asset_id
 from .schema import load_schema
@@ -30,9 +31,8 @@ class Clock:
         self.t += n * self.step_s
         return self.t
 
-    def iso(self, t: Optional[float] = None) -> str:
-        return _dt.datetime.fromtimestamp(self.now() if t is None else t, _dt.timezone.utc).strftime(
-            "%Y-%m-%dT%H:%M:%SZ")
+    def iso(self, t: float | None = None) -> str:
+        return _dt.datetime.fromtimestamp(self.now() if t is None else t, _dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _clean(v: Any) -> Any:
@@ -87,8 +87,9 @@ class _Asset:
         allowed = set(load_schema(kind)["properties"])
         d = {k: v for k, v in self.to_dict().items() if k in allowed}
         if kind == "Gene" and "epigenetic_marks" in d:
-            d["epigenetic_marks"] = [f"{m.get('context')}:{m.get('boost')}" if isinstance(m, dict) else str(m)
-                                     for m in d["epigenetic_marks"]]
+            d["epigenetic_marks"] = [
+                f"{m.get('context')}:{m.get('boost')}" if isinstance(m, dict) else str(m) for m in d["epigenetic_marks"]
+            ]
         if kind == "Capsule":
             for k in ("content", "diff"):
                 if isinstance(d.get(k), str):
@@ -117,12 +118,12 @@ class Gene(_Asset):
     epigenetic_marks: list[dict] = field(default_factory=list)
     learning_history: list[dict] = field(default_factory=list)
     anti_patterns: list[dict] = field(default_factory=list)
-    scope: Optional[dict] = None
-    claims: Optional[list] = None
-    provenance: Optional[dict] = None
-    parent: Optional[str] = None
+    scope: dict | None = None
+    claims: list | None = None
+    provenance: dict | None = None
+    parent: str | None = None
     schema_version: str = SCHEMA_VERSION
-    asset_id: Optional[str] = None
+    asset_id: str | None = None
     extra: dict = field(default_factory=dict)
 
     TYPE = "Gene"
@@ -156,21 +157,21 @@ class Capsule(_Asset):
     confidence: float = 0.0
     blast_radius: dict = field(default_factory=lambda: {"files": 0, "lines": 0})
     outcome: dict = field(default_factory=lambda: {"status": "success", "score": 0.0})
-    success_streak: Optional[int] = None
-    success_reason: Optional[str] = None
-    env_fingerprint: Optional[dict] = None
-    source_type: Optional[str] = None
-    reused_asset_id: Optional[str] = None
-    content: Optional[str] = None
-    diff: Optional[str] = None
+    success_streak: int | None = None
+    success_reason: str | None = None
+    env_fingerprint: dict | None = None
+    source_type: str | None = None
+    reused_asset_id: str | None = None
+    content: str | None = None
+    diff: str | None = None
     strategy: list[str] = field(default_factory=list)
     execution_trace: list[dict] = field(default_factory=list)
-    a2a: Optional[dict] = None
-    derivation_tokens: Optional[dict] = None
-    proof_of_work: Optional[dict] = None
-    gene_library_version: Optional[str] = None
+    a2a: dict | None = None
+    derivation_tokens: dict | None = None
+    proof_of_work: dict | None = None
+    gene_library_version: str | None = None
     schema_version: str = SCHEMA_VERSION
-    asset_id: Optional[str] = None
+    asset_id: str | None = None
     extra: dict = field(default_factory=dict)
 
     TYPE = "Capsule"
@@ -189,15 +190,15 @@ class EvolutionEvent(_Asset):
     blast_radius: dict = field(default_factory=lambda: {"files": 0, "lines": 0})
     outcome: dict = field(default_factory=lambda: {"status": "failed", "score": 0.0})
     source_type: str = "generated"
-    parent: Optional[str] = None
-    personality_state: Optional[dict] = None
-    capsule_id: Optional[str] = None
-    reused_asset_id: Optional[str] = None
-    env_fingerprint: Optional[dict] = None
-    validation_report_id: Optional[str] = None
-    meta: Optional[dict] = None
+    parent: str | None = None
+    personality_state: dict | None = None
+    capsule_id: str | None = None
+    reused_asset_id: str | None = None
+    env_fingerprint: dict | None = None
+    validation_report_id: str | None = None
+    meta: dict | None = None
     schema_version: str = SCHEMA_VERSION
-    asset_id: Optional[str] = None
+    asset_id: str | None = None
     extra: dict = field(default_factory=dict)
 
     TYPE = "EvolutionEvent"
@@ -213,9 +214,9 @@ class Mutation(_Asset):
     target: str = "behavior:protocol"
     expected_effect: str = ""
     risk_level: str = "low"
-    rationale: Optional[str] = None
+    rationale: str | None = None
     schema_version: str = SCHEMA_VERSION
-    asset_id: Optional[str] = None
+    asset_id: str | None = None
     extra: dict = field(default_factory=dict)
 
     TYPE = "Mutation"
@@ -227,16 +228,16 @@ class ValidationReport(_Asset):
 
     id: str
     gene_id: str = ""
-    commands: list[dict] = field(default_factory=list)   # {command, ok, exit, stdout, stderr, skipped?, blocked?}
+    commands: list[dict] = field(default_factory=list)  # {command, ok, exit, stdout, stderr, skipped?, blocked?}
     overall_ok: bool = False
-    discriminative: Optional[dict] = None
+    discriminative: dict | None = None
     signer: str = "local"
-    env_fingerprint: Optional[dict] = None
+    env_fingerprint: dict | None = None
     duration_ms: int = 0
-    created_at: Optional[str] = None
-    meta: Optional[dict] = None
+    created_at: str | None = None
+    meta: dict | None = None
     schema_version: str = SCHEMA_VERSION
-    asset_id: Optional[str] = None
+    asset_id: str | None = None
     extra: dict = field(default_factory=dict)
 
     TYPE = "ValidationReport"
@@ -269,14 +270,20 @@ class PersonalityState(_Asset):
     def key(self) -> str:
         return "|".join(f"{t}={round(getattr(self, t), 1):.1f}" for t in PERSONALITY_TRAITS)
 
-    def clamp(self) -> "PersonalityState":
+    def clamp(self) -> PersonalityState:
         for t in PERSONALITY_TRAITS:
             setattr(self, t, float(min(1.0, max(0.0, getattr(self, t)))))
         return self
 
 
-ASSET_CLASSES = {"Gene": Gene, "Capsule": Capsule, "EvolutionEvent": EvolutionEvent, "Mutation": Mutation,
-                 "ValidationReport": ValidationReport, "PersonalityState": PersonalityState}
+ASSET_CLASSES = {
+    "Gene": Gene,
+    "Capsule": Capsule,
+    "EvolutionEvent": EvolutionEvent,
+    "Mutation": Mutation,
+    "ValidationReport": ValidationReport,
+    "PersonalityState": PersonalityState,
+}
 
 
 def from_dict(d: dict):

@@ -1,4 +1,5 @@
 """Shared plumbing for the Meta-Harness (M*) and SoL-Pi (S*) experiments: CLI, cached live LLM, pool, stats, I/O."""
+
 from __future__ import annotations
 
 import argparse
@@ -8,9 +9,9 @@ import os
 import shutil
 import sys
 import time
+from collections.abc import Callable, Sequence
 from multiprocessing import get_context
 from pathlib import Path
-from typing import Callable, Optional, Sequence
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -26,7 +27,7 @@ CACHE = ROOT / ".rsi_cache" / SLUG
 RUNS = Path(os.environ.get("RSI_RUNS", "/tmp")) / f"rsi_{SLUG}_runs"
 
 
-def parse_args(desc: str, default_seeds: int = 10, extra: Optional[Callable] = None) -> argparse.Namespace:
+def parse_args(desc: str, default_seeds: int = 10, extra: Callable | None = None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(description=desc)
     ap.add_argument("--llm", default="sim", help="sim (offline mocks) | claude:<model> (live, cached)")
     ap.add_argument("--seeds", type=int, default=None, help=f"number of seeds (default {default_seeds}; quick: 3)")
@@ -84,9 +85,15 @@ def paired(a, b) -> dict:
 
 def candidate_rows(store, keys: tuple[str, ...]) -> list[dict]:
     """One row per stored candidate: its name, the given meta keys, search score and context cost."""
-    return [{"name": n, **{k: store.meta(n).get(k) for k in keys},
-             "search": (store.scores(n) or {}).get("score"), "context": (store.scores(n) or {}).get("context_cost")}
-            for n in store.names()]
+    return [
+        {
+            "name": n,
+            **{k: store.meta(n).get(k) for k in keys},
+            "search": (store.scores(n) or {}).get("score"),
+            "context": (store.scores(n) or {}).get("context_cost"),
+        }
+        for n in store.names()
+    ]
 
 
 def fmt(s: dict, p: int = 3) -> str:
@@ -103,7 +110,7 @@ def _default(x):
     return repr(x)
 
 
-def save(name: str, payload: dict, out: Optional[str] = None) -> Path:
+def save(name: str, payload: dict, out: str | None = None) -> Path:
     RESULTS.mkdir(parents=True, exist_ok=True)
     p = Path(out) if out else RESULTS / f"{name}.json"
     payload.setdefault("generated_at", time.strftime("%Y-%m-%d %H:%M:%S"))
@@ -122,8 +129,10 @@ def figure_path(name: str, args) -> Path:
 
 def plt():
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as _plt
+
     return _plt
 
 

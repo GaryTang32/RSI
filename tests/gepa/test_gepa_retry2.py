@@ -1,4 +1,5 @@
 """GEPA claim-audit retry round 2 (docs/methods/gepa/claims-audit.md, section 6)."""
+
 from pathlib import Path
 
 import pytest
@@ -31,8 +32,9 @@ def test_merge_start_frac_zero_is_the_reference_schedule(merge_run):
     assert Config().merge_start_frac == 0.0
 
 
-@pytest.mark.parametrize("kw", [dict(merge_start_frac=1.0), dict(merge_start_frac=-0.1),
-                                dict(merge_start_frac=0.3, max_metric_calls=None)])
+@pytest.mark.parametrize(
+    "kw", [dict(merge_start_frac=1.0), dict(merge_start_frac=-0.1), dict(merge_start_frac=0.3, max_metric_calls=None)]
+)
 def test_merge_start_frac_validation(kw):
     with pytest.raises(ValueError):
         Config(**kw).validate()
@@ -51,16 +53,23 @@ def test_merge_check_without_triplet_is_free_and_keeps_merge_due(merge_run):
 def test_paper_regime_settings_build_paper_shaped_worlds(monkeypatch):
     monkeypatch.syspath_prepend(str(EXPERIMENTS))
     import r2_paper_regime as r2
+
     d = r2.domain("hover", "qwen", 7)
     assert len(d.world.cfg.modules) == 4 and d.world.cfg.scoring == "binary"
     assert len(d.tasks.splits["evolve"]) == 150 and len(d.tasks.splits["val"]) == 300
     assert d.world.cfg.capacity == 8 and d.world.cfg.slip == 0.15
     a = r2.domain("aime", "gpt", 7)
     assert a.world.cfg.modules == ("cot",) and len(a.tasks.splits["val"]) == 45
-    assert {k: v["B"] for k, v in r2.SETTINGS.items()} == {"hotpotqa": 6871, "ifbench": 3593, "hover": 7051,
-                                                            "pupa": 2426, "aime": 1839, "livebench": 1839}
+    assert {k: v["B"] for k, v in r2.SETTINGS.items()} == {
+        "hotpotqa": 6871,
+        "ifbench": 3593,
+        "hover": 7051,
+        "pupa": 2426,
+        "aime": 1839,
+        "livebench": 1839,
+    }
     ratios = [v["B"] / v["n_val"] for v in r2.SETTINGS.values()]
-    assert 11 < min(ratios) and max(ratios) < 42           # the paper's 12-41 rollouts per validation example
+    assert 11 < min(ratios) and max(ratios) < 42  # the paper's 12-41 rollouts per validation example
 
 
 def test_r2_paper_regime_results_carry_preregistered_analyses(result):
@@ -69,8 +78,7 @@ def test_r2_paper_regime_results_carry_preregistered_analyses(result):
     for key in ("L3[qwen]", "L3[gpt]", "L4[qwen]", "L12[qwen]", "L6", "L13[qwen]", "Q10", "Q13", "L2", "Q7", "L10"):
         assert key in A, key
     assert o["config"]["seeds"] == [100, 149] and o["config"]["rl_seeds"] == [100, 129]
-    assert set(A["L6"]) >= {"pooled_invocations_per_iteration", "pooled_no_triplet_fraction", "cells_sparse",
-                            "verdict"}
+    assert set(A["L6"]) >= {"pooled_invocations_per_iteration", "pooled_no_triplet_fraction", "cells_sparse", "verdict"}
     hard = [r for r in o["raw"] if r["arm"] in ("merge_hard5", "merge_hard5_late")]
     assert hard and max(r["n_merge_invocations"] for r in hard) <= 5
     late = [r for r in o["raw"] if r["arm"] == "merge_hard5_late" and r["first_merge_rollouts"] is not None]

@@ -1,9 +1,10 @@
 """Shared fixtures for the evomap tests."""
+
 from types import SimpleNamespace
 
 import pytest
-
 from evomap_helpers import katas_population
+
 from rsi.domains.geneworld import make_domain
 
 

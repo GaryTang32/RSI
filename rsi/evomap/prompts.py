@@ -1,8 +1,9 @@
 """Gene card and Skill rendering, gene-writer and distiller prompts, and gene reply parsing (spec §6)."""
+
 from __future__ import annotations
 
 import re
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from rsi.core.llm import extract_json
 
@@ -11,8 +12,9 @@ from .assets import CATEGORIES, Gene
 GENE_TEMPLATE_PARTS = ("keywords", "summary", "strategy", "avoid")
 
 
-def render_gene(g: Gene, parts: Sequence[str] = GENE_TEMPLATE_PARTS, *, failure_log: str = "",
-                show_id: bool = True) -> str:
+def render_gene(
+    g: Gene, parts: Sequence[str] = GENE_TEMPLATE_PARTS, *, failure_log: str = "", show_id: bool = True
+) -> str:
     """The shared injection template; ``parts`` and ``failure_log`` are representation ablations."""
     lines = ["## Strategy gene" + (f" {g.id}" if show_id else "")]
     if "keywords" in parts and g.signals_match:
@@ -33,26 +35,44 @@ def render_gene(g: Gene, parts: Sequence[str] = GENE_TEMPLATE_PARTS, *, failure_
 
 
 SKILL_BOILERPLATE = [
-    ("Overview", "This skill packages the complete working knowledge collected while solving problems of this kind. "
-                 "It is intended as documentation: read the whole document before starting, and consult the "
-                 "reference sections as needed. The procedures below were written after reviewing the full "
-                 "trajectory, including exploratory dead ends, tooling notes and environment details."),
-    ("When to use", "Use this skill whenever the task description, the error output or the surrounding code suggests "
-                    "the problem class described below. The skill is broad on purpose so that it covers related "
-                    "situations; not every section will apply to every task."),
-    ("Background", "Problems of this class are common in production code. They usually arise at the boundary between "
-                   "components, where assumptions about inputs, formats and edge cases differ. Historically, teams "
-                   "addressed them with ad-hoc fixes; this document consolidates the approaches that worked and the "
-                   "context needed to apply them, including background on standards, conventions and history."),
-    ("Environment notes", "The original trajectory ran in a Python 3 environment with the standard library only. "
-                          "Tests were executed with a plain script runner. Paths, file names and helper scripts from "
-                          "the original environment are listed in the references section for completeness."),
-    ("Worked example", "In the original run, the first attempt passed the visible checks but failed hidden cases. "
-                       "The agent then inspected the failing inputs, compared them with the specification, revised "
-                       "the implementation, re-ran the visible checks and finally submitted the corrected version."),
-    ("References", "See the standard library documentation for the relevant modules, the project style guide, the "
-                   "original issue thread, and the list of auxiliary scripts: check_inputs.py, run_examples.py, "
-                   "compare_outputs.py. Additional notes and transcripts are archived with the run."),
+    (
+        "Overview",
+        "This skill packages the complete working knowledge collected while solving problems of this kind. "
+        "It is intended as documentation: read the whole document before starting, and consult the "
+        "reference sections as needed. The procedures below were written after reviewing the full "
+        "trajectory, including exploratory dead ends, tooling notes and environment details.",
+    ),
+    (
+        "When to use",
+        "Use this skill whenever the task description, the error output or the surrounding code suggests "
+        "the problem class described below. The skill is broad on purpose so that it covers related "
+        "situations; not every section will apply to every task.",
+    ),
+    (
+        "Background",
+        "Problems of this class are common in production code. They usually arise at the boundary between "
+        "components, where assumptions about inputs, formats and edge cases differ. Historically, teams "
+        "addressed them with ad-hoc fixes; this document consolidates the approaches that worked and the "
+        "context needed to apply them, including background on standards, conventions and history.",
+    ),
+    (
+        "Environment notes",
+        "The original trajectory ran in a Python 3 environment with the standard library only. "
+        "Tests were executed with a plain script runner. Paths, file names and helper scripts from "
+        "the original environment are listed in the references section for completeness.",
+    ),
+    (
+        "Worked example",
+        "In the original run, the first attempt passed the visible checks but failed hidden cases. "
+        "The agent then inspected the failing inputs, compared them with the specification, revised "
+        "the implementation, re-ran the visible checks and finally submitted the corrected version.",
+    ),
+    (
+        "References",
+        "See the standard library documentation for the relevant modules, the project style guide, the "
+        "original issue thread, and the list of auxiliary scripts: check_inputs.py, run_examples.py, "
+        "compare_outputs.py. Additional notes and transcripts are archived with the run.",
+    ),
 ]
 
 
@@ -66,8 +86,10 @@ def render_skill(g: Gene, *, extra_sections: Sequence[tuple[str, str]] = SKILL_B
         if i == 0:
             out += ["## Procedure", "The procedure that worked, with commentary:"]
             for k, s in enumerate(g.strategy, 1):
-                out.append(f"{k}. {s} This step matters because skipping it was a source of errors in the original "
-                           f"run; apply it carefully and document the outcome.")
+                out.append(
+                    f"{k}. {s} This step matters because skipping it was a source of errors in the original "
+                    f"run; apply it carefully and document the outcome."
+                )
             if g.avoid:
                 out += ["", "## Pitfalls observed"]
                 out += [f"- {a} (observed during the original trajectory)" for a in g.avoid]
@@ -80,8 +102,10 @@ def truncate_tokens(text: str, max_tokens: int) -> str:
     return text[: max(0, 4 * max_tokens)]
 
 
-GENE_WRITER_SYSTEM = ("You are a protocol-bound evolution engine. Compliance overrides optimality. "
-                      "You distil what worked (or what would fix a failure) into ONE compact, reusable strategy gene.")
+GENE_WRITER_SYSTEM = (
+    "You are a protocol-bound evolution engine. Compliance overrides optimality. "
+    "You distil what worked (or what would fix a failure) into ONE compact, reusable strategy gene."
+)
 
 GENE_WRITER_PROMPT = """\
 An agent attempted a task and we want a reusable STRATEGY GENE for this class of task: a compact strategy
@@ -126,15 +150,21 @@ Reply with one JSON object in a ```json fence with keys id, category, summary, s
 validation.
 """
 
-DISTILL_VALIDATION_FAITHFUL = ('Validation MUST be LIGHT. Do NOT emit the test suite. Prefer "python --version" (env '
-                               'sanity) or "python <committed-light-script>.py". Good: "python --version".')
-DISTILL_VALIDATION_SAFE = ("Validation MUST be DISCRIMINATIVE: commands that FAIL on the workspace before the fix and "
-                           "PASS after it (e.g. the task's public test script). Never use --version, print-only "
-                           "scripts or empty lists.")
+DISTILL_VALIDATION_FAITHFUL = (
+    'Validation MUST be LIGHT. Do NOT emit the test suite. Prefer "python --version" (env '
+    'sanity) or "python <committed-light-script>.py". Good: "python --version".'
+)
+DISTILL_VALIDATION_SAFE = (
+    "Validation MUST be DISCRIMINATIVE: commands that FAIL on the workspace before the fix and "
+    "PASS after it (e.g. the task's public test script). Never use --version, print-only "
+    "scripts or empty lists."
+)
 
 
-HISTORY_BLOCK_HEAD = ("\nRecent evolution history for these signals (earlier genes in this run and their MEASURED "
-                      "outcome; do NOT repeat a card that failed - change what it got wrong):\n")
+HISTORY_BLOCK_HEAD = (
+    "\nRecent evolution history for these signals (earlier genes in this run and their MEASURED "
+    "outcome; do NOT repeat a card that failed - change what it got wrong):\n"
+)
 
 
 def history_block(entries: Sequence[dict], max_entries: int = 3) -> str:
@@ -143,24 +173,45 @@ def history_block(entries: Sequence[dict], max_entries: int = 3) -> str:
     for e in list(entries)[-max_entries:]:
         steps = "; ".join(str(x).rstrip(". ") for x in (e.get("strategy") or [])[:4])
         avoid = "; ".join(str(x).rstrip(". ") for x in (e.get("avoid") or [])[:3])
-        rows.append(f"- {e.get('id')}: {e.get('outcome')}" + (f" ({e['why']})" if e.get("why") else "")
-                    + f". Summary: {e.get('summary', '')}" + (f" Strategy: {steps}." if steps else "")
-                    + (f" AVOID: {avoid}." if avoid else ""))
+        rows.append(
+            f"- {e.get('id')}: {e.get('outcome')}"
+            + (f" ({e['why']})" if e.get("why") else "")
+            + f". Summary: {e.get('summary', '')}"
+            + (f" Strategy: {steps}." if steps else "")
+            + (f" AVOID: {avoid}." if avoid else "")
+        )
     return (HISTORY_BLOCK_HEAD + "\n".join(rows) + "\n") if rows else ""
 
 
-def gene_writer_prompt(signals: Sequence[str], task_text: str, trace: str, *, hub_block: str = "",
-                       validation_hint: str = "", history: Sequence[dict] = ()) -> str:
-    return GENE_WRITER_PROMPT.format(signals=", ".join(signals), task=task_text[:3000], trace=trace[-2500:],
-                                     hub_block=hub_block + history_block(history), validation_hint=validation_hint)
+def gene_writer_prompt(
+    signals: Sequence[str],
+    task_text: str,
+    trace: str,
+    *,
+    hub_block: str = "",
+    validation_hint: str = "",
+    history: Sequence[dict] = (),
+) -> str:
+    return GENE_WRITER_PROMPT.format(
+        signals=", ".join(signals),
+        task=task_text[:3000],
+        trace=trace[-2500:],
+        hub_block=hub_block + history_block(history),
+        validation_hint=validation_hint,
+    )
 
 
 def _slug(s: str) -> str:
     return re.sub(r"[^a-z0-9_]+", "_", s.lower()).strip("_")[:60] or "gene"
 
 
-def parse_gene(text: str, *, default_id: str = "gene_generated", default_signals: Sequence[str] = (),
-               default_validation: Sequence[str] = ()) -> Optional[Gene]:
+def parse_gene(
+    text: str,
+    *,
+    default_id: str = "gene_generated",
+    default_signals: Sequence[str] = (),
+    default_validation: Sequence[str] = (),
+) -> Gene | None:
     """Parse a gene JSON reply; returns None when nothing usable is found."""
     try:
         d = extract_json(text)
@@ -179,7 +230,13 @@ def parse_gene(text: str, *, default_id: str = "gene_generated", default_signals
     val = d.get("validation")
     val = [str(v) for v in val] if isinstance(val, list) else list(default_validation)
     avoid = [str(a).removeprefix("AVOID:").strip() for a in (d.get("avoid") or []) if str(a).strip()]
-    return Gene(id=gid, category=cat, signals_match=sm[:8], strategy=strategy[:10], avoid=avoid[:5],
-                summary=str(d.get("summary") or strategy[0])[:300], validation=val[:5],
-                preconditions=[str(p) for p in (d.get("preconditions") or [])][:4])
-
+    return Gene(
+        id=gid,
+        category=cat,
+        signals_match=sm[:8],
+        strategy=strategy[:10],
+        avoid=avoid[:5],
+        summary=str(d.get("summary") or strategy[0])[:300],
+        validation=val[:5],
+        preconditions=[str(p) for p in (d.get("preconditions") or [])][:4],
+    )

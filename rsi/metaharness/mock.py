@@ -1,11 +1,12 @@
 """Deterministic offline proposer: library programs chosen only from what the history view exposes."""
+
 from __future__ import annotations
 
 import json
 import random
 import re
 from dataclasses import dataclass
-from typing import Optional, Protocol
+from typing import Protocol
 
 from ..core.artifact import Artifact
 from .proposer import CandidateSpec, ProposalBatch, Proposer
@@ -16,14 +17,14 @@ class Library(Protocol):
     main_file: str
     moves: dict[str, tuple[dict, str, str]]
 
-    def parse(self, files: dict[str, str], name: str) -> Optional[dict]: ...
-    def render(self, genome: dict, base: Optional[Artifact] = None) -> Artifact: ...
+    def parse(self, files: dict[str, str], name: str) -> dict | None: ...
+    def render(self, genome: dict, base: Artifact | None = None) -> Artifact: ...
     def apply(self, genome: dict, move: str) -> dict: ...
     def crossover(self, a: dict, b: dict) -> dict: ...
     def diagnose(self, traces: dict[str, str], per_task: dict[str, str]) -> list[tuple[str, float, str]]: ...
     def summarize(self, traces: dict[str, str]) -> str: ...
     def diagnose_summary(self, summary: str) -> list[tuple[str, float, str]]: ...
-    def leak(self, genome: dict, traces: dict[str, str], per_task: dict[str, str]) -> Optional[dict]: ...
+    def leak(self, genome: dict, traces: dict[str, str], per_task: dict[str, str]) -> dict | None: ...
     def signature(self, genome: dict) -> str: ...
 
 
@@ -36,8 +37,9 @@ class MemoClassifyLibrary:
 
     main_file = "memory.py"
 
-    def __init__(self, budget_hint: Optional[int] = None) -> None:
+    def __init__(self, budget_hint: int | None = None) -> None:
         from ..domains.memoclassify import programs
+
         self.P = programs
         self.moves = programs.ALL_MOVES
         self.budget_hint = int(budget_hint) if budget_hint else programs.DEFAULT_BUDGET_HINT
@@ -46,8 +48,9 @@ class MemoClassifyLibrary:
         src = files.get(self.main_file)
         if src is None:
             return None
-        return self.P.parse(src) or self.P.seed_genome("no_memory" if "NoMemory" in src or "no learning" in src
-                                                        else "fewshot_all")
+        return self.P.parse(src) or self.P.seed_genome(
+            "no_memory" if "NoMemory" in src or "no learning" in src else "fewshot_all"
+        )
 
     def render(self, genome, base=None):
         return Artifact({self.main_file: self.P.render(genome)})
@@ -72,19 +75,30 @@ class MemoClassifyLibrary:
         return g if g.get("lookup") else None
 
     def signature(self, genome):
-        return json.dumps({k: v for k, v in genome.items() if k != "lookup"}, sort_keys=True) + \
-            ("+lookup" if genome.get("lookup") else "")
+        return json.dumps({k: v for k, v in genome.items() if k != "lookup"}, sort_keys=True) + (
+            "+lookup" if genome.get("lookup") else ""
+        )
 
 
 AGENTQA_DEFAULT = {"tool": False, "format": False, "cot": False, "fallback": False, "lookup": {}}
 AGENTQA_MOVES: dict[str, tuple[dict, str, str]] = {
-    "format": ({"format": True}, "A", "Asking for an explicit 'ANSWER: <value>' line and returning only it removes "
-                                      "answer-extraction failures."),
-    "tool": ({"tool": True}, "C", "Having the model write a short Python program and running it replaces error-prone "
-                                  "mental arithmetic and long reasoning with exact computation."),
+    "format": (
+        {"format": True},
+        "A",
+        "Asking for an explicit 'ANSWER: <value>' line and returning only it removes answer-extraction failures.",
+    ),
+    "tool": (
+        {"tool": True},
+        "C",
+        "Having the model write a short Python program and running it replaces error-prone "
+        "mental arithmetic and long reasoning with exact computation.",
+    ),
     "cot": ({"cot": True}, "A", "Step-by-step reasoning improves direct answers."),
-    "fallback": ({"fallback": True}, "C", "When the program fails or prints nothing, fall back to a direct answer "
-                                          "instead of returning an empty string."),
+    "fallback": (
+        {"fallback": True},
+        "C",
+        "When the program fails or prints nothing, fall back to a direct answer instead of returning an empty string.",
+    ),
 }
 
 _AGENTQA_TEMPLATE = '''"""Harness: {doc}"""
@@ -142,14 +156,18 @@ class AgentQALibrary:
         if src is None:
             return None
         from ..domains.memoclassify.programs import read_config
+
         g = read_config(src)
         return {**AGENTQA_DEFAULT, **g} if g is not None else dict(AGENTQA_DEFAULT)
 
     def render(self, genome, base=None):
         g = {**AGENTQA_DEFAULT, **genome}
         doc = ", ".join(k for k in ("tool", "format", "cot", "fallback") if g[k]) or "direct answer"
-        files = dict(base.files) if base is not None else {"prompts/system.md": "You are a helpful assistant.\n",
-                                                             "prompts/task.md": "{question}\n"}
+        files = (
+            dict(base.files)
+            if base is not None
+            else {"prompts/system.md": "You are a helpful assistant.\n", "prompts/task.md": "{question}\n"}
+        )
         files[self.main_file] = _AGENTQA_TEMPLATE.format(doc=doc, config=repr(g))
         return Artifact(files)
 
@@ -174,8 +192,10 @@ class AgentQALibrary:
 
     def summarize(self, traces):
         text = " ".join(traces.values())
-        return (f"{len(traces)} tasks. The harness made {text.count('[llm call')} model calls and "
-                f"{text.count('[python]')} tool calls. Answers are often wrong.")
+        return (
+            f"{len(traces)} tasks. The harness made {text.count('[llm call')} model calls and "
+            f"{text.count('[python]')} tool calls. Answers are often wrong."
+        )
 
     def diagnose_summary(self, summary):
         m = re.search(r"made \d+ model calls and (\d+) tool calls", summary or "")
@@ -191,13 +211,15 @@ class AgentQALibrary:
         return {**genome, "lookup": table} if table else None
 
     def signature(self, genome):
-        return json.dumps({k: genome.get(k) for k in ("tool", "format", "cot", "fallback")}, sort_keys=True) + \
-            ("+lookup" if genome.get("lookup") else "")
+        return json.dumps({k: genome.get(k) for k in ("tool", "format", "cot", "fallback")}, sort_keys=True) + (
+            "+lookup" if genome.get("lookup") else ""
+        )
 
 
 def _agentqa_layout(domain) -> bool:
     """True for AgentQA and domains built on it (e.g. BBH): same harness.py + prompts layout."""
     from ..domains.agentqa import AgentQADomain
+
     return isinstance(domain, AgentQADomain)
 
 
@@ -214,19 +236,18 @@ def library_for(domain) -> Library:
 class _Seen:
     name: str
     genome: dict
-    score: Optional[float]
-    cost: Optional[float]
+    score: float | None
+    cost: float | None
     traces: dict
     per_task: dict
-    summary: Optional[str]
+    summary: str | None
     meta: dict
 
 
 class MockProposer(Proposer):
     """Deterministic proposer; ``leak_rate`` = per-iteration probability of hard-coding answers read from traces."""
 
-    def __init__(self, library: Library, *, leak_rate: float = 0.0, explore_frac: float = 0.5,
-                 seed: int = 0) -> None:
+    def __init__(self, library: Library, *, leak_rate: float = 0.0, explore_frac: float = 0.5, seed: int = 0) -> None:
         self.lib = library
         self.leak_rate = leak_rate
         self.explore_frac = explore_frac
@@ -264,8 +285,7 @@ class MockProposer(Proposer):
                         scanned.append(f"candidates/{name}/{p}")
                     except (ValueError, AttributeError):
                         pass
-            seen.append(_Seen(name, genome, score, cost, traces, per_task, files.get("eval/search/summary.md"),
-                              meta))
+            seen.append(_Seen(name, genome, score, cost, traces, per_task, files.get("eval/search/summary.md"), meta))
         return seen, scanned
 
     def propose(self, *, iteration, view, k, brief, artifacts, seed=0):
@@ -318,8 +338,12 @@ class MockProposer(Proposer):
                 break
             used(parent)
             genome, move, evidence, parents = None, None, "", [parent.name]
-            if self.leak_rate > 0 and not leak_done and rng.random() < self.leak_rate and \
-                    (parent.traces or parent.per_task):
+            if (
+                self.leak_rate > 0
+                and not leak_done
+                and rng.random() < self.leak_rate
+                and (parent.traces or parent.per_task)
+            ):
                 g = self.lib.leak(parent.genome, parent.traces, parent.per_task)
                 if g is not None:
                     genome, move, evidence = g, "lookup", "hard-coded answers read from search traces"
@@ -327,12 +351,14 @@ class MockProposer(Proposer):
                     read_traces(parent, per_task=True)
             if genome is None and parent.traces:
                 read_traces(parent, per_task=False)
-                genome, move, evidence = self._informed(parent, self.lib.diagnose(parent.traces, parent.per_task),
-                                                        tried, regressed)
+                genome, move, evidence = self._informed(
+                    parent, self.lib.diagnose(parent.traces, parent.per_task), tried, regressed
+                )
             if genome is None and parent.summary:
                 read.append(f"candidates/{parent.name}/eval/search/summary.md")
-                genome, move, evidence = self._informed(parent, self.lib.diagnose_summary(parent.summary), tried,
-                                                        regressed)
+                genome, move, evidence = self._informed(
+                    parent, self.lib.diagnose_summary(parent.summary), tried, regressed
+                )
             if genome is None and slot % 2 == 1 and len(scored) >= 2:
                 other = scored[1] if scored[0].name == parent.name else scored[0]
                 g = self.lib.crossover(parent.genome, other.genome)
@@ -347,20 +373,28 @@ class MockProposer(Proposer):
                 axis, hyp = self.lib.moves[move][1], self.lib.moves[move][2]
             else:
                 axis, hyp = ("leak" if move == "lookup" else "combo"), evidence
-            out.append(CandidateSpec(safe_name(f"i{iteration:02d}_{slot}_{move}"),
-                                     self.lib.render(genome, artifacts.get(parent.name)), hypothesis=hyp,
-                                     axis="exploitation" if slot == 0 else "exploration",
-                                     components=[move, f"axis:{axis}"], base_system=parent.name,
-                                     parents_read=parents, meta={"move": move, "evidence": evidence}))
+            out.append(
+                CandidateSpec(
+                    safe_name(f"i{iteration:02d}_{slot}_{move}"),
+                    self.lib.render(genome, artifacts.get(parent.name)),
+                    hypothesis=hyp,
+                    axis="exploitation" if slot == 0 else "exploration",
+                    components=[move, f"axis:{axis}"],
+                    base_system=parent.name,
+                    parents_read=parents,
+                    meta={"move": move, "evidence": evidence},
+                )
+            )
         batch.candidates = out
         batch.files_read = sorted(set(p for p in read if p in view))
         batch.files_scanned = sorted(set(scanned) - set(batch.files_read))
-        batch.transcript = "\n".join(f"{c.name}: {c.meta['move']} on {c.base_system} ({c.meta['evidence']})"
-                                     for c in out)
+        batch.transcript = "\n".join(
+            f"{c.name}: {c.meta['move']} on {c.base_system} ({c.meta['evidence']})" for c in out
+        )
         return batch
 
     @staticmethod
-    def _parent_hint(view: dict[str, str]) -> Optional[str]:
+    def _parent_hint(view: dict[str, str]) -> str | None:
         if PARENT_HINT not in view:
             return None
         try:
@@ -403,30 +437,36 @@ class MockProposer(Proposer):
                     lines.append(f"- {name} ({move} on {base}): not evaluated ({r.get('outcome')})")
                     continue
                 bs = by.get(base)
-                d = (100 * (s.score - bs.score)) if (s and bs and s.score is not None and bs.score is not None) \
+                d = (
+                    (100 * (s.score - bs.score))
+                    if (s and bs and s.score is not None and bs.score is not None)
                     else None
-                lines.append(f"- {name} ({move} on {base}): search {r.get('avg_val')}%"
-                             + (f" ({d:+.1f} pts vs base)" if d is not None else "")
-                             + f", context {float(r.get('context_cost') or 0):.0f} chars")
+                )
+                lines.append(
+                    f"- {name} ({move} on {base}): search {r.get('avg_val')}%"
+                    + (f" ({d:+.1f} pts vs base)" if d is not None else "")
+                    + f", context {float(r.get('context_cost') or 0):.0f} chars"
+                )
                 pu, pb = per_unit.get(name, {}), per_unit.get(base, {})
                 ups = [f"{u} {100 * (v - pb[u]):+.1f}" for u, v in pu.items() if u in pb and v > pb[u]]
                 downs = [f"{u} {100 * (v - pb[u]):+.1f}" for u, v in pu.items() if u in pb and v < pb[u]]
                 if pb:
                     lines.append(f"  improved: {', '.join(ups) or 'none'}; regressed: {', '.join(downs) or 'none'}")
                 if d is not None:
-                    lines.append(f"  takeaway: `{move}` {'helped' if d > 0 else 'did not help' if d == 0 else 'hurt'}"
-                                 f" on {base}")
+                    lines.append(
+                        f"  takeaway: `{move}` {'helped' if d > 0 else 'did not help' if d == 0 else 'hurt'} on {base}"
+                    )
             out[path] = "\n".join(lines[:30]) + "\n"
         return out
 
-    def _parent(self, pool: list[_Seen], slot: int, rng: random.Random) -> Optional[_Seen]:
+    def _parent(self, pool: list[_Seen], slot: int, rng: random.Random) -> _Seen | None:
         if not pool:
             return None
         if slot == 0 or len(pool) == 1:
             return pool[0]
         front = [s for s in pool if s.name in getattr(self, "_front", [])]
         if slot % 2 == 1 and len(front) > 1 and rng.random() < self.explore_frac:
-            return front[rng.randrange(1, len(front))]            # a cheaper frontier member
+            return front[rng.randrange(1, len(front))]  # a cheaper frontier member
         with_cost = [s for s in pool[:6] if s.cost is not None]
         if slot % 2 == 1 and not front and with_cost and rng.random() < self.explore_frac:
             return min(with_cost, key=lambda s: (s.cost, -(s.score or 0)))
@@ -444,7 +484,7 @@ class MockProposer(Proposer):
         return bad
 
     def _informed(self, parent: _Seen, suggestions, tried, regressed):
-        for move, weight, evidence in sorted(suggestions, key=lambda x: -x[1] * (0.3 if x[0] in regressed else 1)):
+        for move, _weight, evidence in sorted(suggestions, key=lambda x: -x[1] * (0.3 if x[0] in regressed else 1)):
             if move not in self.lib.moves:
                 continue
             g = self.lib.apply(parent.genome, move)

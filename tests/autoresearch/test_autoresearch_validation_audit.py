@@ -1,5 +1,8 @@
 """The shadow monitor stays outside the loop's budgets; the proposer sees history but never a sealed number."""
+
 import time
+
+import pytest
 
 from rsi.autoresearch import AutoresearchLoop, Config, LandscapeTask, LLMResearchAgent, MockResearchAgent, scripted_llm
 from rsi.core import MockLLM, RewriteEditor
@@ -28,10 +31,12 @@ class _SlowAuditLandscape(LandscapeTask):
 
 def _loop(tmp_path, name, task, monitor, llms=(), **cfg):
     config = Config(plot=False, hidden_audit=False, shadow_monitor=monitor, **cfg)
-    return AutoresearchLoop(task, MockResearchAgent(task.mock_edit_pool(), seed=1), config, out_dir=tmp_path / name,
-                            llms=llms)
+    return AutoresearchLoop(
+        task, MockResearchAgent(task.mock_edit_pool(), seed=1), config, out_dir=tmp_path / name, llms=llms
+    )
 
 
+@pytest.mark.slow
 def test_monitor_time_does_not_consume_wall_budget(tmp_path):
     def slow():  # each audit takes 0.6 s of the 1.0 s wall budget
         return _SlowAuditLandscape(seed=3, audit_s=0.6, run_s=0.05)
@@ -66,8 +71,13 @@ def test_proposer_prompt_has_history_and_no_sealed_numbers(tmp_path):
         return inner(prompt, system, seed, i)
 
     llm.responder = record
-    res = AutoresearchLoop(task, LLMResearchAgent(RewriteEditor(llm)), Config(max_experiments=8, plot=False),
-                           out_dir=tmp_path / "p", llms=[llm]).run()
+    res = AutoresearchLoop(
+        task,
+        LLMResearchAgent(RewriteEditor(llm)),
+        Config(max_experiments=8, plot=False),
+        out_dir=tmp_path / "p",
+        llms=[llm],
+    ).run()
     sealed = [v["S"] for e in load_trace(res.out_dir) if e["kind"] == "monitor" for v in e["data"]["sealed"].values()]
     assert sealed and len(seen) >= 8
     for p in seen:
@@ -85,8 +95,13 @@ def test_sanitized_reply_debris_is_visible_in_the_trace(tmp_path):
         return clean.responder(prompt, system, seed, i).rstrip("\n") + "\n```\nCo-Authored-By: X <x@y>\n"
 
     llm = MockLLM(dirty)
-    res = AutoresearchLoop(task, LLMResearchAgent(RewriteEditor(llm)), Config(max_experiments=3, plot=False),
-                           out_dir=tmp_path / "s", llms=[llm]).run()
+    res = AutoresearchLoop(
+        task,
+        LLMResearchAgent(RewriteEditor(llm)),
+        Config(max_experiments=3, plot=False),
+        out_dir=tmp_path / "s",
+        llms=[llm],
+    ).run()
     props = [e["data"] for e in load_trace(res.out_dir) if e["kind"] == "proposal"]
     assert props and all(p["sanitized"] for p in props if not p["error"])
     assert all("Co-Authored-By" not in p["diff"] and "```" not in p["diff"] for p in props)

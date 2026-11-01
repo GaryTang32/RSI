@@ -1,8 +1,9 @@
 """Gene injection into a frozen harness, validation workspaces, and routed evaluation of a gene library."""
+
 from __future__ import annotations
 
 import json
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from rsi.core import Artifact, Domain, Execution, Task
 
@@ -24,16 +25,18 @@ class Injector:
 class FileInjector(Injector):
     """Writes each rendered gene card to ``<directory>/<i>.md`` (the default; domains read that directory)."""
 
-    def __init__(self, directory: str = "genes/active", parts: Sequence[str] = ("keywords", "summary", "strategy",
-                                                                                "avoid")) -> None:
+    def __init__(
+        self, directory: str = "genes/active", parts: Sequence[str] = ("keywords", "summary", "strategy", "avoid")
+    ) -> None:
         self.directory = directory.rstrip("/")
         self.parts = tuple(parts)
 
     def inject(self, artifact: Artifact, genes: Sequence[Gene]) -> Artifact:
         if not genes:
             return artifact
-        return artifact.with_files({f"{self.directory}/{i}.md": render_gene(g, self.parts)
-                                    for i, g in enumerate(genes)})
+        return artifact.with_files(
+            {f"{self.directory}/{i}.md": render_gene(g, self.parts) for i, g in enumerate(genes)}
+        )
 
 
 class AppendInjector(Injector):
@@ -75,8 +78,9 @@ class TextInjector(Injector):
 
 def public_task(task: Task) -> dict:
     """What an agent may see about a task (never the target)."""
-    meta = {k: v for k, v in (task.meta or {}).items() if k in ("signals", "keywords", "public", "signature",
-                                                                   "description")}
+    meta = {
+        k: v for k, v in (task.meta or {}).items() if k in ("signals", "keywords", "public", "signature", "description")
+    }
     return {"id": task.id, "family": task.family, "input": task.input, "meta": meta}
 
 
@@ -120,8 +124,15 @@ def read_library(artifact: Artifact) -> list[Gene]:
 class GeneRoutedDomain(Domain):
     """Evaluates ``harness + genes/library.json``: per task, inject the best-matching gene (scorer only)."""
 
-    def __init__(self, base: Domain, *, injector: Optional[Injector] = None, extractor=None,
-                 scorer: Optional[GeneScorer] = None, max_genes: int = 1) -> None:
+    def __init__(
+        self,
+        base: Domain,
+        *,
+        injector: Injector | None = None,
+        extractor=None,
+        scorer: GeneScorer | None = None,
+        max_genes: int = 1,
+    ) -> None:
         super().__init__(base.tasks)
         self.base = base
         self.name = f"routed:{base.name}"

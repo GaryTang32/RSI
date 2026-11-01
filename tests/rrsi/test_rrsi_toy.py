@@ -1,4 +1,5 @@
 """Overfitting-trap toy: a bit-exact port of the overview page's JavaScript (reference values from Node 22)."""
+
 import pytest
 
 from rsi.rrsi.toy import gauss, mulberry32, simulate
@@ -32,4 +33,4 @@ def test_default_curve_head_and_verdict():
     assert r.plain_ev[:5] == pytest.approx(NODE_PLAIN_EV_HEAD, abs=1e-12)
     assert r.verdict() == "The guarded loop practises worse but transfers better."
     assert len(r.finals["guarded_unseen"]) == 200
-    assert simulate(band_z=2.0).acc_reg < r.acc_reg       # RRSI's z=2 band is stricter than the demo's half-sd band
+    assert simulate(band_z=2.0).acc_reg < r.acc_reg  # RRSI's z=2 band is stricter than the demo's half-sd band

@@ -1,12 +1,23 @@
 """Consumer-side quarantine: lint a fetched gene, then A/B it on the consumer's own held-out tasks (spec §9.2.6)."""
+
 from __future__ import annotations
 
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Optional, Sequence
 
-from rsi.core import (Artifact, Domain, Evaluator, GateContext, LLM, RRSIGate, Scored, fixed_noise,
-                      noise_from_trials, paired_diff_ci)
+from rsi.core import (
+    LLM,
+    Artifact,
+    Domain,
+    Evaluator,
+    GateContext,
+    RRSIGate,
+    Scored,
+    fixed_noise,
+    noise_from_trials,
+    paired_diff_ci,
+)
 
 from .assets import Gene
 from .hashing import sha256_text
@@ -32,10 +43,24 @@ class QuarantineGate:
     """Promote iff the A/B passes ``gate``: ``rrsi`` (RRSIGate noise floor and cost rule, and dS > 0) or ``lcb``
     (paired lower confidence bound > 0). The proof (task hash, dS, delta, n) goes with the adoption report."""
 
-    def __init__(self, domain: Domain, harness: Artifact, llm: Optional[LLM], tasks: Sequence, *,
-                 injector: Optional[Injector] = None, extractor: Optional[TaskSignalExtractor] = None, k: int = 2,
-                 n_max: int = 12, min_tasks: int = 3, gate: str = "rrsi", delta: Optional[float] = None,
-                 z: float = 2.0, policy: Optional[CommandPolicy] = None, seed: int = 0) -> None:
+    def __init__(
+        self,
+        domain: Domain,
+        harness: Artifact,
+        llm: LLM | None,
+        tasks: Sequence,
+        *,
+        injector: Injector | None = None,
+        extractor: TaskSignalExtractor | None = None,
+        k: int = 2,
+        n_max: int = 12,
+        min_tasks: int = 3,
+        gate: str = "rrsi",
+        delta: float | None = None,
+        z: float = 2.0,
+        policy: CommandPolicy | None = None,
+        seed: int = 0,
+    ) -> None:
         self.domain, self.harness, self.llm = domain, harness, llm
         self.tasks = list(tasks)
         self.injector = injector or FileInjector()
@@ -48,7 +73,7 @@ class QuarantineGate:
         self.ev = Evaluator(domain, llm, workers=1, allow_sealed=True)
         self.rng = random.Random(seed)
         self._sig = {t.id: self.extractor.extract(RunContext(task=t)) for t in self.tasks}
-        self.last: dict = {}           # the last A/B's EvalResults, for traces only
+        self.last: dict = {}  # the last A/B's EvalResults, for traces only
 
     def test(self, g: Gene) -> QuarantineResult:
         self.last = {}
@@ -73,8 +98,15 @@ class QuarantineGate:
             noise = fixed_noise(0.05)
         dS = cand.score - base.score
         # S_base lets the hub tell a no-headroom report (baseline at ceiling) from a real "no gain"
-        proof = {"tasks_hash": sha256_text("|".join(sorted(t.id for t in scope)))[:16], "dS": dS,
-                 "delta": noise.delta, "n": len(scope), "k": self.k, "S_base": base.score, "S_gene": cand.score}
+        proof = {
+            "tasks_hash": sha256_text("|".join(sorted(t.id for t in scope)))[:16],
+            "dS": dS,
+            "delta": noise.delta,
+            "n": len(scope),
+            "k": self.k,
+            "S_base": base.score,
+            "S_gene": cand.score,
+        }
         res = QuarantineResult(False, "", dS, noise.delta, len(scope), base.score, cand.score, proof)
         if self.gate == "lcb":
             ids = sorted(base.task_scores())
@@ -82,9 +114,15 @@ class QuarantineGate:
             res.promote = d["lo"] > 0
             res.reason = f"paired LCB {d['lo']:+.3f} {'>' if res.promote else '<='} 0"
             return res
-        v = RRSIGate().check(Scored.from_eval(cand), Scored.from_eval(base),
-                             GateContext(best_score=base.score, delta=noise.delta))
+        v = RRSIGate().check(
+            Scored.from_eval(cand), Scored.from_eval(base), GateContext(best_score=base.score, delta=noise.delta)
+        )
         res.promote = bool(v.accept) and dS > 0
-        res.reason = v.reason if not v.accept else (f"admissible and dS={dS:+.3f} > 0" if dS > 0 else
-                                                    f"admissible but dS={dS:+.3f} <= 0 (incumbent kept)")
+        res.reason = (
+            v.reason
+            if not v.accept
+            else (
+                f"admissible and dS={dS:+.3f} > 0" if dS > 0 else f"admissible but dS={dS:+.3f} <= 0 (incumbent kept)"
+            )
+        )
         return res

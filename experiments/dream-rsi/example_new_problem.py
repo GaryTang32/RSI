@@ -1,7 +1,8 @@
 """Dream-RSI on a NEW problem (the pattern to copy): evolve approx.py whose coeffs() approximate exp(x) on [0, 1].
 
-    python experiments/dream-rsi/example_new_problem.py [--llm sim|claude:haiku]
+python experiments/dream-rsi/example_new_problem.py [--llm sim|claude:haiku]
 """
+
 import ast
 
 import numpy as np
@@ -34,17 +35,24 @@ def mutate(parent, rng, ctx):  # offline stand-in for a coding agent: nudge one 
 
 def main():
     a = parse_args("Dream-RSI on a new problem", default_seeds=1)
-    desc = ("Write approx.py whose coeffs() returns polynomial coefficients (c0 + c1 x + ...) approximating exp(x) "
-            "on [0, 1].")
-    domain = FunctionDomain(TaskSuite([Task("exp01", None)], {"evolve": ["exp01"]}), execute, grade,
-                            name="poly-exp", description=desc)
+    desc = (
+        "Write approx.py whose coeffs() returns polynomial coefficients (c0 + c1 x + ...) approximating exp(x) "
+        "on [0, 1]."
+    )
+    domain = FunctionDomain(
+        TaskSuite([Task("exp01", None)], {"evolve": ["exp01"]}), execute, grade, name="poly-exp", description=desc
+    )
     seed = Artifact({"approx.py": "C = [1.0, 1.0, 0.5, 0.0]\n\ndef coeffs():\n    return C\n"})
     llm = llm_of(a.llm)
     task = DomainTask(domain, seed, directions=["c0", "c1", "c2", "c3"])  # direction = which coefficient to work on
     agent = EditorAgent(llm, editable=["approx.py"]) if llm else ParametricAgent(mutate)
     dev = LLMPolicyDeveloper(llm) if llm else None  # None -> offline ParametricMutator
-    res = run(task, config=Config(rounds=3 if llm else 6, W=4, branch_count=4, refine_count=3, M=4,
-                                  sandbox="subprocess"), agent=agent, developer=dev)
+    res = run(
+        task,
+        config=Config(rounds=3 if llm else 6, W=4, branch_count=4, refine_count=3, M=4, sandbox="subprocess"),
+        agent=agent,
+        developer=dev,
+    )
     print("seed score", round(res.meta["seed_score"], 4), "-> best", round(res.meta["best_score"], 4))
     print("calls per live search:", [r["calls"] for r in res.trajectory])
     print(res.best["approx.py"])

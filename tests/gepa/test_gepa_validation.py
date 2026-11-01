@@ -1,4 +1,5 @@
 """GEPA audit trace (``rsi.trace`` format): write-only, complete and consistent with the ledger and artifact store."""
+
 from pathlib import Path
 
 import pytest
@@ -11,8 +12,21 @@ from rsi.gepa import Config, run
 from rsi.gepa.tracing import ShadowLLM, default_shadow_splits
 from rsi.trace import inspect, load_trace
 
-KINDS = {"run_start", "noise", "baseline", "round_start", "note", "analysis", "proposal", "eval", "gate", "decision",
-         "state", "monitor", "run_end"}
+KINDS = {
+    "run_start",
+    "noise",
+    "baseline",
+    "round_start",
+    "note",
+    "analysis",
+    "proposal",
+    "eval",
+    "gate",
+    "decision",
+    "state",
+    "monitor",
+    "run_end",
+}
 
 
 def decisions(res) -> list:
@@ -32,8 +46,16 @@ def rw(ruleworld_run):
 @pytest.fixture
 def agentqa(agentqa_run):
     def go(out_dir, monitor: bool, budget=None, task_llm=SimModel):
-        return agentqa_run(task_llm, max_metric_calls=90, workers=2, shadow_monitor=monitor, shadow_workers=2,
-                           out_dir=out_dir, budget=budget)
+        return agentqa_run(
+            task_llm,
+            max_metric_calls=90,
+            workers=2,
+            shadow_monitor=monitor,
+            shadow_workers=2,
+            out_dir=out_dir,
+            budget=budget,
+        )
+
     return go
 
 
@@ -47,7 +69,7 @@ class CostlySim(SimModel):
 
 
 def test_trace_and_monitor_are_write_only_ruleworld(tmp_path, rw):
-    a = rw(tmp_path / "a")                                  # trace + shadow monitor (sealed test split)
+    a = rw(tmp_path / "a")  # trace + shadow monitor (sealed test split)
     b = rw(tmp_path / "b", shadow_monitor=False)
     c = rw(tmp_path / "c", trace=False)
     e = rw(None)
@@ -69,7 +91,7 @@ def test_trace_and_monitor_are_write_only_agentqa_and_spend_is_separate(tmp_path
     assert decisions(a) == decisions(b) and a.trajectory == b.trajectory
     mon = [x for x in load_trace(tmp_path / "a") if x["kind"] == "monitor"]
     assert mon and set(mon[0]["data"]["sealed"]) == {"holdout", "ood"}
-    assert not any(r.startswith("shadow") for r in a.usage)            # loop usage excludes the monitor
+    assert not any(r.startswith("shadow") for r in a.usage)  # loop usage excludes the monitor
     assert a.meta["shadow_usage"]["_total"]["calls"] > 0
     assert b.meta["shadow_usage"]["_total"]["calls"] == 0
     assert a.usage["task"] == b.usage["task"]
@@ -80,7 +102,7 @@ def test_usd_stopper_never_sees_monitor_spend(tmp_path, agentqa):
     b = agentqa(tmp_path / "b", False, Budget(max_usd=0.12), CostlySim)
     assert a.stop_reason == b.stop_reason == "max_usd"
     assert decisions(a) == decisions(b)
-    assert a.meta["shadow_usage"]["_total"]["cost_usd"] > 0.01       # the monitor did spend, off the books
+    assert a.meta["shadow_usage"]["_total"]["cost_usd"] > 0.01  # the monitor did spend, off the books
 
 
 def test_trace_is_complete_and_consistent(tmp_path, rw):
@@ -111,8 +133,11 @@ def test_trace_is_complete_and_consistent(tmp_path, rw):
         elif kind == "decision" and dd["event"] in ("rejected", "merge_rejected"):
             assert ledger[dd["proposal"]].status == "rejected"
     # the monitor observed the seed and every change of incumbent, nothing else
-    changes = ["c0"] + [x["data"]["incumbent_after"] for x in ev if x["kind"] == "decision"
-                        and x["data"]["incumbent_after"] != x["data"]["incumbent_before"]]
+    changes = ["c0"] + [
+        x["data"]["incumbent_after"]
+        for x in ev
+        if x["kind"] == "decision" and x["data"]["incumbent_after"] != x["data"]["incumbent_before"]
+    ]
     assert [x["data"]["version"] for x in ev if x["kind"] == "monitor"] == changes
     assert changes[-1] == f"c{res.meta['best_idx']}"
     md = Path(inspect(tmp_path / "r")).read_text()
@@ -121,9 +146,14 @@ def test_trace_is_complete_and_consistent(tmp_path, rw):
 
 def test_trace_records_critic_and_hard_budget(tmp_path):
     d = make_domain(seed=0)
-    res = run(d, d.seed_artifact(), llm_propose=RuleWorldReflectionLM(d.world, ReflectionProfile(q_copy=0.8)),
-              config=Config(max_metric_calls=301, budget_mode="hard"), out_dir=tmp_path,
-              critic=LeakageCritic(d.leakage_terms("evolve")))
+    res = run(
+        d,
+        d.seed_artifact(),
+        llm_propose=RuleWorldReflectionLM(d.world, ReflectionProfile(q_copy=0.8)),
+        config=Config(max_metric_calls=301, budget_mode="hard"),
+        out_dir=tmp_path,
+        critic=LeakageCritic(d.leakage_terms("evolve")),
+    )
     ev = load_trace(tmp_path)
     assert any(x["kind"] == "critic" and not x["data"]["accept"] for x in ev)
     assert any(x["kind"] == "decision" and x["data"]["event"] == "critic_rejected" for x in ev)
@@ -136,8 +166,13 @@ def test_resume_appends_to_the_trace(tmp_path):
     lm = RuleWorldReflectionLM(d.world)
 
     def iterations(n: int, out_dir=None):
-        return run(d, d.seed_artifact(), llm_propose=lm, config=Config(max_metric_calls=None, max_iterations=n),
-                   out_dir=out_dir)
+        return run(
+            d,
+            d.seed_artifact(),
+            llm_propose=lm,
+            config=Config(max_metric_calls=None, max_iterations=n),
+            out_dir=out_dir,
+        )
 
     iterations(3, tmp_path)
     resumed = iterations(6, tmp_path)

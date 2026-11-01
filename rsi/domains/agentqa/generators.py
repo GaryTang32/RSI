@@ -1,20 +1,60 @@
 """Procedurally generated AgentQA question families with exact answers (generic harness skills help on all)."""
+
 from __future__ import annotations
 
 import datetime as _dt
 import math
 import random
 import string
-from typing import Callable
+from collections.abc import Callable
 
 from ...core.tasks import Task, TaskSuite
 from .hard import HARD_FAMILIES
 
-NAMES = ["Avery", "Blake", "Casey", "Devon", "Emery", "Finley", "Harper", "Jordan", "Kendall", "Logan", "Morgan",
-         "Parker", "Quinn", "Reese", "Riley", "Rowan", "Sawyer", "Taylor"]
+NAMES = [
+    "Avery",
+    "Blake",
+    "Casey",
+    "Devon",
+    "Emery",
+    "Finley",
+    "Harper",
+    "Jordan",
+    "Kendall",
+    "Logan",
+    "Morgan",
+    "Parker",
+    "Quinn",
+    "Reese",
+    "Riley",
+    "Rowan",
+    "Sawyer",
+    "Taylor",
+]
 GOODS = ["crates", "boxes", "pallets", "bottles", "lamps", "chairs", "tablets", "bicycles", "kettles", "helmets"]
-WORDS = ["river", "carrot", "mirror", "terror", "barrier", "orbit", "parrot", "error", "reward", "harbor", "mortar",
-         "stream", "garden", "border", "cherry", "arrow", "rover", "clover", "marker", "sparrow", "tractor"]
+WORDS = [
+    "river",
+    "carrot",
+    "mirror",
+    "terror",
+    "barrier",
+    "orbit",
+    "parrot",
+    "error",
+    "reward",
+    "harbor",
+    "mortar",
+    "stream",
+    "garden",
+    "border",
+    "cherry",
+    "arrow",
+    "rover",
+    "clover",
+    "marker",
+    "sparrow",
+    "tractor",
+]
 
 
 def _arith(rng: random.Random):
@@ -24,15 +64,19 @@ def _arith(rng: random.Random):
     if kind == 0:
         a, b, c = rng.randint(10000, 99999), rng.randint(1000, 9999), rng.randint(1000, 9999)
         d, e = rng.randint(12, 97), rng.randint(113, 987)
-        q = (f"A warehouse run by {name} starts with {a} {good}. It receives {b} {good} on Monday and ships out "
-             f"{c} {good} on Tuesday. Then it receives {d} shipments of {e} {good} each. How many {good} are in the "
-             f"warehouse now?")
+        q = (
+            f"A warehouse run by {name} starts with {a} {good}. It receives {b} {good} on Monday and ships out "
+            f"{c} {good} on Tuesday. Then it receives {d} shipments of {e} {good} each. How many {good} are in the "
+            f"warehouse now?"
+        )
         ans = a + b - c + d * e
     elif kind == 1:
         n, p = rng.randint(13, 89), rng.randint(17, 389)
         m = (n * p) // 100 + rng.randint(1, 9)
-        q = (f"{name} buys {n} {good} at ${p} each and pays with {m} bills of $100. How much change, in dollars, "
-             f"does {name} receive?")
+        q = (
+            f"{name} buys {n} {good} at ${p} each and pays with {m} bills of $100. How much change, in dollars, "
+            f"does {name} receive?"
+        )
         ans = m * 100 - n * p
     elif kind == 2:
         a, b, c, d = rng.randint(1000, 9999), rng.randint(100, 999), rng.randint(1000, 9999), rng.randint(10, 99)
@@ -44,8 +88,10 @@ def _arith(rng: random.Random):
         pct = rng.choice([2, 4, 5, 8, 10, 20, 25])
         total = per_hour * hours * days
         total -= total % 100  # make the percentage exact
-        q = (f"A factory produces {good} and over a season makes {total} of them. {name} finds that {pct}% of them "
-             f"are defective. How many {good} are NOT defective?")
+        q = (
+            f"A factory produces {good} and over a season makes {total} of them. {name} finds that {pct}% of them "
+            f"are defective. How many {good} are NOT defective?"
+        )
         ans = total - total * pct // 100
     else:
         a, b = rng.randint(1000, 9999), rng.randint(1000, 9999)
@@ -59,9 +105,9 @@ def _numeric(rng: random.Random):
     name = rng.choice(NAMES)
     if kind == 0:
         a, k = rng.randint(13, 97), rng.randint(9, 15)
-        q, ans = f"What is the sum of the decimal digits of {a}^{k}?", sum(map(int, str(a ** k)))
+        q, ans = f"What is the sum of the decimal digits of {a}^{k}?", sum(map(int, str(a**k)))
     elif kind == 1:
-        a, m = rng.randint(10 ** 13, 10 ** 14), rng.randint(101, 997)
+        a, m = rng.randint(10**13, 10**14), rng.randint(101, 997)
         q, ans = f"What is {a} mod {m}?", a % m
     elif kind == 2:
         b, n, m = rng.randint(3, 19), rng.randint(100, 900), rng.randint(101, 997)
@@ -69,12 +115,14 @@ def _numeric(rng: random.Random):
     elif kind == 3:
         xs = [rng.randint(10000, 99999) for _ in range(6)]
         ys = [rng.randint(11, 99) for _ in range(3)]
-        q = (f"{name}'s ledger starts at {xs[0]}. Add {xs[1]}, subtract {xs[2]}, add {ys[0]} payments of {xs[3]}, "
-             f"subtract {ys[1]} refunds of {xs[4]}, and add {ys[2]} deposits of {xs[5]}. What is the final balance?")
+        q = (
+            f"{name}'s ledger starts at {xs[0]}. Add {xs[1]}, subtract {xs[2]}, add {ys[0]} payments of {xs[3]}, "
+            f"subtract {ys[1]} refunds of {xs[4]}, and add {ys[2]} deposits of {xs[5]}. What is the final balance?"
+        )
         ans = xs[0] + xs[1] - xs[2] + xs[3] * ys[0] - xs[4] * ys[1] + xs[5] * ys[2]
     elif kind == 4:
         a, k = rng.randint(11, 99), rng.randint(8, 14)
-        q, ans = f"How many 1 bits are in the binary representation of {a}^{k}?", bin(a ** k).count("1")
+        q, ans = f"How many 1 bits are in the binary representation of {a}^{k}?", bin(a**k).count("1")
     else:
         n = rng.randint(25, 70)
         q = f"What is the sum of the decimal digits of {n}! ({n} factorial)?"
@@ -99,8 +147,11 @@ def _numbertheory(rng: random.Random):
         q = f"How many prime numbers p satisfy {n} <= p <= {n + 150}?"
         return q, str(sum(_isprime(x) for x in range(n, n + 151))), []
     n, k = rng.randint(40, 90), rng.randint(9, 20)
-    return (f"What is the sum of the decimal digits of C({n},{k}), the binomial coefficient '{n} choose {k}'?",
-            str(sum(map(int, str(math.comb(n, k))))), [])
+    return (
+        f"What is the sum of the decimal digits of C({n},{k}), the binomial coefficient '{n} choose {k}'?",
+        str(sum(map(int, str(math.comb(n, k))))),
+        [],
+    )
 
 
 def _dates(rng: random.Random):
@@ -112,8 +163,10 @@ def _dates(rng: random.Random):
     else:
         n = rng.randint(50, 2000)
         target = base + _dt.timedelta(days=n)
-        q = (f"{base.isoformat()} was a {base.strftime('%A')}. What day of the week is it {n} days later? "
-             f"Answer with the weekday name.")
+        q = (
+            f"{base.isoformat()} was a {base.strftime('%A')}. What day of the week is it {n} days later? "
+            f"Answer with the weekday name."
+        )
         ans = target.strftime("%A")
     return q, ans, []
 
@@ -170,15 +223,27 @@ def _units(rng: random.Random):
 
 
 FAMILIES: dict[str, Callable[[random.Random], tuple[str, str, list]]] = {
-    "numeric": _numeric, "dates": _dates, "numbertheory": _numbertheory, "strings": _strings, "lists": _lists,
-    "arith": _arith, "units": _units, **HARD_FAMILIES,
+    "numeric": _numeric,
+    "dates": _dates,
+    "numbertheory": _numbertheory,
+    "strings": _strings,
+    "lists": _lists,
+    "arith": _arith,
+    "units": _units,
+    **HARD_FAMILIES,
 }
 
 
-def make_suite(n_evolve: int = 20, n_holdout: int = 20, n_ood_per_family: int = 6,
-               practice_families: tuple[str, ...] = ("numeric",),
-               ood_families: tuple[str, ...] = ("dates", "numbertheory", "strings", "lists"), n_val: int = 0,
-               seed: int = 0, dedupe: bool = True) -> TaskSuite:
+def make_suite(
+    n_evolve: int = 20,
+    n_holdout: int = 20,
+    n_ood_per_family: int = 6,
+    practice_families: tuple[str, ...] = ("numeric",),
+    ood_families: tuple[str, ...] = ("dates", "numbertheory", "strings", "lists"),
+    n_val: int = 0,
+    seed: int = 0,
+    dedupe: bool = True,
+) -> TaskSuite:
     """Evolve/val/holdout from the practice families and ood from the unseen ones, one RNG stream per split."""
     tasks: list[Task] = []
     splits: dict[str, list[str]] = {"evolve": [], "holdout": [], "ood": []}
@@ -203,7 +268,7 @@ def make_suite(n_evolve: int = 20, n_holdout: int = 20, n_ood_per_family: int = 
             add("ood", fam, rng, i)
     splits["smoke"] = splits["evolve"][:2]
     suite = TaskSuite(tasks, splits, name=f"agentqa-s{seed}")
-    return decontaminate(suite) if dedupe else suite   # dedupe=False reproduces older recorded suites
+    return decontaminate(suite) if dedupe else suite  # dedupe=False reproduces older recorded suites
 
 
 def decontaminate(suite: TaskSuite) -> TaskSuite:
@@ -232,7 +297,7 @@ def decontaminate(suite: TaskSuite) -> TaskSuite:
     out = TaskSuite(suite.tasks.values(), {k: splits[k] for k in suite.splits}, name=suite.name)
     for name in suite.splits:
         if suite.is_sealed(name):
-            out.seal(name)          # includes custom splits sealed with suite.seal(...)
+            out.seal(name)  # includes custom splits sealed with suite.seal(...)
         else:
             out.unseal(name)
     return out

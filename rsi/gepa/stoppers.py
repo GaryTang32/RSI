@@ -1,9 +1,10 @@
 """Stop conditions (``gepa/utils/stop_condition.py``): ``stopper(engine) -> reason or None``."""
+
 from __future__ import annotations
 
 import time
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Callable, Optional, Sequence
 
 
 class _Limit:
@@ -12,17 +13,17 @@ class _Limit:
 
 
 class MaxMetricCalls(_Limit):
-    def __call__(self, eng) -> Optional[str]:
+    def __call__(self, eng) -> str | None:
         return "max_metric_calls" if eng.state.counter.total >= self.n else None
 
 
 class MaxIterations(_Limit):
-    def __call__(self, eng) -> Optional[str]:
+    def __call__(self, eng) -> str | None:
         return "max_iterations" if eng.state.i + 1 >= self.n else None
 
 
 class MaxCandidateProposals(_Limit):
-    def __call__(self, eng) -> Optional[str]:
+    def __call__(self, eng) -> str | None:
         return "max_candidate_proposals" if eng.state.n_proposals >= self.n else None
 
 
@@ -34,7 +35,7 @@ class Timeout:
     def credit(self, seconds: float) -> None:
         self.t0 += max(0.0, float(seconds))
 
-    def __call__(self, eng) -> Optional[str]:
+    def __call__(self, eng) -> str | None:
         return "timeout" if time.time() - self.t0 >= self.seconds else None
 
 
@@ -42,7 +43,7 @@ class FileStopper:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
 
-    def __call__(self, eng) -> Optional[str]:
+    def __call__(self, eng) -> str | None:
         return "stop_file" if self.path.exists() else None
 
 
@@ -50,7 +51,7 @@ class ScoreThreshold:
     def __init__(self, threshold: float) -> None:
         self.threshold = threshold
 
-    def __call__(self, eng) -> Optional[str]:
+    def __call__(self, eng) -> str | None:
         st = eng.state
         return "score_threshold" if st.agg_scores()[st.best_idx()] >= self.threshold else None
 
@@ -61,7 +62,7 @@ class NoImprovement:
     def __init__(self, patience: int) -> None:
         self.patience = patience
 
-    def __call__(self, eng) -> Optional[str]:
+    def __call__(self, eng) -> str | None:
         st = eng.state
         agg = st.agg_scores()
         return "no_improvement" if st.i - st.discovery_iter[st.best_idx()] >= self.patience and agg else None
@@ -71,7 +72,7 @@ class MaxReflectionCost:
     def __init__(self, usd: float, role: str = "reflection") -> None:
         self.usd, self.role = usd, role
 
-    def __call__(self, eng) -> Optional[str]:
+    def __call__(self, eng) -> str | None:
         u = eng.usage_snapshot().get(self.role, {})
         return "max_reflection_cost" if float(u.get("cost_usd", 0.0)) >= self.usd else None
 
@@ -86,7 +87,7 @@ class BudgetStopper:
         if hasattr(self.budget, "credit"):
             self.budget.credit(seconds)
 
-    def __call__(self, eng) -> Optional[str]:
+    def __call__(self, eng) -> str | None:
         st = eng.state
         return self.budget.exhausted(rounds=st.i + 1, rollouts=st.counter.total, usd=eng.usd())
 
@@ -104,11 +105,12 @@ class ConsecutiveInfraFailures:
         if e.get("event") == "skip_infra_error":
             return True
         rej = e.get("rejected_outputs") or {}
-        return e.get("event") == "no_proposal" and bool(rej) and all(str(r).startswith("llm error")
-                                                                     for r in rej.values())
+        return (
+            e.get("event") == "no_proposal" and bool(rej) and all(str(r).startswith("llm error") for r in rej.values())
+        )
 
-    def __call__(self, eng) -> Optional[str]:
-        tail = eng.state.trace[-self.n:]
+    def __call__(self, eng) -> str | None:
+        tail = eng.state.trace[-self.n :]
         return "infra_outage" if len(tail) == self.n and all(self._is_infra(e) for e in tail) else None
 
 
@@ -124,7 +126,7 @@ class Composite:
             if callable(fn):
                 fn(seconds)
 
-    def __call__(self, eng) -> Optional[str]:
+    def __call__(self, eng) -> str | None:
         reasons = [s(eng) for s in self.stoppers]
         hits = [r for r in reasons if r]
         if self.mode == "any":

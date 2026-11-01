@@ -1,10 +1,10 @@
 """Code-style AgentWorld families: repofix, buildfix (training) and configfix (held-out)."""
+
 from __future__ import annotations
 
 import difflib
 import random
 import re
-from typing import Optional
 
 from .base import BASE_STATEMENT, CONSTS, MODULES, WORDS, Env, Subtask, _h, _pytest_argv
 
@@ -26,8 +26,12 @@ class RepoFixEnv(Env):
             lines = [f'"""{m} service helpers."""', "import math", ""] + [f"{c} = {v}" for c, v in vals.items()] + [""]
             for k in range(3):
                 c1, c2 = r.sample(consts, 2)
-                lines += [f"def {m}_op{k}(x):", f"    y = x * {c1} + {c2}", f"    return math.floor(y / max(1, {c1}))",
-                          ""]
+                lines += [
+                    f"def {m}_op{k}(x):",
+                    f"    y = x * {c1} + {c2}",
+                    f"    return math.floor(y / max(1, {c1}))",
+                    "",
+                ]
             self.files[f"src/{m}.py"] = "\n".join(lines) + "\n"
             self.tests[m] = [f"test_{m}_{w}" for w in r.sample(WORDS, r.randint(7, 11))]
             self.files[f"tests/test_{m}.py"] = "\n".join(f"def {t}():\n    assert True\n" for t in self.tests[m])
@@ -38,16 +42,26 @@ class RepoFixEnv(Env):
             self.files[f"src/{m}.py"] = self.files[f"src/{m}.py"].replace(f"{key} = {good}\n", f"{key} = {bad}\n")
             test = f"test_{key.lower()}"
             self.tests[m].insert(r.randint(0, len(self.tests[m])), test)
-            self.subtasks.append(Subtask(f"s{j + 1}", f"Fix the failing test tests/test_{m}.py::{test}", m,
-                                         {"module": m, "key": key, "good": good, "test": test}))
+            self.subtasks.append(
+                Subtask(
+                    f"s{j + 1}",
+                    f"Fix the failing test tests/test_{m}.py::{test}",
+                    m,
+                    {"module": m, "key": key, "good": good, "test": test},
+                )
+            )
         self.subtasks.sort(key=lambda s: s.id)
 
     def statement(self) -> str:
-        return (BASE_STATEMENT + "The test suite has regressions. Make these tests pass without breaking others:\n"
-                + self._numbered_goals() + "\nRun `pytest` to see failures. When everything passes, reply with a short "
-                "summary.")
+        return (
+            BASE_STATEMENT
+            + "The test suite has regressions. Make these tests pass without breaking others:\n"
+            + self._numbered_goals()
+            + "\nRun `pytest` to see failures. When everything passes, reply with a short "
+            "summary."
+        )
 
-    def _value(self, m: str, key: str) -> Optional[int]:
+    def _value(self, m: str, key: str) -> int | None:
         mm = re.search(rf"^{key} = (-?\d+)$", self.files.get(f"src/{m}.py", ""), re.M)
         return int(mm.group(1)) if mm else None
 
@@ -58,10 +72,11 @@ class RepoFixEnv(Env):
     def apply_reference(self) -> None:
         for st in self.subtasks:
             m, k = st.key, st.data["key"]
-            self.files[f"src/{m}.py"] = re.sub(rf"^{k} = -?\d+$", f"{k} = {st.data['good']}",
-                                               self.files[f"src/{m}.py"], flags=re.M)
+            self.files[f"src/{m}.py"] = re.sub(
+                rf"^{k} = -?\d+$", f"{k} = {st.data['good']}", self.files[f"src/{m}.py"], flags=re.M
+            )
 
-    def failing(self, module: Optional[str] = None) -> list[Subtask]:
+    def failing(self, module: str | None = None) -> list[Subtask]:
         return [s for s in self.subtasks if (module is None or s.key == module) and not self.subtask_ok(s)]
 
     def subtask_ok(self, st: Subtask) -> bool:
@@ -91,47 +106,84 @@ class RepoFixEnv(Env):
 
         if "-q" in argv:
             out = ["".join(marks(m) for m in mods) + "  [100%]"]
-            out += [f"/repo/src/{s.key}.py:{self._line(s.key, s.data['key'])}: AssertionError: {self._msg(s)}"
-                    for s in fails]
-            out.append(f"{len(fails)} failed, {n_total - len(fails)} passed in {r.uniform(0.5, 2):.2f}s" if fails
-                       else f"{n_total} passed in {r.uniform(0.5, 2):.2f}s")
+            out += [
+                f"/repo/src/{s.key}.py:{self._line(s.key, s.data['key'])}: AssertionError: {self._msg(s)}"
+                for s in fails
+            ]
+            out.append(
+                f"{len(fails)} failed, {n_total - len(fails)} passed in {r.uniform(0.5, 2):.2f}s"
+                if fails
+                else f"{n_total} passed in {r.uniform(0.5, 2):.2f}s"
+            )
             return "\n".join(out), 1 if fails else 0
-        out = ["=" * 29 + " test session starts " + "=" * 30,
-               "platform linux -- Python 3.11.4, pytest-8.2.0, pluggy-1.5.0", "rootdir: /repo",
-               "configfile: pyproject.toml", "plugins: cov-5.0.0, xdist-3.6.1", f"collected {n_total} items", ""]
+        out = [
+            "=" * 29 + " test session starts " + "=" * 30,
+            "platform linux -- Python 3.11.4, pytest-8.2.0, pluggy-1.5.0",
+            "rootdir: /repo",
+            "configfile: pyproject.toml",
+            "plugins: cov-5.0.0, xdist-3.6.1",
+            f"collected {n_total} items",
+            "",
+        ]
         out += [f"tests/test_{m}.py {marks(m)}" for m in mods]
         if fails:
             out += ["", "=" * 35 + " FAILURES " + "=" * 35]
             for s in fails:
                 ln = self._line(s.key, s.data["key"])
-                out += [f"{'_' * 30} {s.data['test']} {'_' * 30}", "", f"    def {s.data['test']}():",
-                        f'        data = load_fixture("{s.data["key"].lower()}")',
-                        f"    >   assert {s.key}.{s.key}_op0(data) == expected(data)",
-                        f"E       AssertionError: {self._msg(s)}", "", f"src/{s.key}.py:{ln}: AssertionError",
-                        "-" * 30 + " Captured log call " + "-" * 31]
+                out += [
+                    f"{'_' * 30} {s.data['test']} {'_' * 30}",
+                    "",
+                    f"    def {s.data['test']}():",
+                    f'        data = load_fixture("{s.data["key"].lower()}")',
+                    f"    >   assert {s.key}.{s.key}_op0(data) == expected(data)",
+                    f"E       AssertionError: {self._msg(s)}",
+                    "",
+                    f"src/{s.key}.py:{ln}: AssertionError",
+                    "-" * 30 + " Captured log call " + "-" * 31,
+                ]
                 for k in range(r.randint(90, 150)):
-                    out.append(f"DEBUG    {s.key}:{s.key}.py:{r.randint(10, 60)} step {k} batch={r.randint(1, 64)} "
-                               f"value={r.randint(0, 99999)} cache_hit={r.choice(['true', 'false'])} "
-                               f"elapsed_ms={r.uniform(0, 9):.3f}")
+                    out.append(
+                        f"DEBUG    {s.key}:{s.key}.py:{r.randint(10, 60)} step {k} batch={r.randint(1, 64)} "
+                        f"value={r.randint(0, 99999)} cache_hit={r.choice(['true', 'false'])} "
+                        f"elapsed_ms={r.uniform(0, 9):.3f}"
+                    )
         out += ["", "=" * 31 + " warnings summary " + "=" * 31]
         for _ in range(r.randint(12, 24)):
             m = r.choice(mods)
-            out += [f"tests/test_{m}.py::{r.choice(self.tests[m])}",
-                    f"  /usr/lib/python3.11/site-packages/legacy/compat.py:{r.randint(10, 400)}: DeprecationWarning: "
-                    f"'{r.choice(WORDS)}' is deprecated and will be removed in 3.0"]
+            out += [
+                f"tests/test_{m}.py::{r.choice(self.tests[m])}",
+                f"  /usr/lib/python3.11/site-packages/legacy/compat.py:{r.randint(10, 400)}: DeprecationWarning: "
+                f"'{r.choice(WORDS)}' is deprecated and will be removed in 3.0",
+            ]
         out.append("-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html")
         if fails:
             out.append("=" * 27 + " short test summary info " + "=" * 28)
-            out += [f"FAILED tests/test_{s.key}.py::{s.data['test']} - src/{s.key}.py:"
-                    f"{self._line(s.key, s.data['key'])} {self._msg(s)}" for s in fails]
-        tail = (f"{len(fails)} failed, " if fails else "") + f"{n_total - len(fails)} passed, 18 warnings in " \
-            f"{r.uniform(1, 4):.2f}s"
+            out += [
+                f"FAILED tests/test_{s.key}.py::{s.data['test']} - src/{s.key}.py:"
+                f"{self._line(s.key, s.data['key'])} {self._msg(s)}"
+                for s in fails
+            ]
+        tail = (
+            f"{len(fails)} failed, " if fails else ""
+        ) + f"{n_total - len(fails)} passed, 18 warnings in {r.uniform(1, 4):.2f}s"
         out.append("=" * 20 + f" {tail} " + "=" * 20)
         return "\n".join(out), 1 if fails else 0
 
 
-IDENTS = ["buf_len", "max_conn", "hdr_size", "retry_cnt", "sock_fd", "msg_id", "tx_bytes", "rx_bytes", "cfg_path",
-          "log_lvl", "idle_ms", "peer_cnt"]
+IDENTS = [
+    "buf_len",
+    "max_conn",
+    "hdr_size",
+    "retry_cnt",
+    "sock_fd",
+    "msg_id",
+    "tx_bytes",
+    "rx_bytes",
+    "cfg_path",
+    "log_lvl",
+    "idle_ms",
+    "peer_cnt",
+]
 
 
 def _misspell(ident: str) -> str:
@@ -146,8 +198,26 @@ class BuildFixEnv(Env):
     def __init__(self, task_id: str, seed: int = 0, n_subtasks: int = 2) -> None:
         super().__init__(task_id, seed, n_subtasks)
         r = self.rng
-        pool = ["main", "net", "buf", "parse", "log", "util", "cfg", "io", "tls", "http", "db", "rpc", "sched", "mem",
-                "fs", "crc", "zip", "ipc"]
+        pool = [
+            "main",
+            "net",
+            "buf",
+            "parse",
+            "log",
+            "util",
+            "cfg",
+            "io",
+            "tls",
+            "http",
+            "db",
+            "rpc",
+            "sched",
+            "mem",
+            "fs",
+            "crc",
+            "zip",
+            "ipc",
+        ]
         self.order = sorted(r.sample(pool, min(len(pool), max(r.randint(6, 10), n_subtasks + 2))))
         for f in self.order:
             idents = r.sample(IDENTS, 4)
@@ -155,8 +225,13 @@ class BuildFixEnv(Env):
             lines += [f"static int {i} = {r.randint(1, 512)};" for i in idents] + [""]
             for k in range(r.randint(8, 14)):
                 i1, i2 = r.sample(idents, 2)
-                lines += [f"int {f}_fn{k}(int x) {{", f"    int tmp{k} = x + {i1};", f"    return tmp{k} * {i2};", "}",
-                          ""]
+                lines += [
+                    f"int {f}_fn{k}(int x) {{",
+                    f"    int tmp{k} = x + {i1};",
+                    f"    return tmp{k} * {i2};",
+                    "}",
+                    "",
+                ]
             self.files[f"src/{f}.c"] = "\n".join(lines) + "\n"
         self.warn = {f: r.randint(12, 26) for f in self.order}
         buggy = r.sample(self.order[1:], n_subtasks)
@@ -167,18 +242,28 @@ class BuildFixEnv(Env):
             bad = _misspell(ident)
             ls[k] = ls[k].replace(ident, bad, 1)
             self.files[f"src/{f}.c"] = "\n".join(ls)
-            self.subtasks.append(Subtask(f"s{j + 1}", f"Fix the compile error in src/{f}.c", f"src/{f}.c",
-                                         {"file": f"src/{f}.c", "bad": bad, "good": ident, "line": k + 1}))
+            self.subtasks.append(
+                Subtask(
+                    f"s{j + 1}",
+                    f"Fix the compile error in src/{f}.c",
+                    f"src/{f}.c",
+                    {"file": f"src/{f}.c", "bad": bad, "good": ident, "line": k + 1},
+                )
+            )
 
     def statement(self) -> str:
-        return (BASE_STATEMENT + "The C project no longer builds. Fix these compile errors:\n" +
-                self._numbered_goals() + "\nRun `make` to build (it stops at the first failing file). When the build "
-                "succeeds, reply with a short summary.")
+        return (
+            BASE_STATEMENT
+            + "The C project no longer builds. Fix these compile errors:\n"
+            + self._numbered_goals()
+            + "\nRun `make` to build (it stops at the first failing file). When the build "
+            "succeeds, reply with a short summary."
+        )
 
     def _declared(self, f: str) -> set[str]:
         return set(re.findall(r"^static int (\w+) =", self.files.get(f"src/{f}.c", ""), re.M))
 
-    def _broken(self, f: str) -> Optional[tuple[int, str, str]]:
+    def _broken(self, f: str) -> tuple[int, str, str] | None:
         """First use of an undeclared identifier: (line, bad, closest declared)."""
         decl = self._declared(f)
         for k, ln in enumerate(self.files.get(f"src/{f}.c", "").split("\n")):
@@ -202,29 +287,40 @@ class BuildFixEnv(Env):
         for _ in range(self.warn[f]):
             ln = r.randint(5, 60)
             v = f"tmp{r.randint(0, 13)}"
-            out += [f"src/{f}.c:{ln}:9: warning: unused variable '{v}' [-Wunused-variable]",
-                    f"   {ln} |     int {v} = 0;", "      |         ^~~~"]
+            out += [
+                f"src/{f}.c:{ln}:9: warning: unused variable '{v}' [-Wunused-variable]",
+                f"   {ln} |     int {v} = 0;",
+                "      |         ^~~~",
+            ]
         br = self._broken(f)
         if br is None:
             return out, True
         ln, bad, good = br
-        out += [f"src/{f}.c: In function '{f}_fn{r.randint(0, 7)}':",
-                f"src/{f}.c:{ln}:20: error: '{bad}' undeclared (first use in this function); did you mean '{good}'?",
-                f"   {ln} |     int tmpX = x + {bad};", "      |                    ^" + "~" * len(bad),
-                f"      |                    {good}",
-                f"src/{f}.c:{ln}:20: note: each undeclared identifier is reported only once for each function it "
-                f"appears in"]
+        out += [
+            f"src/{f}.c: In function '{f}_fn{r.randint(0, 7)}':",
+            f"src/{f}.c:{ln}:20: error: '{bad}' undeclared (first use in this function); did you mean '{good}'?",
+            f"   {ln} |     int tmpX = x + {bad};",
+            "      |                    ^" + "~" * len(bad),
+            f"      |                    {good}",
+            f"src/{f}.c:{ln}:20: note: each undeclared identifier is reported only once for each function it "
+            f"appears in",
+        ]
         for k in range(r.randint(18, 32)):
             l2 = ln + k + 1
             kind = r.random()
             if kind < 0.4:
-                out += [f"src/{f}.c:{l2}:12: error: invalid operands to binary * (have 'int *' and 'double')",
-                        f"   {l2} |     return tmp{k} * y;", "      |            ^"]
+                out += [
+                    f"src/{f}.c:{l2}:12: error: invalid operands to binary * (have 'int *' and 'double')",
+                    f"   {l2} |     return tmp{k} * y;",
+                    "      |            ^",
+                ]
             elif kind < 0.7:
                 out += [f"src/{f}.c:{l2}:5: error: expected ';' before 'return'", f"   {l2} |     return 0"]
             else:
-                out += [f"src/{f}.c:{l2}:9: warning: implicit declaration of function '{f}_flush' "
-                        f"[-Wimplicit-function-declaration]"]
+                out += [
+                    f"src/{f}.c:{l2}:9: warning: implicit declaration of function '{f}_flush' "
+                    f"[-Wimplicit-function-declaration]"
+                ]
         out += [f"make: *** [Makefile:14: build/{f}.o] Error 1"]
         return out, False
 
@@ -249,10 +345,36 @@ class BuildFixEnv(Env):
         return "\n".join(out), 0
 
 
-SERVICES = ["billing", "gateway", "search", "ledger", "notify", "catalog", "orders", "profile", "metrics", "sessions",
-            "uploads", "pricing", "reports", "queue", "auth", "cdn", "tax", "refunds", "inventory", "mailer"]
-CFG_KEYS = {"replicas": (1, 12), "port": (1024, 65535), "timeout_ms": (50, 30000), "workers": (1, 64),
-            "cache_mb": (16, 4096), "retries": (0, 10)}
+SERVICES = [
+    "billing",
+    "gateway",
+    "search",
+    "ledger",
+    "notify",
+    "catalog",
+    "orders",
+    "profile",
+    "metrics",
+    "sessions",
+    "uploads",
+    "pricing",
+    "reports",
+    "queue",
+    "auth",
+    "cdn",
+    "tax",
+    "refunds",
+    "inventory",
+    "mailer",
+]
+CFG_KEYS = {
+    "replicas": (1, 12),
+    "port": (1024, 65535),
+    "timeout_ms": (50, 30000),
+    "workers": (1, 64),
+    "cache_mb": (16, 4096),
+    "retries": (0, 10),
+}
 
 
 class ConfigFixEnv(Env):
@@ -279,8 +401,14 @@ class ConfigFixEnv(Env):
         order = list(self.bad)
         r.shuffle(order)
         for j, (sv, k) in enumerate(order):
-            self.subtasks.append(Subtask(f"s{j + 1}", f"Fix the invalid setting services.{sv}.{k}", f"{sv}.{k}",
-                                         {"svc": sv, "key": k, "good": self.values[(sv, k)]}))
+            self.subtasks.append(
+                Subtask(
+                    f"s{j + 1}",
+                    f"Fix the invalid setting services.{sv}.{k}",
+                    f"{sv}.{k}",
+                    {"svc": sv, "key": k, "good": self.values[(sv, k)]},
+                )
+            )
 
     def apply_reference(self) -> None:
         text = self.files["config/services.yaml"]
@@ -290,9 +418,13 @@ class ConfigFixEnv(Env):
         self.files["config/services.yaml"] = text
 
     def statement(self) -> str:
-        return (BASE_STATEMENT + "config/services.yaml fails validation. Fix these invalid settings:\n" +
-                self._numbered_goals() + "\nRun `make validate` to check (it stops at the first error and reports the "
-                "value it expects). When validation passes, reply with a short summary.")
+        return (
+            BASE_STATEMENT
+            + "config/services.yaml fails validation. Fix these invalid settings:\n"
+            + self._numbered_goals()
+            + "\nRun `make validate` to check (it stops at the first error and reports the "
+            "value it expects). When validation passes, reply with a short summary."
+        )
 
     def _current(self) -> dict[tuple[str, str], tuple[int, int]]:
         out = {}
@@ -305,7 +437,7 @@ class ConfigFixEnv(Env):
     def subtask_ok(self, st: Subtask) -> bool:
         return self._current().get((st.data["svc"], st.data["key"]), (None, 0))[0] == st.data["good"]
 
-    def _first_error(self, cur: dict) -> Optional[tuple[str, str, int, int]]:
+    def _first_error(self, cur: dict) -> tuple[str, str, int, int] | None:
         for sv in self.services:
             for k, (lo, hi) in CFG_KEYS.items():
                 if (sv, k) not in cur:
@@ -324,8 +456,11 @@ class ConfigFixEnv(Env):
         err = self._first_error(cur)
         if err:
             sv, k, v, ln = err
-            out += [f"ERROR config/services.yaml:{ln}: services.{sv}.{k}: got {v}, expected {self.values[(sv, k)]}",
-                    "validation stopped after the first error", ""]
+            out += [
+                f"ERROR config/services.yaml:{ln}: services.{sv}.{k}: got {v}, expected {self.values[(sv, k)]}",
+                "validation stopped after the first error",
+                "",
+            ]
         else:
             out += ["config OK: all settings valid", ""]
         out.append("Effective configuration (resolved, including defaults):")

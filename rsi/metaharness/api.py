@@ -1,14 +1,14 @@
 """Public entry point: :func:`run` (Config + domain + seed -> ImprovementResult)."""
+
 from __future__ import annotations
 
 import tempfile
 import warnings
 from pathlib import Path
-from typing import Optional
 
 from ..core.artifact import Artifact
 from ..core.domain import Domain
-from ..core.llm import LLM, ClaudeCLI, CachedLLM, MockLLM
+from ..core.llm import LLM, CachedLLM, ClaudeCLI, MockLLM
 from ..core.run import ImprovementResult
 from .config import Config
 from .loop import MetaHarnessLoop
@@ -25,14 +25,15 @@ def _has_library(domain: Domain) -> bool:
     return True
 
 
-def _unwrap(llm: Optional[LLM]) -> Optional[LLM]:
+def _unwrap(llm: LLM | None) -> LLM | None:
     while isinstance(llm, CachedLLM):
         llm = llm.inner
     return llm
 
 
-def make_proposer(domain: Domain, llm_propose: Optional[LLM], config: Config, *, kind: str = "auto",
-                  leak_rate: float = 0.0) -> Proposer:
+def make_proposer(
+    domain: Domain, llm_propose: LLM | None, config: Config, *, kind: str = "auto", leak_rate: float = 0.0
+) -> Proposer:
     """``auto``: ClaudeCLI (cached or not) -> coding agent, None or a plain MockLLM -> MockProposer,
     other LLMs -> RewriteProposer. The coding agent edits files in a workspace, so its sessions are not cached."""
     base = _unwrap(llm_propose)
@@ -42,17 +43,31 @@ def make_proposer(domain: Domain, llm_propose: Optional[LLM], config: Config, *,
         if not isinstance(base, ClaudeCLI):
             raise ValueError("the coding-agent proposer needs a ClaudeCLI backend")
         if base is not llm_propose:
-            warnings.warn("Meta-Harness: the coding-agent proposer runs the claude CLI directly; its sessions bypass "
-                          "the LLM cache", stacklevel=2)
+            warnings.warn(
+                "Meta-Harness: the coding-agent proposer runs the claude CLI directly; its sessions bypass "
+                "the LLM cache",
+                stacklevel=2,
+            )
         return AgentProposer(base, timeout_s=config.proposer_timeout_s)
     return RewriteProposer(llm_propose)
 
 
-def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = None,
-        llm_propose: Optional[LLM] = None, config: Optional[Config] = None, out_dir: Optional[str | Path] = None,
-        baselines: Optional[dict[str, Artifact]] = None, proposer: Optional[Proposer] = None,
-        proposer_kind: str = "auto", summarizer_llm: Optional[LLM] = None, leak_rate: float = 0.0,
-        finalize_llm: Optional[LLM] = None, monitor=None) -> ImprovementResult:
+def run(
+    domain: Domain,
+    seed_artifact: Artifact,
+    *,
+    llm_task: LLM | None = None,
+    llm_propose: LLM | None = None,
+    config: Config | None = None,
+    out_dir: str | Path | None = None,
+    baselines: dict[str, Artifact] | None = None,
+    proposer: Proposer | None = None,
+    proposer_kind: str = "auto",
+    summarizer_llm: LLM | None = None,
+    leak_rate: float = 0.0,
+    finalize_llm: LLM | None = None,
+    monitor=None,
+) -> ImprovementResult:
     """Run Meta-Harness; ``best`` is the highest-score Pareto point on the search split."""
     cfg = config or Config()
     out = Path(out_dir) if out_dir else Path(tempfile.mkdtemp(prefix="metaharness_"))
@@ -64,15 +79,36 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
         is_mock = isinstance(prop, MockProposer)
         summarizer = prop.lib.summarize if is_mock else LLMSummarizer(summarizer_llm or llm_propose)
     seeds = [seed_name] if seed_name in pop else list(pop)
-    loop = MetaHarnessLoop(domain, llm_task=llm_task, proposer=prop, config=cfg, out_dir=out, baselines=pop,
-                           summarizer=summarizer, seed_names=seeds)
+    loop = MetaHarnessLoop(
+        domain,
+        llm_task=llm_task,
+        proposer=prop,
+        config=cfg,
+        out_dir=out,
+        baselines=pop,
+        summarizer=summarizer,
+        seed_names=seeds,
+    )
     if out_dir is not None and cfg.trace:
-        loop.tr = make_tracer(loop, out, enabled=True, monitor=cfg.shadow_monitor if monitor is None else monitor,
-                              llm_task=llm_task, splits=cfg.shadow_splits, k=cfg.shadow_k,
-                              workers=cfg.shadow_workers)
-    loop.tr.run_start(seeds, extra={"proposer_kind": proposer_kind, "leak_rate": leak_rate,
-                                    "llm_task": getattr(llm_task, "name", None),
-                                    "llm_propose": getattr(llm_propose, "name", None)})
+        loop.tr = make_tracer(
+            loop,
+            out,
+            enabled=True,
+            monitor=cfg.shadow_monitor if monitor is None else monitor,
+            llm_task=llm_task,
+            splits=cfg.shadow_splits,
+            k=cfg.shadow_k,
+            workers=cfg.shadow_workers,
+        )
+    loop.tr.run_start(
+        seeds,
+        extra={
+            "proposer_kind": proposer_kind,
+            "leak_rate": leak_rate,
+            "llm_task": getattr(llm_task, "name", None),
+            "llm_propose": getattr(llm_propose, "name", None),
+        },
+    )
     loop.run()
     final = loop.finalize(llm=finalize_llm) if cfg.finalize else None
     fr = loop.store.frontier()
@@ -86,13 +122,35 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
     usage["shadow_monitor"] = shadow_usage(loop.tr)
     screen = {"screened": loop.screen.n_screened, "rejected": loop.screen.n_rejected} if loop.screen else None
     res = ImprovementResult(
-        method="metaharness", baseline=pop.get(seed_name, seed_artifact), best=loop.store.artifact(best_name),
-        ledger=loop.ledger, trajectory=loop.iter_rows, usage=usage,
-        stop_reason="eval_budget" if loop.budget_left() == 0 else "iterations", out_dir=str(out),
-        meta={"frontier": fr, "best_system": best_name, "curve": loop.curve, "final": final,
-              "n_evaluated": loop.n_evaluated, "n_proposed": loop.n_proposed, "config": cfg.to_json(),
-              "n_reevaluations": loop.n_reevaluations, "store": str(loop.store.root), "screen": screen})
-    loop.tr.run_end({"best_system": best_name, "stop_reason": res.stop_reason, "usage": usage,
-                     "final_status": (final or {}).get("status"), "curve": loop.curve})
+        method="metaharness",
+        baseline=pop.get(seed_name, seed_artifact),
+        best=loop.store.artifact(best_name),
+        ledger=loop.ledger,
+        trajectory=loop.iter_rows,
+        usage=usage,
+        stop_reason="eval_budget" if loop.budget_left() == 0 else "iterations",
+        out_dir=str(out),
+        meta={
+            "frontier": fr,
+            "best_system": best_name,
+            "curve": loop.curve,
+            "final": final,
+            "n_evaluated": loop.n_evaluated,
+            "n_proposed": loop.n_proposed,
+            "config": cfg.to_json(),
+            "n_reevaluations": loop.n_reevaluations,
+            "store": str(loop.store.root),
+            "screen": screen,
+        },
+    )
+    loop.tr.run_end(
+        {
+            "best_system": best_name,
+            "stop_reason": res.stop_reason,
+            "usage": usage,
+            "final_status": (final or {}).get("status"),
+            "curve": loop.curve,
+        }
+    )
     res.loop = loop  # type: ignore[attr-defined]
     return res

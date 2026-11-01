@@ -1,7 +1,9 @@
 """The Meta-Harness / SoL-Pi audit trace is complete and write-only: monitoring never changes a decision."""
+
 import json
 
 import pytest
+from solpi_testkit import VERBOSITY_IDEAS, VERBOSITY_SEED, verbosity_domain
 
 from rsi.core import Artifact
 from rsi.core.llm import LLM, LLMResponse, Usage
@@ -18,40 +20,62 @@ from rsi.solpi import Config as SPConfig
 from rsi.solpi import run as sp_run
 from rsi.solpi.research import MechanismProposal, implement
 from rsi.trace import inspect, load_trace
-from solpi_testkit import VERBOSITY_IDEAS, VERBOSITY_SEED, verbosity_domain
 
 
 def _ledger_sig(res):
-    return [(n.id, n.parent, n.status, None if n.score is None else round(n.score, 12),
-             None if n.cost is None else round(n.cost, 6), n.artifact_id) for n in res.ledger.nodes()]
+    return [
+        (
+            n.id,
+            n.parent,
+            n.status,
+            None if n.score is None else round(n.score, 12),
+            None if n.cost is None else round(n.cost, 6),
+            n.artifact_id,
+        )
+        for n in res.ledger.nodes()
+    ]
 
 
 def _mh(tmp_path, name, monitor=None, **kw):
     dom = make_memo(seed=0, scale=0.4)
-    return mh_run(dom, dom.seed_artifact("fewshot_all"), llm_task=dom.make_model("A"), llm_propose=None,
-                  config=MHConfig(iterations=2, k=2, seed=0, **kw), out_dir=tmp_path / name,
-                  baselines=dom.baselines(), monitor=monitor)
+    return mh_run(
+        dom,
+        dom.seed_artifact("fewshot_all"),
+        llm_task=dom.make_model("A"),
+        llm_propose=None,
+        config=MHConfig(iterations=2, k=2, seed=0, **kw),
+        out_dir=tmp_path / name,
+        baselines=dom.baselines(),
+        monitor=monitor,
+    )
 
 
 def _sp(tmp_path, name, monitor=None, **kw):
     dom = make_world(seed=0, n_train=2, n_accept=2, n_final=2, n_test=0)
     cfg = SPConfig(gate=GateSpec(mode="aggregate"), n_lineages=10, max_iters=3, **kw)
-    return sp_run(dom, dom.seed_artifact(), llm_task=MockAgentLLM("A"), config=cfg, out_dir=tmp_path / name,
-                  monitor=monitor)
+    return sp_run(
+        dom, dom.seed_artifact(), llm_task=MockAgentLLM("A"), config=cfg, out_dir=tmp_path / name, monitor=monitor
+    )
 
 
 @pytest.fixture(scope="module")
 def mh_runs(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("mh")
-    return tmp, {"monitor": _mh(tmp, "monitor"), "nomonitor": _mh(tmp, "nomonitor", monitor=False),
-                 "notrace": _mh(tmp, "notrace", trace=False)}
+    return tmp, {
+        "monitor": _mh(tmp, "monitor"),
+        "nomonitor": _mh(tmp, "nomonitor", monitor=False),
+        "notrace": _mh(tmp, "notrace", trace=False),
+    }
 
 
 @pytest.fixture(scope="module")
 def sp_runs(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("sp")
-    return tmp, {"monitor": _sp(tmp, "monitor", monitor=True), "nomonitor": _sp(tmp, "nomonitor"),
-                 "notrace": _sp(tmp, "notrace", trace=False)}
+    return tmp, {
+        "monitor": _sp(tmp, "monitor", monitor=True),
+        "nomonitor": _sp(tmp, "nomonitor"),
+        "notrace": _sp(tmp, "notrace", trace=False),
+    }
 
 
 def _assert_monitor_write_only(tmp, r, sealed):
@@ -63,9 +87,10 @@ def _assert_monitor_write_only(tmp, r, sealed):
     assert not (tmp / "notrace" / "trace.jsonl").exists()
 
 
+@pytest.mark.slow
 def test_mh_monitor_is_write_only(mh_runs):
     tmp, r = mh_runs
-    _assert_monitor_write_only(tmp, r, {"ood"})          # test is left to finalize, which runs it once
+    _assert_monitor_write_only(tmp, r, {"ood"})  # test is left to finalize, which runs it once
     fin = [x.meta["final"]["splits"]["test"]["results"] for x in r.values()]
     assert fin[0] == fin[1] == fin[2]
 
@@ -74,22 +99,38 @@ def test_mh_trace_is_complete_and_consistent(mh_runs):
     tmp, r = mh_runs
     ev = load_trace(tmp / "monitor")
     kinds = {e["kind"] for e in ev}
-    for k in ("run_start", "baseline", "noise", "round_start", "analysis", "proposal", "gate", "eval", "decision",
-              "state", "monitor", "note", "run_end"):
+    for k in (
+        "run_start",
+        "baseline",
+        "noise",
+        "round_start",
+        "analysis",
+        "proposal",
+        "gate",
+        "eval",
+        "decision",
+        "state",
+        "monitor",
+        "note",
+        "run_end",
+    ):
         assert k in kinds, k
     res = r["monitor"]
     store = res.loop.store
     led = {n.meta.get("system"): n for n in res.ledger.nodes()}
     for e in ev:
         d = e["data"]
-        if e["kind"] == "proposal" and d["candidate"] in led:     # the recorded diff is the actual one
+        if e["kind"] == "proposal" and d["candidate"] in led:  # the recorded diff is the actual one
             base = store.artifact(d["parent"])
             assert d["diff"][:5000] == base.diff(store.artifact(d["candidate"]))[:5000]
         if e["kind"] == "eval":
             assert d["summary"]["split"] == "evolve"
         if e["kind"] == "decision":
-            pts = [(n, s["score"], s["context_cost"]) for n in store.names() if (s := store.scores(n))
-                   and store.meta(n).get("iteration", 0) <= e["round"]]
+            pts = [
+                (n, s["score"], s["context_cost"])
+                for n in store.names()
+                if (s := store.scores(n)) and store.meta(n).get("iteration", 0) <= e["round"]
+            ]
             front = {p[0] for p in pareto_frontier(pts)}
             for n, row in d["per_candidate"].items():
                 if "on_frontier" in row:
@@ -97,6 +138,7 @@ def test_mh_trace_is_complete_and_consistent(mh_runs):
     assert inspect(tmp / "monitor").endswith("TRACE.md")
 
 
+@pytest.mark.slow
 def test_solpi_monitor_is_write_only(sp_runs):
     tmp, r = sp_runs
     _assert_monitor_write_only(tmp, r, {"holdout", "ood"})
@@ -120,7 +162,7 @@ def test_solpi_trace_gate_arithmetic_and_firewall(sp_runs):
             eff = d["math"]["efficiency"]
             ok_eff = any((v["base"] - v["cand"]) / v["base"] > spec.min_gain for v in eff.values() if v["base"] > 0)
             assert d["accept"] == (ok_cap and ok_eff)
-        if e["kind"] == "eval" and "summary" in d:                 # lineages never evaluate a sealed split
+        if e["kind"] == "eval" and "summary" in d:  # lineages never evaluate a sealed split
             assert d["summary"]["split"] not in ("holdout", "ood", "test")
     assert n_gate > 0
     rnd = r["monitor"].meta["rounds"][0]
@@ -158,8 +200,9 @@ def test_llm_reviewer_sees_the_runtime_api_for_solpi_harnesses():
 
     spy = Spy()
     base = Artifact({"harness.json": '{"extensions": {}}'})
-    cand = Artifact({"harness.json": '{"extensions": {"x": {}}}',
-                     "extensions/x.py": "class MECHANISM(Extension): pass\n"})
+    cand = Artifact(
+        {"harness.json": '{"extensions": {"x": {}}}', "extensions/x.py": "class MECHANISM(Extension): pass\n"}
+    )
     ok, _ = LLMReviewer(spy).review(Idea("L1", "C", "t"), base, cand)
     assert ok and RUNTIME_API_DOC in spy.prompts[0]
 
@@ -174,9 +217,11 @@ class _RepairingProposer:
         if history:
             return MechanismProposal(None, error="single variant", meta={"exhausted": True})
         cfg = json.loads(base["config.json"])
-        cfg.update(verbosity=cfg["verbosity"] - 1, note="holdout")      # contract breach the reviewer catches
-        return MechanismProposal(base.with_files({"config.json": json.dumps(cfg, sort_keys=True)}),
-                                 change="trim1 (with a held-out reference)")
+        cfg.update(verbosity=cfg["verbosity"] - 1, note="holdout")  # contract breach the reviewer catches
+        return MechanismProposal(
+            base.with_files({"config.json": json.dumps(cfg, sort_keys=True)}),
+            change="trim1 (with a held-out reference)",
+        )
 
     def fix(self, idea, prop, error):
         self.fix_errors.append(error)
@@ -184,16 +229,23 @@ class _RepairingProposer:
             return MechanismProposal(None, error=error, meta={"exhausted": True})
         cfg = json.loads(prop.artifact["config.json"])
         cfg.pop("note")
-        return MechanismProposal(prop.artifact.with_files({"config.json": json.dumps(cfg, sort_keys=True)}),
-                                 change="trim1")
+        return MechanismProposal(
+            prop.artifact.with_files({"config.json": json.dumps(cfg, sort_keys=True)}), change="trim1"
+        )
 
 
 def test_review_rejection_routes_back_to_implementation(tmp_path):
     """Reviewer -> Implementation: an objection goes to the implementer before the iteration ends."""
     dom = verbosity_domain()
     prop = _RepairingProposer()
-    res = sp_run(dom, VERBOSITY_SEED, ideas=VERBOSITY_IDEAS[:1], proposer=prop,
-                 config=SPConfig(n_lineages=1, max_iters=1, review_max=2), out_dir=tmp_path)
+    res = sp_run(
+        dom,
+        VERBOSITY_SEED,
+        ideas=VERBOSITY_IDEAS[:1],
+        proposer=prop,
+        config=SPConfig(n_lineages=1, max_iters=1, review_max=2),
+        out_dir=tmp_path,
+    )
     r = res.meta["rounds"][0]
     assert r["survivor_ideas"] == ["G1"] and json.loads(res.best["config.json"]) == {"verbosity": 3}
     assert len(prop.fix_errors) == 1 and "holdout" in prop.fix_errors[0]
@@ -201,9 +253,15 @@ def test_review_rejection_routes_back_to_implementation(tmp_path):
     assert len(it) == 1 and it[0]["outcome"] == "frozen" and len(it[0]["review_repairs"]) == 1
     crit = [e["data"] for e in load_trace(tmp_path) if e["kind"] == "critic"]
     assert [c["accept"] for c in crit] == [False, True] and crit[1]["candidate"] == "G1.0r1"
-    prop0 = _RepairingProposer()                                         # review_max=0: a rejection ends it
-    res0 = sp_run(dom, VERBOSITY_SEED, ideas=VERBOSITY_IDEAS[:1], proposer=prop0,
-                  config=SPConfig(n_lineages=1, max_iters=1, review_max=0), out_dir=tmp_path / "r0")
+    prop0 = _RepairingProposer()  # review_max=0: a rejection ends it
+    res0 = sp_run(
+        dom,
+        VERBOSITY_SEED,
+        ideas=VERBOSITY_IDEAS[:1],
+        proposer=prop0,
+        config=SPConfig(n_lineages=1, max_iters=1, review_max=0),
+        out_dir=tmp_path / "r0",
+    )
     assert res0.meta["rounds"][0]["survivor_ideas"] == [] and prop0.fix_errors == []
 
 
@@ -230,9 +288,13 @@ def test_ralph_loop_sums_repair_usage_and_stops_when_exhausted():
             return MechanismProposal(None, error="x", meta={"exhausted": True})
 
     q = Exhausted()
-    out, errs = implement(q, Idea("X", "C", "t"),
-                          MechanismProposal(None, error="variant grid exhausted", meta={"exhausted": True}),
-                          lambda a: None, 3)
+    out, errs = implement(
+        q,
+        Idea("X", "C", "t"),
+        MechanismProposal(None, error="variant grid exhausted", meta={"exhausted": True}),
+        lambda a: None,
+        3,
+    )
     assert q.calls == 0 and out.error == "variant grid exhausted"
 
 

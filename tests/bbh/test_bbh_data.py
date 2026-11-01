@@ -1,4 +1,5 @@
 """BBH loader: download once into a cache, sha256 manifest checks, clear offline errors, parsing as data only."""
+
 from __future__ import annotations
 
 import json
@@ -6,8 +7,17 @@ import re
 
 import pytest
 
-from rsi.domains.bbh import (TASKS, BBHChecksumError, BBHDataError, default_cache_dir, ensure_all, fetch_file,
-                             load_cot_prompt, load_examples, load_manifest)
+from rsi.domains.bbh import (
+    TASKS,
+    BBHChecksumError,
+    BBHDataError,
+    default_cache_dir,
+    ensure_all,
+    fetch_file,
+    load_cot_prompt,
+    load_examples,
+    load_manifest,
+)
 
 
 def test_committed_manifest_pins_every_task_and_cot_prompt():
@@ -31,7 +41,7 @@ def test_downloads_once_into_the_cache_then_reads_it(bbh_env, tmp_path):
     assert len(ex) == 32 and set(ex[0]) == {"input", "target"}
     assert (tmp_path / "c" / "bbh" / "navigate.json").exists()
     assert calls == ["https://bbh.invalid/ffffffffffffffffffffffffffffffffffffffff/bbh/navigate.json"]
-    assert load_examples("navigate", **kw) == ex and len(calls) == 1          # cached: no second fetch
+    assert load_examples("navigate", **kw) == ex and len(calls) == 1  # cached: no second fetch
     assert len(ensure_all(**kw)) == 54 and len(calls) == 54
 
 
@@ -56,6 +66,7 @@ def test_tampered_cache_is_replaced_or_refused(bbh_env, tmp_path):
 def test_offline_with_empty_cache_raises_a_clear_error(bbh_env, tmp_path):
     def offline(url):
         raise OSError("Network is unreachable")
+
     with pytest.raises(BBHDataError) as e:
         load_examples("web_of_lies", cache_dir=tmp_path, manifest=bbh_env.manifest, fetch=offline)
     msg = str(e.value)
@@ -70,11 +81,15 @@ def test_offline_with_empty_cache_raises_a_clear_error(bbh_env, tmp_path):
 
 def test_malformed_file_with_matching_hash_is_a_data_error(tmp_path):
     import hashlib
+
     bad = json.dumps({"examples": [{"input": 1, "target": "x"}]}).encode()
     (tmp_path / "bbh").mkdir()
     (tmp_path / "bbh" / "navigate.json").write_bytes(bad)
-    man = {"commit": "0" * 40, "url_template": "x/{commit}/{path}",
-           "files": {"bbh/navigate.json": hashlib.sha256(bad).hexdigest()}}
+    man = {
+        "commit": "0" * 40,
+        "url_template": "x/{commit}/{path}",
+        "files": {"bbh/navigate.json": hashlib.sha256(bad).hexdigest()},
+    }
     with pytest.raises(BBHDataError, match="does not hold examples"):
         load_examples("navigate", cache_dir=tmp_path, manifest=man, download=False)
 

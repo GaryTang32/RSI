@@ -1,10 +1,20 @@
 """Step-audit regressions: reply parsing, repaired revisions and an independent replay of every recorded value."""
+
 import json
 
 from rsi.core import Artifact, MockLLM
 from rsi.domains.discovery import SumDiffDomain
-from rsi.dream import (AttemptContext, Config, DevContext, EditorAgent, LLMPolicyDeveloper, VersionRecord, run,
-                       static_check, template_code)
+from rsi.dream import (
+    AttemptContext,
+    Config,
+    DevContext,
+    EditorAgent,
+    LLMPolicyDeveloper,
+    VersionRecord,
+    run,
+    static_check,
+    template_code,
+)
 from rsi.dream.agent import strip_reply_terminators
 
 HDR = json.dumps({"change": "add a hill stage", "hypothesis": "h", "components": ["STAGES"]})
@@ -14,8 +24,14 @@ def test_every_observed_reply_shape_yields_a_scoring_program():
     dom = SumDiffDomain(sandboxed=False)
     ctx = AttemptContext(dom.describe(), "root", dom.seed_artifact(), 0.91, 0, 0, 1, editable=["construct.py"])
     body = dom.seed_artifact()["construct.py"].replace("STAGES = []", 'STAGES = [["hill", {"iters": 10}, 7]]')
-    for tail in (body + "===\n", body + "```\n", "```python\n" + body + "```\n===\n", "```python\n" + body,
-                 "\n```py\n" + body + "```\n=== END FILE ===\n", body):
+    for tail in (
+        body + "===\n",
+        body + "```\n",
+        "```python\n" + body + "```\n===\n",
+        "```python\n" + body,
+        "\n```py\n" + body + "```\n=== END FILE ===\n",
+        body,
+    ):
         reply = f"```json\n{HDR}\n```\n\n=== FILE: construct.py ===\n{tail}"
         att = EditorAgent(MockLLM(lambda *a, r=reply: r), editable=["construct.py"]).attempt(ctx, seed=1)
         assert att.error is None, tail[:30]
@@ -51,8 +67,12 @@ def test_independent_replay_reproduces_every_recorded_replay_value(tmp_path, dre
     every replay value."""
     audit = dream_script("validate_stepaudit")
     dom = SumDiffDomain(sandboxed=False)
-    run(dom, agent=dom.mock_agent(), config=Config(rounds=3, W=3, branch_count=3, refine_count=3, M=3, objective="eq1",
-                                                   sandbox="inprocess", seed=3), out_dir=str(tmp_path))
+    run(
+        dom,
+        agent=dom.mock_agent(),
+        config=Config(rounds=3, W=3, branch_count=3, refine_count=3, M=3, objective="eq1", sandbox="inprocess", seed=3),
+        out_dir=str(tmp_path),
+    )
     ev = [json.loads(line) for line in (tmp_path / "trace.jsonl").read_text().splitlines()]
     trees = {int(p.parent.name[4:]): json.loads(p.read_text()) for p in tmp_path.glob("trace_pool/iter*/tree.json")}
     mans = [json.loads(p.read_text()) for p in sorted(tmp_path.glob("trace_pool/iter*/live_cycle_manifest.json"))]

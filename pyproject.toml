@@ -58,8 +58,32 @@ addopts = "-m 'not live'"
 [tool.ruff]
 line-length = 120
 target-version = "py311"
-extend-exclude = ["docs/skill-claims/corpus"]
+extend-exclude = [
+    "docs/skill-claims/corpus",
+    # source files the package uses as artifacts (shown to models, hashed, diffed against): keep them byte-stable
+    "rsi/dream/policy_templates",
+    "rsi/dream/policy_api.py",
+    "rsi/domains/*/seed_harness",
+    "rsi/domains/tinylm/prepare.py",
+    "rsi/domains/tinylm/train.py",
+    "rsi/domains/tabular/prepare.py",
+    "rsi/domains/tabular/train.py",
+    "rsi/autoresearch/landscape_prepare.py",
+]
 
 [tool.ruff.lint]
-# errors that are bugs: syntax errors, undefined names, invalid comparisons and statements
-select = ["E9", "F63", "F7", "F82"]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "E501",  # line length: the formatter wraps code; long strings, URLs and tables stay readable as they are
+    "E731",  # small named lambdas are used deliberately as local helpers
+    "E741",  # single-letter names such as l follow the papers' notation in numeric code
+    "B023",  # closures here are called inside the same loop iteration (checked), not deferred
+    "B905",  # zip(): equal lengths are guaranteed by construction; strict= would only add noise
+    "UP031", # %-formatting is kept where it builds code or templates that contain braces
+]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["rsi.solpi.gate.GateSpec", "rsi.solpi.GateSpec"]  # frozen dataclass: safe as a default
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # re-exports

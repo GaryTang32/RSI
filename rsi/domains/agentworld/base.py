@@ -1,4 +1,5 @@
 """AgentWorld environment base: virtual workspace, Pi-like file tools, a mini shell and the validity filter."""
+
 from __future__ import annotations
 
 import copy
@@ -8,7 +9,7 @@ import random
 import re
 import shlex
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from ...solpi.fusion import resolve_tool_path
 from ...solpi.runtime import ToolResult
@@ -21,14 +22,14 @@ PI_MAX_LINES = 2000
 class Subtask:
     id: str
     goal: str
-    key: str                 # what identifies it in outputs (module / file / item / line number)
-    data: dict = field(default_factory=dict)   # hidden ground truth for the verifier
+    key: str  # what identifies it in outputs (module / file / item / line number)
+    data: dict = field(default_factory=dict)  # hidden ground truth for the verifier
 
 
 class Env:
     family = "env"
-    style = "per_subtask"            # per_subtask | batch
-    cwd = "/repo"                    # workspace files are keyed by cwd-relative paths
+    style = "per_subtask"  # per_subtask | batch
+    cwd = "/repo"  # workspace files are keyed by cwd-relative paths
     home = "/home/agent"
     resolves_tool_paths = True
 
@@ -44,16 +45,16 @@ class Env:
         """Workspace key of a tool path, resolved like Pi's ``resolveToCwd`` (cwd-relative inside ``cwd``)."""
         absolute = resolve_tool_path(path, self.cwd, self.home)
         root = self.cwd.rstrip("/") + "/"
-        return absolute[len(root):] if absolute.startswith(root) else absolute
+        return absolute[len(root) :] if absolute.startswith(root) else absolute
 
     @staticmethod
     def realpath(path: str) -> str:
         return posixpath.normpath(path)
 
-    def read_file(self, path: str) -> Optional[str]:
+    def read_file(self, path: str) -> str | None:
         return self.files.get(self.resolve_path(path))
 
-    def _read_any(self, path: str, rt=None) -> Optional[str]:
+    def _read_any(self, path: str, rt=None) -> str | None:
         if path.startswith(("/.solpi/", "/tmp/")):
             return rt.store.get(path) if rt is not None else None
         return self.files.get(self.resolve_path(path))
@@ -75,11 +76,11 @@ class Env:
             return ToolResult(f"ENOENT: no such file: {path}", is_error=True)
         n = text.count(old) if old else 0
         if n == 0:
-            return ToolResult(f"Could not find the exact text in {path}. The old text must match exactly.",
-                              is_error=True)
+            return ToolResult(
+                f"Could not find the exact text in {path}. The old text must match exactly.", is_error=True
+            )
         if n > 1:
-            return ToolResult(f"Found {n} occurrences of the text in {path}. The text must be unique.",
-                              is_error=True)
+            return ToolResult(f"Found {n} occurrences of the text in {path}. The text must be unique.", is_error=True)
         self.files[key] = text.replace(old, new, 1)
         self.log.append(f"edit {key}")
         return ToolResult(f"Successfully replaced text in {path}.")
@@ -137,7 +138,7 @@ class Env:
             return "".join(chunks), 0
         if prog == "ls":
             d = argv[1].rstrip("/") + "/" if len(argv) > 1 else ""
-            return "\n".join(sorted({f[len(d):].split("/")[0] for f in self.files if f.startswith(d)})), 0
+            return "\n".join(sorted({f[len(d) :].split("/")[0] for f in self.files if f.startswith(d)})), 0
         if prog in ("grep", "head", "tail", "wc", "sed") and len(argv) >= 2 and not argv[-1].startswith("-"):
             src = self._read_any(argv[-1], rt) if prog != "sed" or "/" in argv[-1] or "." in argv[-1] else None
             if src is not None:
@@ -161,7 +162,7 @@ class Env:
             m = re.search(r"(\d+),(\d+)p", filt)
             if not m:
                 return "sed: unsupported expression", 1
-            return "\n".join(lines[int(m.group(1)) - 1:int(m.group(2))]), 0
+            return "\n".join(lines[int(m.group(1)) - 1 : int(m.group(2))]), 0
         if prog == "grep":
             limit = pat = None
             i = 0
@@ -216,15 +217,29 @@ def validity_filter(env: Env) -> bool:
 
 def project_guide(r: random.Random) -> str:
     """A long generic contributor guide (~20-28 KB) that agents read early and then replay."""
-    topics = ["build", "testing", "logging", "configuration", "deployment", "code style", "reviews", "releases",
-              "observability", "security", "performance", "migrations"]
+    topics = [
+        "build",
+        "testing",
+        "logging",
+        "configuration",
+        "deployment",
+        "code style",
+        "reviews",
+        "releases",
+        "observability",
+        "security",
+        "performance",
+        "migrations",
+    ]
     out = ["# Contributor guide", ""]
     for t in r.sample(topics, len(topics)):
         out += [f"## {t.title()}", ""]
         for k in range(r.randint(14, 22)):
-            out.append(f"- Rule {k + 1}: when changing {t}, keep modules small, document public functions, run the "
-                       f"relevant checks locally and describe user-visible effects in the changelog "
-                       f"({r.randint(1, 99)}).")
+            out.append(
+                f"- Rule {k + 1}: when changing {t}, keep modules small, document public functions, run the "
+                f"relevant checks locally and describe user-visible effects in the changelog "
+                f"({r.randint(1, 99)})."
+            )
         out.append("")
     return "\n".join(out)
 
@@ -239,7 +254,27 @@ def _pytest_argv(argv: list[str]) -> list[str]:
 
 
 WORDS = ["alpha", "beta", "delta", "sigma", "omega", "kappa", "theta", "gamma", "lambda", "zeta", "rho", "tau"]
-MODULES = ["pricing", "inventory", "shipping", "billing", "reports", "auth", "search", "cache", "ledger", "quota",
-           "orders", "catalog", "profile", "notify", "sessions", "uploads", "metrics", "gateway", "tax", "refunds"]
+MODULES = [
+    "pricing",
+    "inventory",
+    "shipping",
+    "billing",
+    "reports",
+    "auth",
+    "search",
+    "cache",
+    "ledger",
+    "quota",
+    "orders",
+    "catalog",
+    "profile",
+    "notify",
+    "sessions",
+    "uploads",
+    "metrics",
+    "gateway",
+    "tax",
+    "refunds",
+]
 CONSTS = ["SCALE", "OFFSET", "LIMIT", "RATE", "BATCH", "RETRIES", "WINDOW", "FACTOR", "MARGIN", "DEPTH"]
 BASE_STATEMENT = "Work in the repository at /repo. "

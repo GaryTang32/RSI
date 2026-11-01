@@ -1,4 +1,5 @@
 """First-review regressions and a genericity test on a new ``FunctionDomain`` through the LLM paths."""
+
 import itertools
 import json
 import math
@@ -10,8 +11,19 @@ import pytest
 
 from rsi.core import Artifact, FunctionDomain, MockLLM, SealedSplitError, Task, TaskSuite, transfer_report
 from rsi.domains.discovery import SyntheticConfig, SyntheticDomain
-from rsi.dream import (Config, DomainTask, GridPlanningContext, GuardViolation, PrefixGuard, QuestionProxy,
-                       ReplayQuestion, mock_developer_llm, rules, run, template_code)
+from rsi.dream import (
+    Config,
+    DomainTask,
+    GridPlanningContext,
+    GuardViolation,
+    PrefixGuard,
+    QuestionProxy,
+    ReplayQuestion,
+    mock_developer_llm,
+    rules,
+    run,
+    template_code,
+)
 from rsi.dream.guard import InProcessSession
 
 HIDDEN_T = 23  # the grader's secret: label = 1 iff n >= 23
@@ -30,9 +42,12 @@ class HookedAgent:
 
 
 def test_pareto_objective_selects_in_the_loop():
-    res = run(SyntheticDomain(SyntheticConfig(seed=2)),
-              config=Config(rounds=3, W=3, branch_count=4, refine_count=3, M=3, objective="pareto",
-                            sandbox="inprocess", seed=2))
+    res = run(
+        SyntheticDomain(SyntheticConfig(seed=2)),
+        config=Config(
+            rounds=3, W=3, branch_count=4, refine_count=3, M=3, objective="pareto", sandbox="inprocess", seed=2
+        ),
+    )
     phases = [r["dream"] for r in res.trajectory if "dream" in r]
     assert phases
     for ph in phases:
@@ -41,9 +56,11 @@ def test_pareto_objective_selects_in_the_loop():
 
 
 def test_manifest_reports_actually_opened_width_and_depth():
-    res = run(SyntheticDomain(SyntheticConfig(seed=0)),
-              config=Config(rounds=1, W=4, branch_count=6, refine_count=4, dream=False, sandbox="inprocess"),
-              initial_policy=rules(open=2, max_rounds=2))
+    res = run(
+        SyntheticDomain(SyntheticConfig(seed=0)),
+        config=Config(rounds=1, W=4, branch_count=6, refine_count=4, dream=False, sandbox="inprocess"),
+        initial_policy=rules(open=2, max_rounds=2),
+    )
     man, world = res.meta["manifests"][0], res.meta["worlds"][0]
     assert man["planned_grid"]["branch_count"] == 6
     assert man["opened_width"] == len(world.branches()) == 2
@@ -51,11 +68,27 @@ def test_manifest_reports_actually_opened_width_and_depth():
 
 
 def test_adaptive_plan_grid_widens_and_trims_depth_when_depth_stalls():
-    hist = [{"iteration": 1, "planned_grid": {"branch_count": 4, "refine_count": 4}, "final_best": 0.5,
-             "gain_early": 0.9, "gain_late": 0.1, "max_depth": 2, "hard_fail_frac": 0.0}]
-    plan, err = InProcessSession(template_code("adaptive")).plan_grid({}, GridPlanningContext(
-        history=hist, fallback_branch_count=4, fallback_refine_count=4, hard_max_branch_count=12,
-        hard_max_refine_count=12))
+    hist = [
+        {
+            "iteration": 1,
+            "planned_grid": {"branch_count": 4, "refine_count": 4},
+            "final_best": 0.5,
+            "gain_early": 0.9,
+            "gain_late": 0.1,
+            "max_depth": 2,
+            "hard_fail_frac": 0.0,
+        }
+    ]
+    plan, err = InProcessSession(template_code("adaptive")).plan_grid(
+        {},
+        GridPlanningContext(
+            history=hist,
+            fallback_branch_count=4,
+            fallback_refine_count=4,
+            hard_max_branch_count=12,
+            hard_max_refine_count=12,
+        ),
+    )
     assert err is None and (plan.branch_count, plan.refine_count) == (5, 3) and "widen" in plan.reason
 
 
@@ -74,17 +107,26 @@ def test_guard_exposes_structural_meta_of_revealed_cells_only(synthetic_world):
 
 def test_subprocess_policy_timeout_excludes_parent_side_agent_time():
     dom = SyntheticDomain(SyntheticConfig(seed=1))
-    cfg = Config(rounds=1, W=1, branch_count=2, refine_count=1, dream=False, sandbox="subprocess",
-                 policy_timeout_s=1.5, agent_workers=1)
+    cfg = Config(
+        rounds=1,
+        W=1,
+        branch_count=2,
+        refine_count=1,
+        dream=False,
+        sandbox="subprocess",
+        policy_timeout_s=1.5,
+        agent_workers=1,
+    )
     row = run(dom, config=cfg, agent=HookedAgent(dom.mock_agent(), lambda: time.sleep(0.6))).trajectory[0]
     assert row["online_error"] is None
     assert row["N"] == 4 and row["calls"] == 4  # 4 x 0.6 s of agent time > the 1.5 s policy timeout
 
 
 def test_call_budget_truncation_records_the_executed_batch():
-    res = run(SyntheticDomain(SyntheticConfig(seed=3)),
-              config=Config(rounds=3, W=4, branch_count=4, refine_count=3, dream=False, sandbox="inprocess",
-                            max_calls=6))
+    res = run(
+        SyntheticDomain(SyntheticConfig(seed=3)),
+        config=Config(rounds=3, W=4, branch_count=4, refine_count=3, dream=False, sandbox="inprocess", max_calls=6),
+    )
     man, world = res.meta["manifests"][0], res.meta["worlds"][0]
     assert man["batch_sizes"] == [4, 2]
     assert sum(man["batch_sizes"]) == man["probe_work"] == world.size == 6
@@ -106,12 +148,18 @@ def _threshold_domain(log: list) -> FunctionDomain:
     def grade(task, out):
         return (1.0, "ok") if out == task.target else (0.0, f"wrong label for {task.input}")
 
-    return FunctionDomain(TaskSuite(tasks, splits, name="thr"), execute, grade, name="threshold",
-                          description="classifier.py: classify(n) -> 0/1; accuracy is the score")
+    return FunctionDomain(
+        TaskSuite(tasks, splits, name="thr"),
+        execute,
+        grade,
+        name="threshold",
+        description="classifier.py: classify(n) -> 0/1; accuracy is the score",
+    )
 
 
 def _agent_llm() -> MockLLM:
     """Reads the parent program from the Listing-1 prompt; each branch direction is a different edit."""
+
     def respond(prompt, system, seed, i):
         assert "You must read every historical proposal" in prompt
         cur = prompt.split("--- CURRENT ARTIFACT ---", 1)[1]
@@ -120,10 +168,13 @@ def _agent_llm() -> MockLLM:
         d = m.group(1) if m else "up"
         rng = random.Random(seed)
         new = t + {"up": rng.randint(1, 6), "down": -rng.randint(1, 6), "jump": rng.randint(-10, 10)}[d]
-        head = json.dumps({"change": f"{d}: T {t} -> {new}", "hypothesis": "move the decision threshold",
-                           "components": ["program"]})
-        return (f"```json\n{head}\n```\n=== FILE: classifier.py ===\nT = {new}\n\n\n"
-                f"def classify(n):\n    return int(n >= T)\n")
+        head = json.dumps(
+            {"change": f"{d}: T {t} -> {new}", "hypothesis": "move the decision threshold", "components": ["program"]}
+        )
+        return (
+            f"```json\n{head}\n```\n=== FILE: classifier.py ===\nT = {new}\n\n\n"
+            f"def classify(n):\n    return int(n >= T)\n"
+        )
 
     return MockLLM(respond, name="mock-agent-llm")
 
@@ -164,8 +215,12 @@ def test_same_llm_for_two_roles_is_metered_once():
         return llm.responder(prompt, system, seed, i)
 
     shared = MockLLM(both, name="shared")
-    res = run(_threshold_task(_threshold_domain([])), llm_propose=shared, llm_develop=shared,
-              config=Config(rounds=2, W=3, branch_count=3, refine_count=1, M=2, sandbox="inprocess"))
+    res = run(
+        _threshold_task(_threshold_domain([])),
+        llm_propose=shared,
+        llm_develop=shared,
+        config=Config(rounds=2, W=3, branch_count=3, refine_count=1, M=2, sandbox="inprocess"),
+    )
     assert res.usage["agent"]["calls"] == res.usage["_cost"]["agent_calls"]
     assert res.usage["developer"]["calls"] == res.usage["_cost"]["developer_calls"] == 1
 
@@ -178,8 +233,11 @@ def test_agent_crash_is_a_typed_failed_attempt_not_a_policy_error():
             raise ConnectionError("backend down")
 
     dom = SyntheticDomain(SyntheticConfig(seed=6))
-    res = run(dom, config=Config(rounds=2, W=2, branch_count=3, refine_count=1, M=2, sandbox="subprocess",
-                                 agent_workers=1), agent=HookedAgent(dom.mock_agent(), outage))
+    res = run(
+        dom,
+        config=Config(rounds=2, W=2, branch_count=3, refine_count=1, M=2, sandbox="subprocess", agent_workers=1),
+        agent=HookedAgent(dom.mock_agent(), outage),
+    )
     assert all(r["online_error"] is None for r in res.trajectory)
     nodes = [n for w in res.meta["worlds"] for n in w.non_root()]
     crashed = [n for n in nodes if n.fail_class == "env_error" and "backend down" in (n.error or "")]

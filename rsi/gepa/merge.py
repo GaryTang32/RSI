@@ -1,10 +1,11 @@
 """System-aware merge (GEPA Algorithms 3-4, ``gepa/proposer/merge.py``), candidates visited in sorted order."""
+
 from __future__ import annotations
 
 import math
 import random
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Sequence
 
 from ..core.artifact import Artifact
 from .frontier import find_dominator_programs
@@ -12,7 +13,7 @@ from .frontier import find_dominator_programs
 CAP_MODES = ("reference_soft", "hard", "accepted")
 
 
-def get_ancestors(parents: Sequence[Sequence[Optional[int]]], node: int) -> set[int]:
+def get_ancestors(parents: Sequence[Sequence[int | None]], node: int) -> set[int]:
     found: set[int] = set()
     stack = [node]
     while stack:
@@ -32,8 +33,13 @@ def desirable(cands: Sequence[Artifact], components: Sequence[str], a: int, i: i
 
 
 def filter_ancestors(i, j, common, merges_performed, agg, cands, components) -> list[int]:
-    return [a for a in sorted(common) if (i, j, a) not in merges_performed[0]
-            and not (agg[a] > agg[i] or agg[a] > agg[j]) and desirable(cands, components, a, i, j)]
+    return [
+        a
+        for a in sorted(common)
+        if (i, j, a) not in merges_performed[0]
+        and not (agg[a] > agg[i] or agg[a] > agg[j])
+        and desirable(cands, components, a, i, j)
+    ]
 
 
 def _choose_weighted(rng: random.Random, items: list[int], weights: list[float], zero_weight: str) -> int:
@@ -44,8 +50,17 @@ def _choose_weighted(rng: random.Random, items: list[int], weights: list[float],
     return rng.choices(items, k=1, weights=weights)[0]
 
 
-def find_common_ancestor_pair(rng, parents, program_indexes, merges_performed, agg, cands, components,
-                              max_attempts: int = 10, zero_weight: str = "uniform"):
+def find_common_ancestor_pair(
+    rng,
+    parents,
+    program_indexes,
+    merges_performed,
+    agg,
+    cands,
+    components,
+    max_attempts: int = 10,
+    zero_weight: str = "uniform",
+):
     for _ in range(max_attempts):
         if len(program_indexes) < 2:
             return None
@@ -78,15 +93,25 @@ def merge_texts(rng, cands, components, agg, i, j, a) -> tuple[dict[str, str], t
     return new, desc
 
 
-def sample_and_attempt_merge(agg, rng, merge_candidates, merges_performed, cands, parents, components,
-                             has_overlap: Optional[Callable[[int, int], bool]] = None, max_attempts: int = 10,
-                             zero_weight: str = "uniform"):
+def sample_and_attempt_merge(
+    agg,
+    rng,
+    merge_candidates,
+    merges_performed,
+    cands,
+    parents,
+    components,
+    has_overlap: Callable[[int, int], bool] | None = None,
+    max_attempts: int = 10,
+    zero_weight: str = "uniform",
+):
     """Reference ``sample_and_attempt_merge_programs_by_common_predictors``: (child, i, j, ancestor, sources)."""
     if len(merge_candidates) < 2 or len(parents) < 3:
         return None
     for _ in range(max_attempts):
-        found = find_common_ancestor_pair(rng, parents, merge_candidates, merges_performed, agg, cands, components,
-                                          max_attempts, zero_weight)
+        found = find_common_ancestor_pair(
+            rng, parents, merge_candidates, merges_performed, agg, cands, components, max_attempts, zero_weight
+        )
         if found is None:
             continue
         i, j, a = found
@@ -132,7 +157,7 @@ class MergeProposal:
     ancestor: int
     sources: tuple
     subsample_ids: list[str]
-    sub_before: list[float]            # subsample sums of S_i and S_j
+    sub_before: list[float]  # subsample sums of S_i and S_j
     sub_after: list[float]
 
 
@@ -186,16 +211,24 @@ class MergeProposer:
         self.merges_due -= 1
         self.total_merges_tested += 1
 
-    def propose(self, state, evaluate: Callable[[Artifact, list[str]], list[float]]) -> Optional[MergeProposal]:
+    def propose(self, state, evaluate: Callable[[Artifact, list[str]], list[float]]) -> MergeProposal | None:
         self.n_attempts += 1
         agg = state.agg_scores()
 
         def overlap(i, j):
             return len(set(state.val_scores[i]) & set(state.val_scores[j])) >= self.val_overlap_floor
 
-        out = sample_and_attempt_merge(agg, self.rng, find_dominator_programs(state.frontier.mapping(), agg),
-                                       self.merges_performed, state.candidates, state.parents, state.components,
-                                       overlap, zero_weight=self.zero_weight)
+        out = sample_and_attempt_merge(
+            agg,
+            self.rng,
+            find_dominator_programs(state.frontier.mapping(), agg),
+            self.merges_performed,
+            state.candidates,
+            state.parents,
+            state.components,
+            overlap,
+            zero_weight=self.zero_weight,
+        )
         if out is None:
             self.n_none += 1
             return None
@@ -208,12 +241,19 @@ class MergeProposer:
         return MergeProposal(child, [i, j], a, desc, sub, before, list(evaluate(child, sub)))
 
     def get_state(self) -> dict:
-        return {"merges_due": self.merges_due, "total_merges_tested": self.total_merges_tested,
-                "n_invocations": self.n_invocations, "cap_mode": self.cap_mode,
-                "last_iter_found_new_program": self.last_iter_found_new_program,
-                "merges_performed": [[list(x) for x in self.merges_performed[0]],
-                                     [[i, j, list(d)] for i, j, d in self.merges_performed[1]]],
-                "n_attempts": self.n_attempts, "n_none": self.n_none}
+        return {
+            "merges_due": self.merges_due,
+            "total_merges_tested": self.total_merges_tested,
+            "n_invocations": self.n_invocations,
+            "cap_mode": self.cap_mode,
+            "last_iter_found_new_program": self.last_iter_found_new_program,
+            "merges_performed": [
+                [list(x) for x in self.merges_performed[0]],
+                [[i, j, list(d)] for i, j, d in self.merges_performed[1]],
+            ],
+            "n_attempts": self.n_attempts,
+            "n_none": self.n_none,
+        }
 
     def set_state(self, d: dict) -> None:
         self.merges_due = int(d["merges_due"])

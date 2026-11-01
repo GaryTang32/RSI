@@ -1,4 +1,5 @@
 """Regressions for the GEPA claim-audit fixes (docs/methods/gepa/claims-audit.md, "Fix log")."""
+
 import json
 import random
 import time
@@ -28,19 +29,20 @@ def _merge_counts(res) -> tuple[int, int]:
 
 def _due_proposer(cap_mode: str = "reference_soft", **kw) -> MergeProposer:
     """A proposer capped at 2 invocations, right after a new program was found."""
-    return MergeProposer(random.Random(0), max_merge_invocations=2, cap_mode=cap_mode,
-                         last_iter_found_new_program=True, **kw)
+    return MergeProposer(
+        random.Random(0), max_merge_invocations=2, cap_mode=cap_mode, last_iter_found_new_program=True, **kw
+    )
 
 
 def test_merge_proposer_hard_cap_counts_invocations_not_acceptances():
     hard = _due_proposer("hard", merges_due=3)
     assert hard.should_attempt()
-    hard.merges_performed[0].extend([(1, 2, 0), (1, 3, 0)])      # two merges built and scored, both rejected
+    hard.merges_performed[0].extend([(1, 2, 0), (1, 3, 0)])  # two merges built and scored, both rejected
     assert hard.n_invocations == 2 and hard.total_merges_tested == 0 and not hard.should_attempt()
     accepted = _due_proposer("accepted", merges_due=3)
     accepted.merges_performed[0].extend([(1, 2, 0), (1, 3, 0)])
     assert accepted.should_attempt()
-    assert _due_proposer(merges_due=1, total_merges_tested=5).should_attempt()   # reference: the cap never gates it
+    assert _due_proposer(merges_due=1, total_merges_tested=5).should_attempt()  # reference: the cap never gates it
     st = hard.get_state()
     resumed = MergeProposer(random.Random(0), max_merge_invocations=2, cap_mode="hard")
     resumed.set_state(st)
@@ -56,18 +58,18 @@ def test_hard_merge_cap_bounds_accepted_plus_rejected_end_to_end(merge_run):
     for seed in (0, 1):
         res = merge_run(seed, merge_cap_mode="hard")
         acc, rej = _merge_counts(res)
-        assert acc + rej == res.meta["n_merge_invocations"] <= 5          # paper: "invoked a maximum of 5 times"
+        assert acc + rej == res.meta["n_merge_invocations"] <= 5  # paper: "invoked a maximum of 5 times"
         assert res.meta["n_merges_accepted"] == acc
         assert res.state.counter.by_phase["merge_subsample"] <= 5 * 5
         acc_a, rej_a = _merge_counts(merge_run(seed, merge_cap_mode="accepted"))
         assert acc_a <= 5
         over_accepted_cap |= acc_a + rej_a > 5
-    assert over_accepted_cap          # capping accepted merges lets rejected ones exceed the cap
+    assert over_accepted_cap  # capping accepted merges lets rejected ones exceed the cap
 
 
 def test_hard_merge_cap_one_invocation_and_soft_cap_unbounded(merge_run):
     assert sum(_merge_counts(merge_run(1, merge_cap_mode="hard", max_merge_invocations=1))) <= 1
-    assert sum(_merge_counts(merge_run(1, max_merge_invocations=1))) > 1     # reference soft cap
+    assert sum(_merge_counts(merge_run(1, max_merge_invocations=1))) > 1  # reference soft cap
 
 
 class _Truncating(LLM):
@@ -122,18 +124,25 @@ def test_monitor_wall_time_does_not_count_toward_wall_clock_stoppers(tmp_path, m
     clock = SimpleNamespace(t=1000.0)
     monkeypatch.setattr(time, "time", lambda: clock.t)
 
-    def tick(event, payload):              # the loop's own work: 10 s per iteration
+    def tick(event, payload):  # the loop's own work: 10 s per iteration
         if event == "iteration_end":
             clock.t += 10.0
 
     def timed_run(name: str, monitor: bool):
         d = make_domain(seed=0)
-        if which == "budget":              # Budget's default _t0 bound the real time.time at import
+        if which == "budget":  # Budget's default _t0 bound the real time.time at import
             stop = dict(budget=Budget(max_wall_s=35, _t0=clock.t), config=Config(max_metric_calls=2000))
         else:
             stop = dict(config=Config(max_metric_calls=2000, timeout_s=35))
-        return run(d, d.seed_artifact(), llm_propose=RuleWorldReflectionLM(d.world), out_dir=tmp_path / name,
-                   monitor=_slow_monitor(d, clock) if monitor else False, callbacks=[tick], **stop)
+        return run(
+            d,
+            d.seed_artifact(),
+            llm_propose=RuleWorldReflectionLM(d.world),
+            out_dir=tmp_path / name,
+            monitor=_slow_monitor(d, clock) if monitor else False,
+            callbacks=[tick],
+            **stop,
+        )
 
     with_mon = timed_run("a", monitor=True)
     without = timed_run("b", monitor=False)
@@ -147,7 +156,7 @@ def test_monitor_wall_time_does_not_count_toward_wall_clock_stoppers(tmp_path, m
 def test_current_best_ties_go_to_oldest_like_reference_idxmax(selector_state):
     agg = [0.0, 0.5, 0.5, 0.5, 0.2]
     st = selector_state(agg, {"a": {1, 2, 3}})
-    assert CurrentBestSelector().select(st) == agg.index(max(agg)) == idxmax(agg) == 1   # gepa_utils.idxmax
+    assert CurrentBestSelector().select(st) == agg.index(max(agg)) == idxmax(agg) == 1  # gepa_utils.idxmax
     assert EpsilonGreedySelector(random.Random(0), epsilon=0.0).select(st) == 1
     # set-cover pruning keeps the newest of fully tied candidates (the E3 plateau mechanism)
     tied = {"v1": {0, 1, 2}, "v2": {0, 1, 2}}
@@ -177,8 +186,11 @@ def test_system_record_shows_every_module_and_misplaced_rules_are_counted():
     d = make_domain(seed=0)
     mods = d.world.cfg.modules
     tri, rep = (d.world.module_path(m) for m in mods)
-    task = next(t for t in map(d.tasks.get, d.tasks.splits["evolve"])
-                if {d.world.aspects[a].module for a in t.meta["aspects"]} == set(mods))
+    task = next(
+        t
+        for t in map(d.tasks.get, d.tasks.splits["evolve"])
+        if {d.world.aspects[a].module for a in t.meta["aspects"]} == set(mods)
+    )
     trial = d.run(d.seed_artifact(), task, seed=1, llm=None)
     own = d.reflective_record(task, trial, tri)
     sys_rec = d.system_reflective_record(task, trial, tri)
@@ -189,7 +201,7 @@ def test_system_record_shows_every_module_and_misplaced_rules_are_counted():
     seed = d.seed_artifact()
     rule = "\n" + d.world.rule_text(other[0], d.world.aspects[other[0]].codes[0])
     assert d.misplaced_rule_lines(seed) == 0
-    assert d.misplaced_rule_lines(seed.with_files({tri: seed[tri] + rule})) == 1    # reply rule in the triage prompt
+    assert d.misplaced_rule_lines(seed.with_files({tri: seed[tri] + rule})) == 1  # reply rule in the triage prompt
     assert d.misplaced_rule_lines(seed.with_files({rep: seed[rep] + rule})) == 0
 
 

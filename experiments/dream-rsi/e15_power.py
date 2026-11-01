@@ -1,7 +1,8 @@
 """P1: power of E15a's diversity permutation test against a relative shrink f of the guided arm's distances ($0).
 
-    python experiments/dream-rsi/e15_power.py [--sims 1000] [--nperm 999] [--seed 0]
+python experiments/dream-rsi/e15_power.py [--sims 1000] [--nperm 999] [--seed 0]
 """
+
 import argparse
 import json
 
@@ -32,7 +33,7 @@ def perm_p(D, gmask, rng, nperm):
 def shrink(D, gmask, f):
     D2 = D.copy()
     gi = np.where(gmask)[0]
-    D2[np.ix_(gi, gi)] *= (1.0 - f)
+    D2[np.ix_(gi, gi)] *= 1.0 - f
     return D2
 
 
@@ -59,8 +60,12 @@ def main():
     gmask = np.array([att[k]["arm"] for k in keys]) == "G"
     rng = np.random.default_rng(a.seed)
     p_obs, obs = perm_p(D, gmask, rng, 9999)
-    out = {"observed": {"jaccard_U_minus_G": float(obs), "permutation_p": float(p_obs)}, "relabel": {},
-           "bootstrap": {}, "shrink_observed": {}}
+    out = {
+        "observed": {"jaccard_U_minus_G": float(obs), "permutation_p": float(p_obs)},
+        "relabel": {},
+        "bootstrap": {},
+        "shrink_observed": {},
+    }
     n = len(keys)
     ui, gi = np.where(~gmask)[0], np.where(gmask)[0]
 
@@ -79,12 +84,26 @@ def main():
         out["relabel"][str(f)] = power(relabel, f, rng, a.sims, a.nperm)
         out["bootstrap"][str(f)] = power(bootstrap, f, rng, a.sims, a.nperm)
         out["shrink_observed"][str(f)] = float(perm_p(shrink(D, gmask, f), gmask, rng, 9999)[0])
-        print(f"f={f:.2f}: power relabel {out['relabel'][str(f)]:.3f}, bootstrap {out['bootstrap'][str(f)]:.3f}; "
-              f"observed-G shrunk p = {out['shrink_observed'][str(f)]:.4f}", flush=True)
-    save("e15_power", {"config": {"sims": a.sims, "nperm": a.nperm, "alpha": ALPHA, "seed": a.seed,
-                                  "fractions": FRACS, "source": "results/dream-rsi/e15_guidance_live.json",
-                                  "statistic": "meanpair_Jaccard(U) - meanpair_Jaccard(G), one-sided"},
-                       "results": out})
+        print(
+            f"f={f:.2f}: power relabel {out['relabel'][str(f)]:.3f}, bootstrap {out['bootstrap'][str(f)]:.3f}; "
+            f"observed-G shrunk p = {out['shrink_observed'][str(f)]:.4f}",
+            flush=True,
+        )
+    save(
+        "e15_power",
+        {
+            "config": {
+                "sims": a.sims,
+                "nperm": a.nperm,
+                "alpha": ALPHA,
+                "seed": a.seed,
+                "fractions": FRACS,
+                "source": "results/dream-rsi/e15_guidance_live.json",
+                "statistic": "meanpair_Jaccard(U) - meanpair_Jaccard(G), one-sided",
+            },
+            "results": out,
+        },
+    )
 
 
 if __name__ == "__main__":

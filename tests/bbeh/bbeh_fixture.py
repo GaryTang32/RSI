@@ -1,4 +1,5 @@
 """A tiny synthetic BBEH: 20 examples per task in the upstream layout, with BBEH-style targets, and its manifest."""
+
 from __future__ import annotations
 
 import hashlib
@@ -36,8 +37,10 @@ def target(task: str, i: int, rng: random.Random) -> str:
 def example(task: str, i: int) -> dict:
     rng = random.Random(f"bbeh:{task}:{i}")
     body = " ".join(rng.choice(NAMES) for _ in range(30))
-    return {"input": f"Synthetic BBEH {task} problem {i}. Read the story: {body}. Give the final answer.",
-            "target": target(task, i, rng)}
+    return {
+        "input": f"Synthetic BBEH {task} problem {i}. Read the story: {body}. Give the final answer.",
+        "target": target(task, i, rng),
+    }
 
 
 def build(root: Path) -> dict:

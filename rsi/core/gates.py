@@ -1,9 +1,10 @@
 """Keep-or-discard rules ("gates"): composable, pure functions of the scores, so runs can be re-adjudicated."""
+
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Sequence
 
 from .evaluate import EvalResult
 from .stats import prob_better_bootstrap
@@ -17,25 +18,30 @@ class Scored:
     """What a gate sees about one candidate (or the incumbent)."""
 
     score: float
-    cost: float = 0.0                           # e.g. mean tokens per trial
-    samples: Optional[list[float]] = None       # per-seed scores (for bootstrap rules)
-    per_task: Optional[dict[str, float]] = None
+    cost: float = 0.0  # e.g. mean tokens per trial
+    samples: list[float] | None = None  # per-seed scores (for bootstrap rules)
+    per_task: dict[str, float] | None = None
     metrics: dict[str, float] = field(default_factory=dict)
-    novelty: int = 0                            # RRSI nu: new structural components touched
+    novelty: int = 0  # RRSI nu: new structural components touched
 
     @classmethod
     def from_eval(cls, ev: EvalResult, **extra) -> Scored:
         m = ev.trial_matrix()
         samples = list(m.mean(axis=0)) if m.size else [ev.score]
-        metrics = {"score": ev.score, "cost": ev.cost, "steps": ev.steps, "error_rate": ev.error_rate,
-                   **extra.pop("metrics", {})}
+        metrics = {
+            "score": ev.score,
+            "cost": ev.cost,
+            "steps": ev.steps,
+            "error_rate": ev.error_rate,
+            **extra.pop("metrics", {}),
+        }
         return cls(score=ev.score, cost=ev.cost, samples=samples, per_task=ev.task_scores(), metrics=metrics, **extra)
 
 
 @dataclass
 class GateContext:
-    best_score: Optional[float] = None       # S*: best incumbent score so far
-    delta: float = 0.0                       # noise band
+    best_score: float | None = None  # S*: best incumbent score so far
+    delta: float = 0.0  # noise band
     round: int = 0
     info: dict = field(default_factory=dict)
 
@@ -47,7 +53,7 @@ class Verdict:
     details: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        self.accept = bool(self.accept)   # numpy comparisons give numpy.bool_, which __bool__ may not return
+        self.accept = bool(self.accept)  # numpy comparisons give numpy.bool_, which __bool__ may not return
 
     def __bool__(self) -> bool:
         return self.accept
@@ -130,8 +136,15 @@ class CostRule(Gate):
 
     name = "cost_rule"
 
-    def __init__(self, beta0: float = 0.10, beta1: float = 40.0, w_s: float = 100.0, w_c: float = 15.0,
-                 w_n: float = 0.5, within_band: bool = True) -> None:
+    def __init__(
+        self,
+        beta0: float = 0.10,
+        beta1: float = 40.0,
+        w_s: float = 100.0,
+        w_c: float = 15.0,
+        w_n: float = 0.5,
+        within_band: bool = True,
+    ) -> None:
         self.beta0, self.beta1 = beta0, beta1
         self.w_s, self.w_c, self.w_n = w_s, w_c, w_n
         self.within_band = within_band
@@ -172,8 +185,9 @@ class RRSIGate(AllOf):
 
     name = "rrsi"
 
-    def __init__(self, cost_rule: Optional[CostRule] = None, guards: Sequence[Gate] = (), floor: bool = True,
-                 cost: bool = True) -> None:
+    def __init__(
+        self, cost_rule: CostRule | None = None, guards: Sequence[Gate] = (), floor: bool = True, cost: bool = True
+    ) -> None:
         gates: list[Gate] = [NoiseFloor()] if floor else []
         gates.append((cost_rule or CostRule()) if cost else MinGainOrEqualWithinBand())
         super().__init__([*gates, *guards])
@@ -221,7 +235,7 @@ class DualGate(Gate):
             if c is None or b is None:
                 return Verdict(False, f"capability metric {m} missing")
             det[m] = c - b
-            if not c >= b - tol - TIE_EPS:   # a NaN capability fails too
+            if not c >= b - tol - TIE_EPS:  # a NaN capability fails too
                 return Verdict(False, f"capability {m} dropped {c - b:+.4f} beyond tol {tol}", det)
         improved = []
         for m, min_rel in self.efficiency.items():
@@ -239,18 +253,22 @@ class DualGate(Gate):
 def _is_nan(x) -> bool:
     try:
         return math.isnan(x)
-    except TypeError:          # tuple / non-numeric keys
+    except TypeError:  # tuple / non-numeric keys
         return False
 
 
-def select(candidates: Sequence[tuple[object, Scored]], incumbent: Scored, gate: Gate, ctx: GateContext,
-           key: Callable[[Scored], float] = lambda s: s.score,
-           ) -> tuple[Optional[object], list[tuple[object, Verdict]]]:
+def select(
+    candidates: Sequence[tuple[object, Scored]],
+    incumbent: Scored,
+    gate: Gate,
+    ctx: GateContext,
+    key: Callable[[Scored], float] = lambda s: s.score,
+) -> tuple[object | None, list[tuple[object, Verdict]]]:
     """``(winner or None, verdicts)``: argmax ``key`` over admissible candidates, ties to the earliest, NaN never."""
     verdicts = []
     for c, s in candidates:
         v = gate.check(s, incumbent, ctx)
-        if v.accept and _is_nan(key(s)):   # max() would return a NaN that comes first
+        if v.accept and _is_nan(key(s)):  # max() would return a NaN that comes first
             v = Verdict(False, f"invalid: selection key is NaN ({v.reason})", v.details)
         verdicts.append((c, v))
     admissible = [(c, s) for (c, s), (_, v) in zip(candidates, verdicts) if v.accept]

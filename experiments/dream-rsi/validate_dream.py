@@ -1,8 +1,9 @@
 """From-scratch validation runs of Dream-RSI, then an independent audit of every step from the files on disk.
 
-    python experiments/dream-rsi/validate_dream.py <sumdiff_offline|agentqa_offline|sumdiff_live|sumdiff_live_b|
-        sumdiff_live_c> [--audit-only] [--reuse-cache]   # writes validation/dream-rsi/<run>/{report,audit}.json
+python experiments/dream-rsi/validate_dream.py <sumdiff_offline|agentqa_offline|sumdiff_live|sumdiff_live_b|
+    sumdiff_live_c> [--audit-only] [--reuse-cache]   # writes validation/dream-rsi/<run>/{report,audit}.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,30 +30,72 @@ from rsi.trace import inspect, load_trace  # noqa: E402
 
 OUT = ROOT / "validation" / "dream-rsi"
 _LIVE = {  # run -> (Config kwargs, setup text); claude haiku as agent AND developer behind a fresh CachedLLM
-    "sumdiff_live": (dict(rounds=3, W=3, branch_count=3, refine_count=3, hard_max_branch=4, hard_max_refine=3, M=3,
-                          m_semantics="revisions", seed=0, sandbox="subprocess", policy_timeout_s=60.0, max_calls=40),
-                     "Sum-difference, untouched seed construct.py (Gamma = 0.9105). Discovery agent = "
-                     "EditorAgent (Listing-1 prompt, one completion rewrites construct.py) and policy developer "
-                     "= LLMPolicyDeveloper (Listing-2 prompt, static check + leakage screen + 1 repair round), "
-                     "BOTH claude haiku (ClaudeCLI('haiku') behind a fresh CachedLLM). pi_1 = parallel refine on "
-                     "a 3 x 4 grid (depth <= 4: refine_count 3), hard caps 4 branches x 3 refinements, W = 3, "
-                     "T = 3 live cycles, M = 3 dreaming revisions per phase (m_semantics='revisions': incumbent + "
-                     "3 LLM revisions), Eq. 1 defaults, argmax, max_calls = 40 agent calls, candidate programs "
-                     "and policies in subprocess sandboxes."),
-    "sumdiff_live_b": (dict(rounds=2, W=3, branch_count=3, refine_count=2, hard_max_branch=4, hard_max_refine=3, M=3,
-                            m_semantics="revisions", seed=0, sandbox="subprocess", policy_timeout_s=60.0, max_calls=18),
-                       "Stage-B re-run of sumdiff_live AFTER the reply-parsing fixes, from scratch (untouched "
-                       "seed, fresh run dir, fresh CachedLLM). claude haiku as EditorAgent (Listing 1) and "
-                       "LLMPolicyDeveloper (Listing 2); pi_1 = parallel refine 3 x 3 (refine_count 2), W = 3, "
-                       "T = 2 live cycles, 3 LLM revisions in the one dreaming phase, max_calls = 18."),
-    "sumdiff_live_c": (dict(rounds=2, W=3, branch_count=3, refine_count=2, hard_max_branch=4, hard_max_refine=3, M=3,
-                            m_semantics="revisions", seed=0, sandbox="subprocess", policy_timeout_s=60.0, max_calls=18),
-                       "Claims-audit fix run (after N1-N7): sumdiff_live_b's setup - untouched seed, fresh run "
-                       "dir, fresh CachedLLM, claude haiku as EditorAgent and LLMPolicyDeveloper, pi_1 = parallel "
-                       "refine 3 x 3 (refine_count 2), W = 3, T = 2, 3 LLM revisions, max_calls = 18 - now with "
-                       "the verbatim Listing-1 prompt (full history, baseline proposal.md, pkill line) and "
-                       "Listing-2 prompt (+ framework notes), a fresh policy namespace per replay episode, and "
-                       "the per-round budget = Fixed's 9 calls."),
+    "sumdiff_live": (
+        dict(
+            rounds=3,
+            W=3,
+            branch_count=3,
+            refine_count=3,
+            hard_max_branch=4,
+            hard_max_refine=3,
+            M=3,
+            m_semantics="revisions",
+            seed=0,
+            sandbox="subprocess",
+            policy_timeout_s=60.0,
+            max_calls=40,
+        ),
+        "Sum-difference, untouched seed construct.py (Gamma = 0.9105). Discovery agent = "
+        "EditorAgent (Listing-1 prompt, one completion rewrites construct.py) and policy developer "
+        "= LLMPolicyDeveloper (Listing-2 prompt, static check + leakage screen + 1 repair round), "
+        "BOTH claude haiku (ClaudeCLI('haiku') behind a fresh CachedLLM). pi_1 = parallel refine on "
+        "a 3 x 4 grid (depth <= 4: refine_count 3), hard caps 4 branches x 3 refinements, W = 3, "
+        "T = 3 live cycles, M = 3 dreaming revisions per phase (m_semantics='revisions': incumbent + "
+        "3 LLM revisions), Eq. 1 defaults, argmax, max_calls = 40 agent calls, candidate programs "
+        "and policies in subprocess sandboxes.",
+    ),
+    "sumdiff_live_b": (
+        dict(
+            rounds=2,
+            W=3,
+            branch_count=3,
+            refine_count=2,
+            hard_max_branch=4,
+            hard_max_refine=3,
+            M=3,
+            m_semantics="revisions",
+            seed=0,
+            sandbox="subprocess",
+            policy_timeout_s=60.0,
+            max_calls=18,
+        ),
+        "Stage-B re-run of sumdiff_live AFTER the reply-parsing fixes, from scratch (untouched "
+        "seed, fresh run dir, fresh CachedLLM). claude haiku as EditorAgent (Listing 1) and "
+        "LLMPolicyDeveloper (Listing 2); pi_1 = parallel refine 3 x 3 (refine_count 2), W = 3, "
+        "T = 2 live cycles, 3 LLM revisions in the one dreaming phase, max_calls = 18.",
+    ),
+    "sumdiff_live_c": (
+        dict(
+            rounds=2,
+            W=3,
+            branch_count=3,
+            refine_count=2,
+            hard_max_branch=4,
+            hard_max_refine=3,
+            M=3,
+            m_semantics="revisions",
+            seed=0,
+            sandbox="subprocess",
+            policy_timeout_s=60.0,
+            max_calls=18,
+        ),
+        "Claims-audit fix run (after N1-N7): sumdiff_live_b's setup - untouched seed, fresh run "
+        "dir, fresh CachedLLM, claude haiku as EditorAgent and LLMPolicyDeveloper, pi_1 = parallel "
+        "refine 3 x 3 (refine_count 2), W = 3, T = 2, 3 LLM revisions, max_calls = 18 - now with "
+        "the verbatim Listing-1 prompt (full history, baseline proposal.md, pkill line) and "
+        "Listing-2 prompt (+ framework notes), a fresh policy namespace per replay episode, and "
+        "the per-round budget = Fixed's 9 calls.",
+    ),
 }
 
 
@@ -63,35 +106,56 @@ def setup(name: str, reuse_cache: bool = False) -> dict:
     if name == "sumdiff_offline":
         dom = SumDiffDomain(sandboxed=True)
         cfg = Config(rounds=4, W=3, branch_count=3, refine_count=4, M=4, seed=0, sandbox="subprocess")
-        return dict(domain=dom, task=dom, seed=dom.seed_artifact(), agent=dom.mock_agent(),
-                    developer=ParametricMutator(), llm=None, llm_task=None, config=cfg, cache=None,
-                    kind="sumdiff", ground_truth=True,
-                    setup="Sum-difference (maximize Gamma(A)), untouched seed construct.py (INIT = 12-element set, "
-                          "no stages; Gamma = 0.9105). Discovery agent = the domain's offline mock agent (each attempt "
-                          "appends one search stage of the branch's direction to the parent's recipe); policy "
-                          "developer = ParametricMutator (offline mock). pi_1 = parallel refine on a 3 x 5 grid "
-                          "(branch_count 3, refine_count 4), W = 3, T = 4 live cycles, M = 4 versions per dreaming "
-                          "phase (incumbent + 3 revisions), Eq. 1 with beta1 = 0.01, beta2 = 0.005, per-world "
-                          "normalization, argmax selection, root_mode earliest, policies in the subprocess sandbox, "
-                          "programs graded in the subprocess sandbox.")
+        return dict(
+            domain=dom,
+            task=dom,
+            seed=dom.seed_artifact(),
+            agent=dom.mock_agent(),
+            developer=ParametricMutator(),
+            llm=None,
+            llm_task=None,
+            config=cfg,
+            cache=None,
+            kind="sumdiff",
+            ground_truth=True,
+            setup="Sum-difference (maximize Gamma(A)), untouched seed construct.py (INIT = 12-element set, "
+            "no stages; Gamma = 0.9105). Discovery agent = the domain's offline mock agent (each attempt "
+            "appends one search stage of the branch's direction to the parent's recipe); policy "
+            "developer = ParametricMutator (offline mock). pi_1 = parallel refine on a 3 x 5 grid "
+            "(branch_count 3, refine_count 4), W = 3, T = 4 live cycles, M = 4 versions per dreaming "
+            "phase (incumbent + 3 revisions), Eq. 1 with beta1 = 0.01, beta2 = 0.005, per-world "
+            "normalization, argmax selection, root_mode earliest, policies in the subprocess sandbox, "
+            "programs graded in the subprocess sandbox.",
+        )
     if name == "agentqa_offline":
         from rsi.domains.agentqa import AgentQADomain, SimModel, make_suite
         from rsi.domains.discovery.agentqa_agent import MECHANISMS, agentqa_mock_agent
         from rsi.dream import DomainTask
+
         suite = make_suite(n_evolve=8, n_val=4, n_holdout=8, n_ood_per_family=2, seed=0)
         dom = AgentQADomain(suite)
         sim = SimModel(suite)
         task = DomainTask(dom, dom.seed_artifact(), sim, directions=MECHANISMS, workers=2)
         cfg = Config(rounds=4, W=3, branch_count=3, refine_count=2, M=4, seed=0, sandbox="subprocess")
-        return dict(domain=dom, task=task, seed=dom.seed_artifact(), agent=agentqa_mock_agent(),
-                    developer=ParametricMutator(), llm=None, llm_task=sim, config=cfg, cache=None,
-                    kind="agentqa", ground_truth=True,
-                    setup="AgentQA (shared harness domain) through DomainTask: untouched AgentQADomain.seed_artifact() "
-                          "(one direct model call, 'You are a helpful assistant.'); score = mean evolve S (8 numeric "
-                          "tasks, k = 1) with SimModel; sealed holdout (8) + ood (8: 2 per unseen family) scored only "
-                          "by the shadow monitor and the final transfer report. Agent = agentqa_mock_agent (one "
-                          "mechanism knob per attempt), developer = ParametricMutator; pi_1 = parallel refine 3 x 3, "
-                          "W = 3, T = 4, M = 4, Eq. 1 defaults, argmax.")
+        return dict(
+            domain=dom,
+            task=task,
+            seed=dom.seed_artifact(),
+            agent=agentqa_mock_agent(),
+            developer=ParametricMutator(),
+            llm=None,
+            llm_task=sim,
+            config=cfg,
+            cache=None,
+            kind="agentqa",
+            ground_truth=True,
+            setup="AgentQA (shared harness domain) through DomainTask: untouched AgentQADomain.seed_artifact() "
+            "(one direct model call, 'You are a helpful assistant.'); score = mean evolve S (8 numeric "
+            "tasks, k = 1) with SimModel; sealed holdout (8) + ood (8: 2 per unseen family) scored only "
+            "by the shadow monitor and the final transfer report. Agent = agentqa_mock_agent (one "
+            "mechanism knob per attempt), developer = ParametricMutator; pi_1 = parallel refine 3 x 3, "
+            "W = 3, T = 4, M = 4, Eq. 1 defaults, argmax.",
+        )
     if name in _LIVE:
         kw, text = _LIVE[name]
         dom = SumDiffDomain(sandboxed=True)
@@ -99,9 +163,20 @@ def setup(name: str, reuse_cache: bool = False) -> dict:
         if cache.exists() and not reuse_cache:
             shutil.rmtree(cache)  # from scratch: a fresh LLM cache
         llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), cache)
-        return dict(domain=dom, task=dom, seed=dom.seed_artifact(), llm=llm, llm_task=None,
-                    agent=EditorAgent(llm, editable=[dom.program_file]), developer=LLMPolicyDeveloper(llm),
-                    config=Config(**kw), cache=cache, kind="sumdiff", ground_truth=False, setup=text)
+        return dict(
+            domain=dom,
+            task=dom,
+            seed=dom.seed_artifact(),
+            llm=llm,
+            llm_task=None,
+            agent=EditorAgent(llm, editable=[dom.program_file]),
+            developer=LLMPolicyDeveloper(llm),
+            config=Config(**kw),
+            cache=cache,
+            kind="sumdiff",
+            ground_truth=False,
+            setup=text,
+        )
     raise SystemExit(f"unknown run {name!r}")
 
 
@@ -110,8 +185,15 @@ def execute(name: str, s: dict, out: Path) -> dict:
     if out.exists():
         shutil.rmtree(out)
     t0 = time.time()
-    res = run(s["task"], s["seed"], llm_task=s["llm_task"], agent=s["agent"], developer=s["developer"],
-              config=s["config"], out_dir=str(out))
+    res = run(
+        s["task"],
+        s["seed"],
+        llm_task=s["llm_task"],
+        agent=s["agent"],
+        developer=s["developer"],
+        config=s["config"],
+        out_dir=str(out),
+    )
     wall = time.time() - t0
     md = inspect(out)
     dom = s["domain"]
@@ -119,19 +201,29 @@ def execute(name: str, s: dict, out: Path) -> dict:
     rep_llm = None
     if s["llm_task"] is not None:
         from rsi.dream.tracing import ShadowLLM
+
         rep_llm = ShadowLLM(s["llm_task"])  # metered apart from the loop
     tr = transfer_report(dom, rep_llm, {"seed": s["seed"], "final": res.best}, splits=splits, k=1, workers=2)
     usage = {k: v for k, v in res.usage.items() if not k.startswith("_")}
     shadow = res.meta.get("shadow_usage") or {}
     report = {
-        "run": name, "setup": s["setup"], "config": asdict(s["config"]), "wall_s": round(wall, 1),
-        "seed_score": res.meta["seed_score"], "best_score": res.meta["best_score"], "stop_reason": res.stop_reason,
+        "run": name,
+        "setup": s["setup"],
+        "config": asdict(s["config"]),
+        "wall_s": round(wall, 1),
+        "seed_score": res.meta["seed_score"],
+        "best_score": res.meta["best_score"],
+        "stop_reason": res.stop_reason,
         "calls_per_cycle": [r["calls"] for r in res.trajectory],
         "best_per_cycle": [r["best"] for r in res.trajectory],
-        "transfer": tr, "usage_by_role": usage, "cost_meter": res.usage.get("_cost"),
-        "spend": {"loop_usd": round(float(sum(v.get("cost_usd", 0.0) for v in usage.values())), 4),
-                  "shadow_monitor_usd": round(float((shadow.get("_total") or {}).get("cost_usd", 0.0)), 4),
-                  "report_usd": round(float(rep_llm.meter.total().cost_usd), 4) if rep_llm is not None else 0.0},
+        "transfer": tr,
+        "usage_by_role": usage,
+        "cost_meter": res.usage.get("_cost"),
+        "spend": {
+            "loop_usd": round(float(sum(v.get("cost_usd", 0.0) for v in usage.values())), 4),
+            "shadow_monitor_usd": round(float((shadow.get("_total") or {}).get("cost_usd", 0.0)), 4),
+            "report_usd": round(float(rep_llm.meter.total().cost_usd), 4) if rep_llm is not None else 0.0,
+        },
         "llm_cache": ({"hits": s["llm"].hits, "misses": s["llm"].misses} if s["llm"] is not None else None),
         "trace_md": str(md),
     }
@@ -180,13 +272,23 @@ def _load_run(out: Path) -> dict:
         worlds.append(DiscoveryTree.load(out / f"trace_pool/iter{t:02d}/tree.json"))
         mans.append(json.loads((out / f"trace_pool/iter{t:02d}/live_cycle_manifest.json").read_text()))
         t += 1
-    hist = {int(d.name[1:5]): {"label": d.name[6:], "code": (d / "method.py").read_text(),
-                               "report": json.loads((d / "report.json").read_text())
-                               if (d / "report.json").exists() else None}
-            for d in sorted((out / "history").glob("r*_*"))}
-    return {"ev": ev, "worlds": worlds, "manifests": mans, "history": hist,
-            "store": SnapshotStore(out / "snapshots"), "summary": json.loads((out / "summary.json").read_text()),
-            "trajectory": json.loads((out / "trajectory.json").read_text())}
+    hist = {
+        int(d.name[1:5]): {
+            "label": d.name[6:],
+            "code": (d / "method.py").read_text(),
+            "report": json.loads((d / "report.json").read_text()) if (d / "report.json").exists() else None,
+        }
+        for d in sorted((out / "history").glob("r*_*"))
+    }
+    return {
+        "ev": ev,
+        "worlds": worlds,
+        "manifests": mans,
+        "history": hist,
+        "store": SnapshotStore(out / "snapshots"),
+        "summary": json.loads((out / "summary.json").read_text()),
+        "trajectory": json.loads((out / "trajectory.json").read_text()),
+    }
 
 
 def _by(ev, kind, rnd=None):
@@ -202,8 +304,9 @@ def same_text(traced: str, full: str) -> bool:
 
 
 def _check(rows: list, name: str, ok, detail: str = "") -> None:
-    rows.append({"check": name, "result": ("PASS" if ok is True else "FAIL" if ok is False else str(ok)),
-                 "detail": detail})
+    rows.append(
+        {"check": name, "result": ("PASS" if ok is True else "FAIL" if ok is False else str(ok)), "detail": detail}
+    )
 
 
 def _online_legal(orounds, by_round, W, pu) -> tuple[bool, list]:
@@ -247,6 +350,7 @@ def audit(name: str, s: dict, out: Path) -> dict:
     else:
         from rsi.core.evaluate import Evaluator
         from rsi.domains.agentqa import SimModel
+
         evr = Evaluator(s["domain"], SimModel(s["domain"].tasks), workers=2)
 
         def regrade(prog):
@@ -254,11 +358,19 @@ def audit(name: str, s: dict, out: Path) -> dict:
 
     base = _by(ev, "baseline")[0]
     sg, why = regrade(program_only(s["seed"]))
-    _check(global_rows, "seed program re-graded independently", abs(sg - base["summary"]["S"]) < 1e-9,
-           f"trace S={base['summary']['S']:.6f}, independent={sg:.6f} ({why})")
+    _check(
+        global_rows,
+        "seed program re-graded independently",
+        abs(sg - base["summary"]["S"]) < 1e-9,
+        f"trace S={base['summary']['S']:.6f}, independent={sg:.6f} ({why})",
+    )
     run_start = _by(ev, "run_start")[0]
-    _check(global_rows, "run starts from the untouched seed artifact",
-           run_start["seed_artifact_id"] == program_only(s["seed"]).id, run_start["seed"])
+    _check(
+        global_rows,
+        "run starts from the untouched seed artifact",
+        run_start["seed_artifact_id"] == program_only(s["seed"]).id,
+        run_start["seed"],
+    )
     best = base["summary"]["S"]
     gt_rows: list = []
     runner = get_runner("subprocess", timeout_s=60)
@@ -268,25 +380,39 @@ def audit(name: str, s: dict, out: Path) -> dict:
         code_t = hist[int(rs["deployed_policy"]["rev"][1:])]["code"]
         pr, pu = rs["plan_requested"], rs["plan_used"]
         in_caps = 1 <= pu["branch_count"] <= cfg.hard_max_branch and 0 <= pu["refine_count"] <= cfg.hard_max_refine
-        clamped = pr is None or (min(max(1, pr["branch_count"]), cfg.hard_max_branch) == pu["branch_count"]
-                                 and min(max(0, pr["refine_count"]), cfg.hard_max_refine) == pu["refine_count"])
-        _check(rows, "plan used within hard caps (and = requested clamped)", in_caps and clamped,
-               f"requested {pr and (pr['branch_count'], pr['refine_count'])} "
-               f"used {(pu['branch_count'], pu['refine_count'])}: {pu['reason'][:120]}")
-        _check(rows, "live root = best program so far (root='best')", abs(w.root_score - best) < 1e-12,
-               f"root {w.root_score:.6f} vs best so far {best:.6f}")
+        clamped = pr is None or (
+            min(max(1, pr["branch_count"]), cfg.hard_max_branch) == pu["branch_count"]
+            and min(max(0, pr["refine_count"]), cfg.hard_max_refine) == pu["refine_count"]
+        )
+        _check(
+            rows,
+            "plan used within hard caps (and = requested clamped)",
+            in_caps and clamped,
+            f"requested {pr and (pr['branch_count'], pr['refine_count'])} "
+            f"used {(pu['branch_count'], pu['refine_count'])}: {pu['reason'][:120]}",
+        )
+        _check(
+            rows,
+            "live root = best program so far (root='best')",
+            abs(w.root_score - best) < 1e-12,
+            f"root {w.root_score:.6f} vs best so far {best:.6f}",
+        )
         orounds = [d for d in _by(ev, "note", t) if d["what"] == "online_round"]
         by_round: dict = {}
         for n in w.non_root():
             by_round.setdefault(n.round, []).append(n)
         legal_ok, problems = _online_legal(orounds, by_round, cfg.W, pu)
-        _check(rows, "online batches legal (<= W, one cell per branch, inside plan, parent first) and = recorded tree",
-               legal_ok, "; ".join(problems[:4]) or f"{len(orounds)} rounds, batch sizes "
-               f"{[len(d['batch']) for d in orounds]}")
+        _check(
+            rows,
+            "online batches legal (<= W, one cell per branch, inside plan, parent first) and = recorded tree",
+            legal_ok,
+            "; ".join(problems[:4]) or f"{len(orounds)} rounds, batch sizes {[len(d['batch']) for d in orounds]}",
+        )
         # legal cells left when the policy stopped (portfolio stop)
         depth = {n.branch: max(x.attempt for x in w.non_root() if x.branch == n.branch) for n in w.non_root()}
-        left = sum(1 for b in range(pu["branch_count"]) if b not in depth) + \
-            sum(1 for b, a in depth.items() if a < pu["refine_count"])
+        left = sum(1 for b in range(pu["branch_count"]) if b not in depth) + sum(
+            1 for b, a in depth.items() if a < pu["refine_count"]
+        )
         osum = [d for d in _by(ev, "note", t) if d["what"] == "online_summary"][0]
         # attempts: diff from the snapshot store, independent re-grade, claims
         n_ok_diff = n_ok_grade = n_nondet = 0
@@ -321,6 +447,7 @@ def audit(name: str, s: dict, out: Path) -> dict:
                     n_ok_grade += 1
                 if "SyntaxError" in str(n.error):  # the idea's failure, or a reply-format line left in the file?
                     from rsi.dream.agent import strip_reply_terminators
+
                     fixed, which = strip_reply_terminators(ch, ["construct.py"])
                     if which:
                         g2, _ = regrade(fixed)
@@ -330,34 +457,55 @@ def audit(name: str, s: dict, out: Path) -> dict:
                 claims["checked"] += 1
                 mech = p["change"].split()[2]
                 added = [l for l in p["diff"].splitlines() if l.startswith("+STAGES")]
-                last = json.loads(added[0][len("+STAGES = "):])[-1] if added else None
+                last = json.loads(added[0][len("+STAGES = ") :])[-1] if added else None
                 if last and last[0] == mech:
                     claims["match"] += 1
                     if n.tags.get("direction") and mech != n.tags["direction"]:
                         claims["switch"] += 1
                 else:
                     claims["mismatch"].append(n.id)
-        _check(rows, "every attempt's trace diff = parent -> child program diff from the snapshot store",
-               not diff_bad, f"{n_ok_diff}/{w.size} match" + (f"; bad {diff_bad[:4]}" if diff_bad else ""))
-        _check(rows, "every attempt re-graded independently (own grader, fresh process) = recorded score",
-               not grade_bad, f"{n_ok_grade}/{w.size} match" + (f"; {grade_bad[:3]}" if grade_bad else "")
-               + (f"; {n_nondet} program(s) non-deterministic on re-run" if n_nondet else ""))
+        _check(
+            rows,
+            "every attempt's trace diff = parent -> child program diff from the snapshot store",
+            not diff_bad,
+            f"{n_ok_diff}/{w.size} match" + (f"; bad {diff_bad[:4]}" if diff_bad else ""),
+        )
+        _check(
+            rows,
+            "every attempt re-graded independently (own grader, fresh process) = recorded score",
+            not grade_bad,
+            f"{n_ok_grade}/{w.size} match"
+            + (f"; {grade_bad[:3]}" if grade_bad else "")
+            + (f"; {n_nondet} program(s) non-deterministic on re-run" if n_nondet else ""),
+        )
         n_fail = sum(1 for n in w.non_root() if not n.success)
         if n_fail:
-            _check(rows, "failed attempts: genuine failures (not reply-parsing artifacts)", not parse_art,
-                   f"{n_fail} failed; {len(parse_art)} were a trailing '===' / fence line left by the reply parser - "
-                   f"re-graded without it: " + ", ".join(f"{x['cell']}={x['score_if_parsed']:.4f}" for x in parse_art)
-                   if parse_art else f"{n_fail} failed, none is a parse artifact")
+            _check(
+                rows,
+                "failed attempts: genuine failures (not reply-parsing artifacts)",
+                not parse_art,
+                f"{n_fail} failed; {len(parse_art)} were a trailing '===' / fence line left by the reply parser - "
+                f"re-graded without it: " + ", ".join(f"{x['cell']}={x['score_if_parsed']:.4f}" for x in parse_art)
+                if parse_art
+                else f"{n_fail} failed, none is a parse artifact",
+            )
         if claims["checked"]:
-            _check(rows, "mock agent's claimed change = the stage its diff actually appends",
-                   not claims["mismatch"], f"{claims['match']}/{claims['checked']} match; {claims['switch']} attempts "
-                   "switched away from the branch direction (documented 25% mock behaviour)")
+            _check(
+                rows,
+                "mock agent's claimed change = the stage its diff actually appends",
+                not claims["mismatch"],
+                f"{claims['match']}/{claims['checked']} match; {claims['switch']} attempts "
+                "switched away from the branch direction (documented 25% mock behaviour)",
+            )
         succ = [n.score for n in w.non_root() if n.success and n.score is not None]
         new_best = max([best] + succ)
         dec = [d for d in _by(ev, "decision", t) if d["level"].startswith("object")][0]
-        _check(rows, "best program = max(best so far, best successful attempt), strict improvement",
-               abs(dec["best_after"] - new_best) < 1e-6 and ((new_best > best) == (dec["kept"] is not None)),
-               f"{best:.6f} -> {new_best:.6f} (trace: {dec['best_before']} -> {dec['best_after']}, kept {dec['kept']})")
+        _check(
+            rows,
+            "best program = max(best so far, best successful attempt), strict improvement",
+            abs(dec["best_after"] - new_best) < 1e-6 and ((new_best > best) == (dec["kept"] is not None)),
+            f"{best:.6f} -> {new_best:.6f} (trace: {dec['best_before']} -> {dec['best_after']}, kept {dec['kept']})",
+        )
         prev_best, best = best, new_best
         # replay fidelity: re-replay this world with the policy that recorded it, in the online plan
         plan = GridPlan(pu["branch_count"], pu["refine_count"], "online plan")
@@ -369,48 +517,76 @@ def audit(name: str, s: dict, out: Path) -> dict:
         rep_rounds = [sorted(x["cell"] for x in r["revealed"]) for r in q.round_log]
         onl_rounds = [sorted(n.id for n in by_round[k]) for k in sorted(by_round)]
         fid = rep_rounds == onl_rounds
-        _check(rows, "replay fidelity: the recording policy replayed on its own world reveals exactly the online "
-               "batches", fid if not truncated else (fid or "N/A (call budget truncated a batch)"),
-               f"online {[len(x) for x in onl_rounds]} vs replay {[len(x) for x in rep_rounds]}"
-               + (f"; replay error {o.error}" if o.error else ""))
-        row = {"cycle": t, "policy": rs["deployed_policy"], "plan": (pu["branch_count"], pu["refine_count"]),
-               "plan_reason": pu["reason"], "N": osum["N"], "k": osum["k"], "batch_sizes": osum["batch_sizes"],
-               "legal_left_at_stop": left, "round_best": max(succ) if succ else None, "best_before": prev_best,
-               "parse_artifacts": parse_art,
-               "best_after": best, "fail_classes": {fc: sum(1 for n in w.non_root() if n.fail_class == fc)
-                                                    for fc in sorted({n.fail_class for n in w.non_root()})},
-               "checks": rows}
-        _check(rows, "manifest beta = baked-in default beta of the deployed code",
-               abs(mans[t - 1]["beta"] - default_beta_of(code_t)) < 1e-12, f"beta {mans[t - 1]['beta']}")
+        _check(
+            rows,
+            "replay fidelity: the recording policy replayed on its own world reveals exactly the online batches",
+            fid if not truncated else (fid or "N/A (call budget truncated a batch)"),
+            f"online {[len(x) for x in onl_rounds]} vs replay {[len(x) for x in rep_rounds]}"
+            + (f"; replay error {o.error}" if o.error else ""),
+        )
+        row = {
+            "cycle": t,
+            "policy": rs["deployed_policy"],
+            "plan": (pu["branch_count"], pu["refine_count"]),
+            "plan_reason": pu["reason"],
+            "N": osum["N"],
+            "k": osum["k"],
+            "batch_sizes": osum["batch_sizes"],
+            "legal_left_at_stop": left,
+            "round_best": max(succ) if succ else None,
+            "best_before": prev_best,
+            "parse_artifacts": parse_art,
+            "best_after": best,
+            "fail_classes": {
+                fc: sum(1 for n in w.non_root() if n.fail_class == fc)
+                for fc in sorted({n.fail_class for n in w.non_root()})
+            },
+            "checks": rows,
+        }
+        _check(
+            rows,
+            "manifest beta = baked-in default beta of the deployed code",
+            abs(mans[t - 1]["beta"] - default_beta_of(code_t)) < 1e-12,
+            f"beta {mans[t - 1]['beta']}",
+        )
         if [d for d in _by(ev, "decision", t) if d["level"].startswith("policy")]:
             row["dream"] = _audit_dream(t, ev, worlds[:t], mans, hist, cfg, rows)
             if s.get("ground_truth") and len(row["dream"]["versions"]) > 1:
-                gt = ground_truth(t, s, row["dream"], hist, best_prog=_best_prog(store, worlds, best),
-                                  manifests=mans[:t])
+                gt = ground_truth(
+                    t, s, row["dream"], hist, best_prog=_best_prog(store, worlds, best), manifests=mans[:t]
+                )
                 row["dream"]["ground_truth"] = gt
                 gt_rows.append(gt)
         cycles.append(row)
     tot = sum(len(w.non_root()) for w in worlds)
     meter = R["summary"]["usage"].get("_cost", {})
-    _check(global_rows, "agent calls: sum of attempts over worlds = cost meter = trajectory",
-           tot == meter.get("agent_calls") == sum(r["calls"] for r in R["trajectory"]),
-           f"{tot} attempts, meter {meter.get('agent_calls')}")
+    _check(
+        global_rows,
+        "agent calls: sum of attempts over worlds = cost meter = trajectory",
+        tot == meter.get("agent_calls") == sum(r["calls"] for r in R["trajectory"]),
+        f"{tot} attempts, meter {meter.get('agent_calls')}",
+    )
     if cfg.max_calls is not None:
         _check(global_rows, "call budget respected", tot <= cfg.max_calls, f"{tot} <= {cfg.max_calls}")
     fin = R["summary"]["meta"]["best_score"]
     best_all = max([base["summary"]["S"]] + [n.score for w in worlds for n in w.non_root() if n.success])
-    _check(global_rows, "returned best = best of every recorded successful attempt and the seed",
-           abs(fin - best_all) < 1e-12, f"{fin:.6f}")
+    _check(
+        global_rows,
+        "returned best = best of every recorded successful attempt and the seed",
+        abs(fin - best_all) < 1e-12,
+        f"{fin:.6f}",
+    )
     mon = [{"round": e["round"], **e["data"]} for e in ev if e["kind"] == "monitor"]
-    return {"run": name, "global_checks": global_rows, "cycles": cycles, "monitor": mon,
-            "ground_truth": gt_rows}
+    return {"run": name, "global_checks": global_rows, "cycles": cycles, "monitor": mon, "ground_truth": gt_rows}
 
 
 def _best_prog(store, worlds, best):
     from rsi.dream.question import program_only
 
-    return next((program_only(store.get(n.artifact_id)) for w in worlds for n in w.non_root()
-                 if n.success and n.score == best), None)
+    return next(
+        (program_only(store.get(n.artifact_id)) for w in worlds for n in w.non_root() if n.success and n.score == best),
+        None,
+    )
 
 
 def _audit_dream(t, ev, worlds, mans, hist, cfg, rows) -> dict:
@@ -455,25 +631,47 @@ def _audit_dream(t, ev, worlds, mans, hist, cfg, rows) -> dict:
             vals.append(v)
         if abs(float(np.mean(vals)) - e["summary"]["S"]) > 2e-6:
             arith_bad.append(f"{e['candidate']}: mean {np.mean(vals):.6f} vs {e['summary']['S']}")
-    _check(rows, f"dream t={t}: Eq.1 V_i and V recomputed from revealed cells (scores looked up in tree.json)",
-           not arith_bad and not look_bad, "; ".join((arith_bad + look_bad)[:4]) or
-           f"{len(evals)} versions x {len(worlds)} worlds")
+    _check(
+        rows,
+        f"dream t={t}: Eq.1 V_i and V recomputed from revealed cells (scores looked up in tree.json)",
+        not arith_bad and not look_bad,
+        "; ".join((arith_bad + look_bad)[:4]) or f"{len(evals)} versions x {len(worlds)} worlds",
+    )
     # 2. re-replay every version from history/ on the same worlds with a fresh evaluator
-    ev2 = ReplayEvaluator(Eq1Objective(cfg.beta1, cfg.beta2, cfg.normalize, cfg.support), W=cfg.W, K2=cfg.K2,
-                          root_mode=cfg.root_mode, hide_missing=cfg.hide_missing, runner="subprocess",
-                          fallback=(cfg.branch_count, cfg.refine_count), hard_max=(cfg.hard_max_branch,
-                                                                                   cfg.hard_max_refine))
+    ev2 = ReplayEvaluator(
+        Eq1Objective(cfg.beta1, cfg.beta2, cfg.normalize, cfg.support),
+        W=cfg.W,
+        K2=cfg.K2,
+        root_mode=cfg.root_mode,
+        hide_missing=cfg.hide_missing,
+        runner="subprocess",
+        fallback=(cfg.branch_count, cfg.refine_count),
+        hard_max=(cfg.hard_max_branch, cfg.hard_max_refine),
+    )
     rr_bad, versions = [], []
     for e in evals:
         idx = int(e["candidate"][1:5])
         rep = ev2.evaluate(hist[idx]["code"], worlds, manifests=mans)
-        versions.append({"rev": idx, "label": hist[idx]["label"], "V": e["summary"]["S"], "V_rereplay": rep.value,
-                         "diag": {k: e["diagnostics"].get(k) for k in ("attainment", "N", "k", "mean_batch",
-                                                                          "wasted_probe_frac", "missed_ceiling_rate")}})
+        versions.append(
+            {
+                "rev": idx,
+                "label": hist[idx]["label"],
+                "V": e["summary"]["S"],
+                "V_rereplay": rep.value,
+                "diag": {
+                    k: e["diagnostics"].get(k)
+                    for k in ("attainment", "N", "k", "mean_batch", "wasted_probe_frac", "missed_ceiling_rate")
+                },
+            }
+        )
         if abs(rep.value - e["summary"]["S"]) > 2e-6:
             rr_bad.append(f"r{idx}: {rep.value:.6f} vs {e['summary']['S']}")
-    _check(rows, f"dream t={t}: every version re-replayed from history/ gives the recorded V (deterministic replay)",
-           not rr_bad, "; ".join(rr_bad[:3]) or ", ".join(f"r{v['rev']:04d}={v['V']:.4f}" for v in versions))
+    _check(
+        rows,
+        f"dream t={t}: every version re-replayed from history/ gives the recorded V (deterministic replay)",
+        not rr_bad,
+        "; ".join(rr_bad[:3]) or ", ".join(f"r{v['rev']:04d}={v['V']:.4f}" for v in versions),
+    )
     # 3. selection = argmax (incumbent preferred on ties), and it is what the next cycle deploys
     V = [g["math"]["V_m"] for g in gates]
     finite = [i for i, v in enumerate(V) if v is not None and math.isfinite(v)]
@@ -483,29 +681,44 @@ def _audit_dream(t, ev, worlds, mans, hist, cfg, rows) -> dict:
     nxt = _by(ev, "round_start", t + 1)
     deployed_next = nxt[0]["deployed_policy"]["rev"] if nxt else dec["deployed_for_next_cycle"]["rev"]
     chosen_rev = dec["incumbent_after"].split("_")[0]
-    _check(rows, f"dream t={t}: selected = argmax V (incumbent kept on ties) and deployed next cycle",
-           sel == [exp] and deployed_next == chosen_rev, f"V={V}, selected {sel}, expected {exp}, next cycle "
-           f"deploys {deployed_next}")
+    _check(
+        rows,
+        f"dream t={t}: selected = argmax V (incumbent kept on ties) and deployed next cycle",
+        sel == [exp] and deployed_next == chosen_rev,
+        f"V={V}, selected {sel}, expected {exp}, next cycle deploys {deployed_next}",
+    )
     # 4. developer revisions: diff = base -> revision code; screens; claims
     rev_rows = []
     for cand, p in props.items():
         idx = int(cand[1:5])
         parent = int(p["parent"][1:]) if p.get("parent") else None
         code = hist[idx]["code"] if idx in hist else ""
-        exp_diff = Artifact({"method.py": hist[parent]["code"]}).diff(Artifact({"method.py": code})) \
-            if (parent in hist and code) else ""
-        r = {"rev": cand, "parent": p.get("parent"), "change": p["change"][:300],
-             "diff_ok": same_text(p["diff"], exp_diff),
-             "diff_lines": sum(1 for l in p["diff"].splitlines() if l[:1] in "+-" and not l.startswith(("+++", "---"))),
-             "screen": [c["accept"] for c in _by(ev, "critic", t) if c["candidate"] == cand], "error": p.get("error"),
-             "static_ok": static_check(code).ok if code else None}
+        exp_diff = (
+            Artifact({"method.py": hist[parent]["code"]}).diff(Artifact({"method.py": code}))
+            if (parent in hist and code)
+            else ""
+        )
+        r = {
+            "rev": cand,
+            "parent": p.get("parent"),
+            "change": p["change"][:300],
+            "diff_ok": same_text(p["diff"], exp_diff),
+            "diff_lines": sum(1 for l in p["diff"].splitlines() if l[:1] in "+-" and not l.startswith(("+++", "---"))),
+            "screen": [c["accept"] for c in _by(ev, "critic", t) if c["candidate"] == cand],
+            "error": p.get("error"),
+            "static_ok": static_check(code).ok if code else None,
+        }
         if p.get("moves"):  # ParametricMutator: do the claimed perturbations match the code?
             changed = p.get("params_changed") or {}
             matches = (re.match(r"perturb (\w+) -> ([-\d.]+)", m) for m in p["moves"])
             r["noop_claimed_moves"] = [mm.group(1) for mm in matches if mm and mm.group(1) not in changed]
         rev_rows.append(r)
-    _check(rows, f"dream t={t}: each revision's trace diff = history code diff (base -> revision)",
-           all(r["diff_ok"] for r in rev_rows if r["error"] is None), f"{len(rev_rows)} revisions")
+    _check(
+        rows,
+        f"dream t={t}: each revision's trace diff = history code diff (base -> revision)",
+        all(r["diff_ok"] for r in rev_rows if r["error"] is None),
+        f"{len(rev_rows)} revisions",
+    )
     # 5. no-leak: the deployed code contains no trace-specific best cell id / score of any world
     chosen = int(chosen_rev[1:])
     code = hist[chosen]["code"]
@@ -514,10 +727,22 @@ def _audit_dream(t, ev, worlds, mans, hist, cfg, rows) -> dict:
         b = w.best_node()
         terms += [b.id, f"{b.score:.4f}"] if b.id != "root" else []
     leaks = [x for x in terms if x in code and len(x) >= 4]
-    _check(rows, f"dream t={t}: deployed policy passes the static check and copies no trace-specific id/score",
-           static_check(code).ok and not leaks, f"leaks {leaks}" if leaks else f"r{chosen:04d} clean")
-    return {"t": t, "V": V, "selected": sel[0] if sel else None, "reason": dec["why"][:300], "versions": versions,
-            "revisions": rev_rows, "chosen": f"r{chosen:04d}", "default_beta_chosen": default_beta_of(code)}
+    _check(
+        rows,
+        f"dream t={t}: deployed policy passes the static check and copies no trace-specific id/score",
+        static_check(code).ok and not leaks,
+        f"leaks {leaks}" if leaks else f"r{chosen:04d} clean",
+    )
+    return {
+        "t": t,
+        "V": V,
+        "selected": sel[0] if sel else None,
+        "reason": dec["why"][:300],
+        "versions": versions,
+        "revisions": rev_rows,
+        "chosen": f"r{chosen:04d}",
+        "default_beta_chosen": default_beta_of(code),
+    }
 
 
 def ground_truth(t, s, dream, hist, best_prog, manifests, n_seeds: int = 8) -> dict:
@@ -543,70 +768,125 @@ def ground_truth(t, s, dream, hist, best_prog, manifests, n_seeds: int = 8) -> d
             rows.append({"gain": r["round_best"] - r["root"], "N": r["N"], "k": r["k"]})
         per[v["rev"]] = rows
     scale = max([x["gain"] for rs in per.values() for x in rs] + [1e-12])
-    vals = {rev: [x["gain"] / scale - cfg.beta1 * x["N"] + cfg.beta2 * x["N"] / max(1, x["k"]) for x in rs]
-            for rev, rs in per.items()}
+    vals = {
+        rev: [x["gain"] / scale - cfg.beta1 * x["N"] + cfg.beta2 * x["N"] / max(1, x["k"]) for x in rs]
+        for rev, rs in per.items()
+    }
     revs = [v["rev"] for v in dream["versions"]]
     online = [float(np.mean(vals[r])) for r in revs]
     replay = [v["V"] for v in dream["versions"]]
     sel = revs[dream["selected"]]
     inc = revs[0]
     gains = {r: [x["gain"] for x in per[r]] for r in revs}
-    return {"t": t, "n_seeds": n_seeds, "scale": scale, "versions": revs, "replay_V": replay,
-            "online_V": [round(x, 4) for x in online],
-            "online_gain": [round(float(np.mean([x["gain"] for x in per[r]])), 5) for r in revs],
-            "online_calls": [round(float(np.mean([x["N"] for x in per[r]])), 2) for r in revs],
-            "spearman_replay_vs_online": spearman(replay, online),
-            "selected": sel, "online_best_version": revs[int(np.argmax(online))],
-            "selected_minus_incumbent_online": paired_diff_ci(vals[inc], vals[sel]) if sel != inc else None,
-            "selected_minus_incumbent_gain": paired_diff_ci(gains[inc], gains[sel]) if sel != inc else None}
+    return {
+        "t": t,
+        "n_seeds": n_seeds,
+        "scale": scale,
+        "versions": revs,
+        "replay_V": replay,
+        "online_V": [round(x, 4) for x in online],
+        "online_gain": [round(float(np.mean([x["gain"] for x in per[r]])), 5) for r in revs],
+        "online_calls": [round(float(np.mean([x["N"] for x in per[r]])), 2) for r in revs],
+        "spearman_replay_vs_online": spearman(replay, online),
+        "selected": sel,
+        "online_best_version": revs[int(np.argmax(online))],
+        "selected_minus_incumbent_online": paired_diff_ci(vals[inc], vals[sel]) if sel != inc else None,
+        "selected_minus_incumbent_gain": paired_diff_ci(gains[inc], gains[sel]) if sel != inc else None,
+    }
 
 
 def audit_md(a: dict, report: dict) -> str:
-    L = [f"# Audit of `{a['run']}`", "", "Every check below is re-derived from the files on disk (trace.jsonl, "
-         "trace_pool/, snapshots/, history/) with code independent of the loop where possible.", "",
-         "## Run-level checks", "", "| check | result | detail |", "|---|---|---|"]
+    L = [
+        f"# Audit of `{a['run']}`",
+        "",
+        "Every check below is re-derived from the files on disk (trace.jsonl, "
+        "trace_pool/, snapshots/, history/) with code independent of the loop where possible.",
+        "",
+        "## Run-level checks",
+        "",
+        "| check | result | detail |",
+        "|---|---|---|",
+    ]
     L += [f"| {r['check']} | {r['result']} | {r['detail']} |" for r in a["global_checks"]]
     for c in a["cycles"]:
-        L += ["", f"## Cycle {c['cycle']}", "",
-              f"Deployed policy `{c['policy']['rev']}` ({c['policy']['label']}, default beta "
-              f"{c['policy']['default_beta']}); plan {c['plan'][0]} x {c['plan'][1] + 1} ({c['plan_reason'][:140]}); "
-              f"N = {c['N']} attempts in k = {c['k']} rounds, batches {c['batch_sizes']}; "
-              f"{c['legal_left_at_stop']} planned cells left unprobed at stop; outcomes {c['fail_classes']}; "
-              f"best {c['best_before']:.6f} -> {c['best_after']:.6f}.", "",
-              "| check | result | detail |", "|---|---|---|"]
+        L += [
+            "",
+            f"## Cycle {c['cycle']}",
+            "",
+            f"Deployed policy `{c['policy']['rev']}` ({c['policy']['label']}, default beta "
+            f"{c['policy']['default_beta']}); plan {c['plan'][0]} x {c['plan'][1] + 1} ({c['plan_reason'][:140]}); "
+            f"N = {c['N']} attempts in k = {c['k']} rounds, batches {c['batch_sizes']}; "
+            f"{c['legal_left_at_stop']} planned cells left unprobed at stop; outcomes {c['fail_classes']}; "
+            f"best {c['best_before']:.6f} -> {c['best_after']:.6f}.",
+            "",
+            "| check | result | detail |",
+            "|---|---|---|",
+        ]
         L += [f"| {r['check']} | {r['result']} | {str(r['detail'])[:400]} |" for r in c["checks"]]
         d = c.get("dream")
         if not d:
             continue
-        L += ["", f"Dreaming after cycle {c['cycle']}: V = {d['V']}, selected index {d['selected']} "
-                  f"({d['chosen']}); {d['reason']}", ""]
+        L += [
+            "",
+            f"Dreaming after cycle {c['cycle']}: V = {d['V']}, selected index {d['selected']} "
+            f"({d['chosen']}); {d['reason']}",
+            "",
+        ]
         L += ["| version | change | diff lines | screens | re-replay V |", "|---|---|---|---|---|"]
         vmap = {f"r{v['rev']:04d}": v for v in d["versions"]}
         for r in d["revisions"]:
             vv = vmap.get(r["rev"][:5], {})
             extra = f" (no-op claimed moves: {r['noop_claimed_moves']})" if r.get("noop_claimed_moves") else ""
-            L.append(f"| {r['rev']} | {r['change'][:160].replace('|', '/')}{extra} | {r['diff_lines']} | "
-                     f"{r['screen']} | {vv.get('V_rereplay', 'n/a')} |")
+            L.append(
+                f"| {r['rev']} | {r['change'][:160].replace('|', '/')}{extra} | {r['diff_lines']} | "
+                f"{r['screen']} | {vv.get('V_rereplay', 'n/a')} |"
+            )
         gt = d.get("ground_truth")
         if gt:
             cmp, gain = gt["selected_minus_incumbent_online"], gt.get("selected_minus_incumbent_gain")
-            L += ["", f"Ground truth (fresh online searches, {gt['n_seeds']} seeds per version): versions "
-                      f"{gt['versions']}, replay V {[round(x, 4) for x in gt['replay_V']]}, online V "
-                      f"{gt['online_V']}, online mean gain {gt['online_gain']}, online mean calls "
-                      f"{gt['online_calls']}; Spearman(replay, online) = {gt['spearman_replay_vs_online']}; "
-                      f"selected r{gt['selected']:04d}, best online r{gt['online_best_version']:04d}"
-                      + (f"; selected - incumbent online V = {cmp['mean_diff']:+.4f} "
-                         f"[{cmp['lo']:+.4f}, {cmp['hi']:+.4f}]" if cmp else "; incumbent kept")
-                      + (f"; selected - incumbent online gain = {gain['mean_diff']:+.5f} "
-                         f"[{gain['lo']:+.5f}, {gain['hi']:+.5f}]" if gain else "")]
+            L += [
+                "",
+                f"Ground truth (fresh online searches, {gt['n_seeds']} seeds per version): versions "
+                f"{gt['versions']}, replay V {[round(x, 4) for x in gt['replay_V']]}, online V "
+                f"{gt['online_V']}, online mean gain {gt['online_gain']}, online mean calls "
+                f"{gt['online_calls']}; Spearman(replay, online) = {gt['spearman_replay_vs_online']}; "
+                f"selected r{gt['selected']:04d}, best online r{gt['online_best_version']:04d}"
+                + (
+                    f"; selected - incumbent online V = {cmp['mean_diff']:+.4f} [{cmp['lo']:+.4f}, {cmp['hi']:+.4f}]"
+                    if cmp
+                    else "; incumbent kept"
+                )
+                + (
+                    f"; selected - incumbent online gain = {gain['mean_diff']:+.5f} "
+                    f"[{gain['lo']:+.5f}, {gain['hi']:+.5f}]"
+                    if gain
+                    else ""
+                ),
+            ]
     if a["monitor"]:
-        L += ["", "## Shadow monitor (sealed splits; never shown to the loop)", "",
-              "| cycle | version | decision score | sealed |", "|---|---|---|---|"]
-        L += [f"| {m['round']} | {m['version']} | {m['decision_score']} | "
-              + "; ".join(f"{k}: S={v['S']:.3f}" for k, v in m["sealed"].items()) + " |" for m in a["monitor"]]
-    L += ["", "## Report", "", "```json", json.dumps({k: report[k] for k in ("seed_score", "best_score",
-                                                                              "calls_per_cycle", "spend")},
-                                                    default=str, indent=1), "```"]
+        L += [
+            "",
+            "## Shadow monitor (sealed splits; never shown to the loop)",
+            "",
+            "| cycle | version | decision score | sealed |",
+            "|---|---|---|---|",
+        ]
+        L += [
+            f"| {m['round']} | {m['version']} | {m['decision_score']} | "
+            + "; ".join(f"{k}: S={v['S']:.3f}" for k, v in m["sealed"].items())
+            + " |"
+            for m in a["monitor"]
+        ]
+    L += [
+        "",
+        "## Report",
+        "",
+        "```json",
+        json.dumps(
+            {k: report[k] for k in ("seed_score", "best_score", "calls_per_cycle", "spend")}, default=str, indent=1
+        ),
+        "```",
+    ]
     return "\n".join(L) + "\n"
 
 
@@ -622,15 +902,20 @@ def main():
         report = json.loads((out / "report.json").read_text())
     else:
         report = execute(a.run, s, out)
-        print(json.dumps({k: report[k] for k in ("seed_score", "best_score", "calls_per_cycle", "spend", "wall_s")},
-                         default=str), flush=True)
+        print(
+            json.dumps(
+                {k: report[k] for k in ("seed_score", "best_score", "calls_per_cycle", "spend", "wall_s")}, default=str
+            ),
+            flush=True,
+        )
     t0 = time.time()
     au = audit(a.run, s, out)
     au["audit_wall_s"] = round(time.time() - t0, 1)
     (out / "audit.json").write_text(json.dumps(au, indent=1, default=str))
     (out / "audit.md").write_text(audit_md(au, report))
-    fails = [r for r in au["global_checks"] if r["result"] == "FAIL"] + \
-        [r for c in au["cycles"] for r in c["checks"] if r["result"] == "FAIL"]
+    fails = [r for r in au["global_checks"] if r["result"] == "FAIL"] + [
+        r for c in au["cycles"] for r in c["checks"] if r["result"] == "FAIL"
+    ]
     print(f"audit: {len(fails)} FAIL", [f["check"] for f in fails][:6])
 
 

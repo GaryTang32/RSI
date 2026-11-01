@@ -1,11 +1,12 @@
 """Offline BBH fixtures: a synthetic cache + manifest; ``bbh_offline`` makes every default loader call use them."""
+
 from __future__ import annotations
 
 from types import SimpleNamespace
 
 import pytest
-
 from bbh_fixture import build
+
 from rsi.domains.bbh import data as bbh_data
 
 
@@ -23,6 +24,7 @@ def bbh_offline(bbh_env, monkeypatch):
 
     def no_network(url, timeout_s=60.0):
         raise AssertionError(f"network access attempted: {url}")
+
     monkeypatch.setattr(bbh_data, "urllib_fetch", no_network)
     return bbh_env
 

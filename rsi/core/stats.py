@@ -1,19 +1,20 @@
 """Statistics for self-improvement loops: noise bands, bootstrap CIs, paired tests, Beta LCBs, rank correlation."""
+
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 import numpy as np
 
 
 @dataclass
 class NoiseEstimate:
-    delta: float           # z * sd(null dS)
-    sd_null: float         # sd of the difference between two evaluations of the same artifact
+    delta: float  # z * sd(null dS)
+    sd_null: float  # sd of the difference between two evaluations of the same artifact
     z: float
-    mode: str              # "repeat" | "bootstrap" | "fixed"
+    mode: str  # "repeat" | "bootstrap" | "fixed"
     n: int
 
     def to_json(self) -> dict:
@@ -29,8 +30,9 @@ def noise_from_repeats(scores: Sequence[float], z: float = 2.0) -> NoiseEstimate
     return NoiseEstimate(z * sd, sd, z, "repeat", len(s))
 
 
-def noise_from_trials(matrix: np.ndarray, z: float = 2.0, reps: int = 2000, seed: int = 0,
-                      small_k_correction: bool = False) -> NoiseEstimate:
+def noise_from_trials(
+    matrix: np.ndarray, z: float = 2.0, reps: int = 2000, seed: int = 0, small_k_correction: bool = False
+) -> NoiseEstimate:
     """delta from one tasks x k (k >= 2) evaluation by RRSI's within-task bootstrap: sd(null dS) = sqrt(2) * se."""
     m = np.asarray(matrix, float)
     if m.ndim != 2 or m.shape[1] < 2:
@@ -40,7 +42,7 @@ def noise_from_trials(matrix: np.ndarray, z: float = 2.0, reps: int = 2000, seed
     idx = rng.integers(0, k, size=(reps, n_tasks, k))
     boot = np.take_along_axis(np.broadcast_to(m, (reps, n_tasks, k)), idx, axis=2).mean(axis=(1, 2))
     sd = math.sqrt(2) * float(np.std(boot, ddof=1))
-    if small_k_correction:   # the plug-in bootstrap underestimates variance by (k-1)/k; off in RRSI's code
+    if small_k_correction:  # the plug-in bootstrap underestimates variance by (k-1)/k; off in RRSI's code
         sd *= math.sqrt(k / (k - 1))
     return NoiseEstimate(z * sd, sd, z, "bootstrap" + ("+small_k" if small_k_correction else ""), n_tasks * k)
 
@@ -49,8 +51,9 @@ def fixed_noise(delta: float) -> NoiseEstimate:
     return NoiseEstimate(delta, delta / 2.0, 2.0, "fixed", 0)
 
 
-def bootstrap_ci(x: Sequence[float], stat=np.mean, alpha: float = 0.05, reps: int = 5000,
-                 seed: int = 0) -> tuple[float, float, float]:
+def bootstrap_ci(
+    x: Sequence[float], stat=np.mean, alpha: float = 0.05, reps: int = 5000, seed: int = 0
+) -> tuple[float, float, float]:
     """(point, lo, hi) percentile bootstrap CI."""
     a = np.asarray(x, float)
     if len(a) == 0:
@@ -63,17 +66,24 @@ def bootstrap_ci(x: Sequence[float], stat=np.mean, alpha: float = 0.05, reps: in
     return float(stat(a)), float(np.quantile(bs, alpha / 2)), float(np.quantile(bs, 1 - alpha / 2))
 
 
-def paired_diff_ci(a: Sequence[float], b: Sequence[float], alpha: float = 0.05, reps: int = 5000,
-                   seed: int = 0) -> dict:
+def paired_diff_ci(
+    a: Sequence[float], b: Sequence[float], alpha: float = 0.05, reps: int = 5000, seed: int = 0
+) -> dict:
     """Paired comparison b - a over the same tasks/seeds."""
     d = np.asarray(b, float) - np.asarray(a, float)
     point, lo, hi = bootstrap_ci(d, alpha=alpha, reps=reps, seed=seed)
-    return {"mean_diff": point, "lo": lo, "hi": hi, "n": int(len(d)),
-            "p_better": float(np.mean(d > 0)) if len(d) else float("nan")}
+    return {
+        "mean_diff": point,
+        "lo": lo,
+        "hi": hi,
+        "n": int(len(d)),
+        "p_better": float(np.mean(d > 0)) if len(d) else float("nan"),
+    }
 
 
-def prob_better_bootstrap(cand: Sequence[float], best: Sequence[float], reps: int = 20000, seed: int = 1234,
-                          lower_is_better: bool = False) -> float:
+def prob_better_bootstrap(
+    cand: Sequence[float], best: Sequence[float], reps: int = 20000, seed: int = 1234, lower_is_better: bool = False
+) -> float:
     """P(mean(cand) beats mean(best)) by independent bootstrap (autoresearch-mlx ``rigor.py``)."""
     c, b = np.asarray(cand, float), np.asarray(best, float)
     rng = np.random.default_rng(seed)

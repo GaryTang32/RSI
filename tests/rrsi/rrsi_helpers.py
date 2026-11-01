@@ -1,4 +1,5 @@
 """Shared builders for the RRSI tests."""
+
 import json
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -25,8 +26,9 @@ def mechanism(dom: HarnessWorldDomain, kind: str) -> Mechanism:
 def hw_loop(out: Path, *, seed: int = 0, T: int = 5, hooks: dict | None = None, **cfg) -> tuple:
     dom = hw_domain(seed)
     config = Config(T=T, workers=1, seed=seed, record_timestamps=False, **cfg)
-    return dom, RRSIRun(dom, dom.seed_artifact(), out_dir=out, llm_propose=HarnessWorldMockLLM(dom.world),
-                        config=config, hooks=hooks)
+    return dom, RRSIRun(
+        dom, dom.seed_artifact(), out_dir=out, llm_propose=HarnessWorldMockLLM(dom.world), config=config, hooks=hooks
+    )
 
 
 def hw_run(out: Path, **kw) -> tuple:
@@ -38,13 +40,31 @@ def aq_suite() -> TaskSuite:
     return make_suite(n_evolve=8, n_holdout=6, n_ood_per_family=2, seed=0)
 
 
-def aq_run(out: Path, *, T: int = 3, k: int = 2, workers: int = 2, task: LLM | None = None,
-           propose: LLM | None = None, budget=None, hooks: dict | None = None, **cfg) -> tuple:
+def aq_run(
+    out: Path,
+    *,
+    T: int = 3,
+    k: int = 2,
+    workers: int = 2,
+    task: LLM | None = None,
+    propose: LLM | None = None,
+    budget=None,
+    hooks: dict | None = None,
+    **cfg,
+) -> tuple:
     suite = aq_suite()
     dom = AgentQADomain(suite)
     config = Config(T=T, k=k, workers=workers, seed=0, record_timestamps=False, **cfg)
-    res = run(dom, AgentQADomain.seed_artifact(), llm_task=task or SimModel(suite),
-              llm_propose=propose or AgentQAMockLLM(), config=config, out_dir=out, budget=budget, hooks=hooks)
+    res = run(
+        dom,
+        AgentQADomain.seed_artifact(),
+        llm_task=task or SimModel(suite),
+        llm_propose=propose or AgentQAMockLLM(),
+        config=config,
+        out_dir=out,
+        budget=budget,
+        hooks=hooks,
+    )
     return dom, res
 
 
@@ -56,15 +76,24 @@ def fn_domain(tasks: list, execute: Callable, grade: Callable | None = None, **k
 
 def accepting(responder: Callable) -> Callable:
     """The MockLLM responder `responder` behind a critic that accepts every change."""
+
     def respond(prompt, system, seed, i):
         return ACCEPT if "strict reviewer" in (system or "") else responder(prompt, system, seed, i)
+
     return respond
 
 
 def edit(component: str = "prompt", hypothesis: str = "h", **fields) -> dict:
     """A done() edit declaration with every required field."""
-    return {"id": "C1", "component": component, "hypothesis": hypothesis, "targets_mode": "m",
-            "predicted_affected": ["t1"], "retroactive_check": "(corrective) (preservative) (transfer)", **fields}
+    return {
+        "id": "C1",
+        "component": component,
+        "hypothesis": hypothesis,
+        "targets_mode": "m",
+        "predicted_affected": ["t1"],
+        "retroactive_check": "(corrective) (preservative) (transfer)",
+        **fields,
+    }
 
 
 def edit_rows(**hypotheses) -> list:
@@ -90,10 +119,14 @@ def snapshot(d: Path) -> dict:
     """Everything a run decided, for comparing runs that must agree."""
     fr = read_json(d / "frontier.json")
     ledger = {n.id: {k: v for k, v in n.to_json().items() if k != "t"} for n in Ledger(d / "ledger.jsonl").nodes()}
-    return {"ledger": ledger, "history": (d / "history.jsonl").read_text(),
-            "attribution": (d / "attribution.jsonl").read_text(),
-            "decisions": {p.parent.name: p.read_text() for p in sorted(d.glob("r*/decisions.json"))},
-            "trajectory": fr["trajectory"], "S_star": fr["S_star"]}
+    return {
+        "ledger": ledger,
+        "history": (d / "history.jsonl").read_text(),
+        "attribution": (d / "attribution.jsonl").read_text(),
+        "decisions": {p.parent.name: p.read_text() for p in sorted(d.glob("r*/decisions.json"))},
+        "trajectory": fr["trajectory"],
+        "S_star": fr["S_star"],
+    }
 
 
 def reserved_rounds(out: Path, T: int) -> Iterator[tuple[int, dict, dict]]:
@@ -111,6 +144,7 @@ def spy_splits(dom) -> list:
     def spy(name, *, allow_sealed=False):
         calls.append((name, allow_sealed))
         return orig(name, allow_sealed=allow_sealed)
+
     dom.tasks.split = spy
     return calls
 

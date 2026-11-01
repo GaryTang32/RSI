@@ -1,11 +1,12 @@
 """ScalarRLBaseline: GRPO-style policy gradient over prompt lines with scalar reward only (the E1 arm)."""
+
 from __future__ import annotations
 
 import math
 import random
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional, Sequence
 
 import numpy as np
 
@@ -40,12 +41,12 @@ class RLConfig:
     group_size: int = 12
     instances_per_step: int = 4
     lr: float = 1.0
-    beta: float = 0.01               # pull towards the initial logits
+    beta: float = 0.01  # pull towards the initial logits
     init_p: float = 0.1
-    val_every: int = 20              # steps between validations of the greedy (p > 0.5) prompt
-    vocab_size: int = 24             # brainstormed lines per component
+    val_every: int = 20  # steps between validations of the greedy (p > 0.5) prompt
+    vocab_size: int = 24  # brainstormed lines per component
     train_split: str = "evolve"
-    val_split: Optional[str] = "val"
+    val_split: str | None = "val"
     seed: int = 0
     val_seed: int = 0
 
@@ -60,10 +61,18 @@ def _sigmoid(x: np.ndarray) -> np.ndarray:
 class ScalarRLBaseline:
     """Bernoulli inclusion policy over vocabulary lines (``domain.rl_vocabulary`` or brainstormed) per component."""
 
-    def __init__(self, domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = None,
-                 llm_propose: Optional[LLM] = None, config: Optional[RLConfig] = None,
-                 components: Optional[Sequence[str]] = None, vocabulary: Optional[dict[str, list[str]]] = None,
-                 out_dir: Optional[str | Path] = None) -> None:
+    def __init__(
+        self,
+        domain: Domain,
+        seed_artifact: Artifact,
+        *,
+        llm_task: LLM | None = None,
+        llm_propose: LLM | None = None,
+        config: RLConfig | None = None,
+        components: Sequence[str] | None = None,
+        vocabulary: dict[str, list[str]] | None = None,
+        out_dir: str | Path | None = None,
+    ) -> None:
         self.cfg = cfg = config or RLConfig()
         self.domain, self.seed = domain, seed_artifact
         self.llm_task, self.llm_propose = llm_task, llm_propose
@@ -93,8 +102,9 @@ class ScalarRLBaseline:
             if not lines:
                 if self.llm_propose is None:
                     raise ValueError("domain has no rl_vocabulary(); pass llm_propose to brainstorm one")
-                prompt = BRAINSTORM_TEMPLATE.format(description=self.domain.describe(),
-                                                    current=self.seed.get(c, "").rstrip("\n"), n=self.cfg.vocab_size)
+                prompt = BRAINSTORM_TEMPLATE.format(
+                    description=self.domain.describe(), current=self.seed.get(c, "").rstrip("\n"), n=self.cfg.vocab_size
+                )
                 resp = self.llm_propose.complete(prompt, seed=self.cfg.seed, role="brainstorm")
                 blocks = extract_code_blocks(resp.text) or [resp.text]
                 lines = [l.strip(" -*\t") for l in blocks[0].splitlines() if l.strip(" -*\t")]
@@ -142,17 +152,27 @@ class ScalarRLBaseline:
                     grads[c] += A * (a[c].astype(float) - probs[c])
         for c in self.components:
             if n_groups:
-                grads[c] /= (n_groups * cfg.group_size)
+                grads[c] /= n_groups * cfg.group_size
             self.theta[c] += cfg.lr * grads[c] - cfg.lr * cfg.beta * (self.theta[c] - self.theta0[c])
 
     def run(self) -> ImprovementResult:
         cfg = self.cfg
         best_art, best_val = self.seed, self.validate(self.seed)
         self.best_arts = {self.seed.id: self.seed}
-        self.ledger.add(Node(id="c0", parent=None, kind="baseline", status="keep", score=best_val,
-                             artifact_id=self.seed.id, metrics={"rollouts": self.rollouts}))
-        traj = [{"step": 0, "rollouts": self.rollouts, "val_greedy": best_val, "best_val": best_val,
-                 "best_id": best_art.id}]
+        self.ledger.add(
+            Node(
+                id="c0",
+                parent=None,
+                kind="baseline",
+                status="keep",
+                score=best_val,
+                artifact_id=self.seed.id,
+                metrics={"rollouts": self.rollouts},
+            )
+        )
+        traj = [
+            {"step": 0, "rollouts": self.rollouts, "val_greedy": best_val, "best_val": best_val, "best_id": best_art.id}
+        ]
         best_node, step = "c0", 0
         while self.rollouts < cfg.max_metric_calls:
             step += 1
@@ -164,31 +184,66 @@ class ScalarRLBaseline:
             g_art = self.greedy()
             v = self.validate(g_art)
             nid = f"s{step}"
-            self.ledger.add(Node(id=nid, parent=best_node, round=step, kind="policy_checkpoint",
-                                 status="accepted" if v > best_val else "discard", score=v, artifact_id=g_art.id,
-                                 metrics={"rollouts": self.rollouts,
-                                          "mean_p": float(np.mean(np.concatenate(list(probs.values()))))}))
+            self.ledger.add(
+                Node(
+                    id=nid,
+                    parent=best_node,
+                    round=step,
+                    kind="policy_checkpoint",
+                    status="accepted" if v > best_val else "discard",
+                    score=v,
+                    artifact_id=g_art.id,
+                    metrics={"rollouts": self.rollouts, "mean_p": float(np.mean(np.concatenate(list(probs.values()))))},
+                )
+            )
             if self.store is not None:
                 self.store.put(g_art)
             if v > best_val:
                 best_art, best_val, best_node = g_art, v, nid
                 self.best_arts[g_art.id] = g_art
-            traj.append({"step": step, "rollouts": self.rollouts, "val_greedy": v, "best_val": best_val,
-                         "best_id": best_art.id})
-        res = ImprovementResult(method="scalar_rl", baseline=self.seed, best=best_art, ledger=self.ledger,
-                                trajectory=traj, usage=llm_usage(self.llm_task, self.llm_propose),
-                                stop_reason="max_metric_calls", out_dir=str(self.out_dir) if self.out_dir else None,
-                                meta={"config": cfg.to_json(), "rollouts": self.rollouts, "steps": step,
-                                      "best_val": best_val, "vocab_sizes": {c: len(v) for c, v in self.vocab.items()},
-                                      "final_p": {c: _sigmoid(self.theta[c]).round(3).tolist()
-                                                  for c in self.components}})
-        res.artifacts = dict(self.best_arts)    # artifact id -> artifact for every trajectory "best_id"
+            traj.append(
+                {"step": step, "rollouts": self.rollouts, "val_greedy": v, "best_val": best_val, "best_id": best_art.id}
+            )
+        res = ImprovementResult(
+            method="scalar_rl",
+            baseline=self.seed,
+            best=best_art,
+            ledger=self.ledger,
+            trajectory=traj,
+            usage=llm_usage(self.llm_task, self.llm_propose),
+            stop_reason="max_metric_calls",
+            out_dir=str(self.out_dir) if self.out_dir else None,
+            meta={
+                "config": cfg.to_json(),
+                "rollouts": self.rollouts,
+                "steps": step,
+                "best_val": best_val,
+                "vocab_sizes": {c: len(v) for c, v in self.vocab.items()},
+                "final_p": {c: _sigmoid(self.theta[c]).round(3).tolist() for c in self.components},
+            },
+        )
+        res.artifacts = dict(self.best_arts)  # artifact id -> artifact for every trajectory "best_id"
         return res
 
 
-def run_scalar_rl(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = None,
-                  llm_propose: Optional[LLM] = None, config: Optional[RLConfig] = None,
-                  components: Optional[Sequence[str]] = None, out_dir: Optional[str | Path] = None,
-                  vocabulary: Optional[dict[str, list[str]]] = None) -> ImprovementResult:
-    return ScalarRLBaseline(domain, seed_artifact, llm_task=llm_task, llm_propose=llm_propose, config=config,
-                            components=components, vocabulary=vocabulary, out_dir=out_dir).run()
+def run_scalar_rl(
+    domain: Domain,
+    seed_artifact: Artifact,
+    *,
+    llm_task: LLM | None = None,
+    llm_propose: LLM | None = None,
+    config: RLConfig | None = None,
+    components: Sequence[str] | None = None,
+    out_dir: str | Path | None = None,
+    vocabulary: dict[str, list[str]] | None = None,
+) -> ImprovementResult:
+    return ScalarRLBaseline(
+        domain,
+        seed_artifact,
+        llm_task=llm_task,
+        llm_propose=llm_propose,
+        config=config,
+        components=components,
+        vocabulary=vocabulary,
+        out_dir=out_dir,
+    ).run()

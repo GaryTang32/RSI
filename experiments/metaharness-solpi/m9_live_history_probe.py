@@ -3,6 +3,7 @@
 
     python experiments/metaharness-solpi/m9_live_history_probe.py [--offline]   # live (cached, cap $3.80) | $0 replay
 """
+
 from __future__ import annotations
 
 import argparse
@@ -15,29 +16,49 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _common import RESULTS, RUNS, paired, save, summarize  # noqa: E402
-
 import numpy as np  # noqa: E402
+from _common import RESULTS, RUNS, paired, save, summarize  # noqa: E402
 from scipy.stats import ttest_ind  # noqa: E402
 
 from rsi.core import Artifact, CachedLLM, ClaudeCLI, Evaluator  # noqa: E402
 from rsi.core.llm import estimate_tokens  # noqa: E402
 from rsi.domains.memoclassify import make_domain  # noqa: E402
-from rsi.metaharness import (Config, LeakageScreen, LLMSummarizer, RewriteProposer, pareto_frontier,  # noqa: E402
-                             render_view, run)
-from rsi.metaharness.proposer import (PROTOTYPE_ON_PAPER, REWRITE_OUTPUT, SKILL_TEXT, TASK_PROMPT,  # noqa: E402
-                                      format_skill)
+from rsi.metaharness import (  # noqa: E402
+    Config,
+    LeakageScreen,
+    LLMSummarizer,
+    RewriteProposer,
+    pareto_frontier,
+    render_view,
+    run,
+)
+from rsi.metaharness.proposer import (  # noqa: E402
+    PROTOTYPE_ON_PAPER,
+    REWRITE_OUTPUT,
+    SKILL_TEXT,
+    TASK_PROMPT,
+    format_skill,
+)
 from rsi.metaharness.store import ExperienceStore, context_mean  # noqa: E402
 
 # Offline snapshot stores (MockProposer, 2 iterations x k = 2) get LLM summaries for every program; then each arm
 # makes ONE RewriteProposer call (haiku, k = 2) on a copy of each snapshot, scored on 5 seeds, paired by snapshot.
 SNAP_SEEDS = (200, 201, 202, 203, 204, 205)
-ARMS = {"A_scores_only": ("scores_only", ""), "B_scores_summary": ("scores_summary", ""), "C_full": ("full", ""),
-        "D_full_lowctx": ("full", "Prefer low context cost: aim for harnesses that inject under 2,000 context "
-                                  "characters per query, accepting a few points of accuracy loss.")}
-PAIRS = (("full_minus_scores_only", "A_scores_only", "C_full"),
-         ("full_minus_summary", "B_scores_summary", "C_full"),
-         ("summary_minus_scores_only", "A_scores_only", "B_scores_summary"))
+ARMS = {
+    "A_scores_only": ("scores_only", ""),
+    "B_scores_summary": ("scores_summary", ""),
+    "C_full": ("full", ""),
+    "D_full_lowctx": (
+        "full",
+        "Prefer low context cost: aim for harnesses that inject under 2,000 context "
+        "characters per query, accepting a few points of accuracy loss.",
+    ),
+}
+PAIRS = (
+    ("full_minus_scores_only", "A_scores_only", "C_full"),
+    ("full_minus_summary", "B_scores_summary", "C_full"),
+    ("summary_minus_scores_only", "A_scores_only", "B_scores_summary"),
+)
 EVAL_SEEDS = (0, 1, 2, 3, 4)
 CACHE = RESULTS / "metaharness_retry2_cache"
 SRC_OUT = RESULTS / "metaharness_retry2_candidates"
@@ -55,10 +76,13 @@ def under_cap(llm) -> bool:
 
 def five_seed(dom, art) -> dict:
     ev = Evaluator(dom, dom.make_model("A"), workers=1).evaluate(art, "evolve", seeds=list(EVAL_SEEDS))
-    per_seed = [float(np.mean([trs[i].score for trs in ev.trials.values() if len(trs) > i and trs[i]]))
-                for i in range(len(EVAL_SEEDS))]
-    unit_ctx = {tid: float(np.mean([t.meta.get("context_chars", 0.0) for t in trs if t]))
-                for tid, trs in ev.trials.items()}
+    per_seed = [
+        float(np.mean([trs[i].score for trs in ev.trials.values() if len(trs) > i and trs[i]]))
+        for i in range(len(EVAL_SEEDS))
+    ]
+    unit_ctx = {
+        tid: float(np.mean([t.meta.get("context_chars", 0.0) for t in trs if t])) for tid, trs in ev.trials.items()
+    }
     return {"score": float(ev.score), "per_seed": per_seed, "context": context_mean(unit_ctx)}
 
 
@@ -68,9 +92,14 @@ def build_snapshot(seed: int) -> Path:
         return d
     shutil.rmtree(d, ignore_errors=True)
     dom = make_domain(seed=seed)
-    run(dom, dom.seed_artifact("fewshot_all"), llm_task=dom.make_model("A"),
-        config=Config(iterations=2, k=2, seed=seed, shadow_monitor=False, finalize=False), out_dir=d,
-        baselines=dom.baselines())
+    run(
+        dom,
+        dom.seed_artifact("fewshot_all"),
+        llm_task=dom.make_model("A"),
+        config=Config(iterations=2, k=2, seed=seed, shadow_monitor=False, finalize=False),
+        out_dir=d,
+        baselines=dom.baselines(),
+    )
     return d
 
 
@@ -99,8 +128,9 @@ def sign_flip_p(d) -> float:
     if not d:
         return float("nan")
     obs = np.mean(d)
-    hits = sum(np.mean([s * x for s, x in zip(signs, d)]) >= obs - 1e-12
-               for signs in itertools.product((1, -1), repeat=len(d)))
+    hits = sum(
+        np.mean([s * x for s, x in zip(signs, d)]) >= obs - 1e-12 for signs in itertools.product((1, -1), repeat=len(d))
+    )
     return hits / 2 ** len(d)
 
 
@@ -115,11 +145,16 @@ def candidate_row(dom, store: ExperienceStore, name: str, tag: str) -> dict:
     m = store.meta(name)
     src = {str(k): v for k, v in store.artifact(name).files.items()}
     (SRC_OUT / f"{tag}_{name}.py").write_text(src.get("memory.py", json.dumps(src)[:20000]))
-    row = {"name": name, "status": m.get("status"), "reason": (m.get("reason") or "")[:300],
-           "base_system": m.get("base_system"), "hypothesis": (m.get("hypothesis") or "")[:400],
-           "single_seed": (store.scores(name) or {}).get("score"),
-           "single_context": (store.scores(name) or {}).get("context_cost"),
-           "hardcoding": hardcoding_flags(dom, src)}
+    row = {
+        "name": name,
+        "status": m.get("status"),
+        "reason": (m.get("reason") or "")[:300],
+        "base_system": m.get("base_system"),
+        "hypothesis": (m.get("hypothesis") or "")[:400],
+        "single_seed": (store.scores(name) or {}).get("score"),
+        "single_context": (store.scores(name) or {}).get("context_cost"),
+        "hardcoding": hardcoding_flags(dom, src),
+    }
     if m.get("status") == "evaluated":
         row["five_seed"] = five_seed(dom, store.artifact(name))
     return row
@@ -132,17 +167,38 @@ def run_arm(llm, dom, seed: int, snapshot: Path, arm: str, snap_names: list) -> 
     shutil.rmtree(ad, ignore_errors=True)
     shutil.copytree(snapshot, ad)
     before = spent(llm)
-    res = run(dom, dom.seed_artifact("fewshot_all"), llm_task=dom.make_model("A"), proposer=RewriteProposer(llm),
-              config=Config(iterations=1, k=2, history_mode=mode, summaries="never", tradeoff=tradeoff,
-                            seed=seed, shadow_monitor=False, finalize=False),
-              out_dir=ad, baselines=dom.baselines())
+    res = run(
+        dom,
+        dom.seed_artifact("fewshot_all"),
+        llm_task=dom.make_model("A"),
+        proposer=RewriteProposer(llm),
+        config=Config(
+            iterations=1,
+            k=2,
+            history_mode=mode,
+            summaries="never",
+            tradeoff=tradeoff,
+            seed=seed,
+            shadow_monitor=False,
+            finalize=False,
+        ),
+        out_dir=ad,
+        baselines=dom.baselines(),
+    )
     st = res.loop.store
     sess = json.loads((st.sessions_dir() / "iter003" / "meta.json").read_text())
     cands = [candidate_row(dom, st, n, f"s{seed}_{arm}") for n in st.names() if n not in snap_names]
-    return {"snapshot": seed, "arm": arm, "candidates": cands, "usage": sess.get("usage"),
-            "spent_usd": spent(llm) - before, "files_read": sess.get("n_files_read"),
-            "files_read_by_kind": sess.get("files_read_by_kind"),
-            "rendered_chars": (sess.get("proposer_meta") or {}).get("rendered_chars"), "error": sess.get("error")}
+    return {
+        "snapshot": seed,
+        "arm": arm,
+        "candidates": cands,
+        "usage": sess.get("usage"),
+        "spent_usd": spent(llm) - before,
+        "files_read": sess.get("n_files_read"),
+        "files_read_by_kind": sess.get("files_read_by_kind"),
+        "rendered_chars": (sess.get("proposer_meta") or {}).get("rendered_chars"),
+        "error": sess.get("error"),
+    }
 
 
 def main():
@@ -162,22 +218,37 @@ def main():
         snap_names = st.names()
         inc = st.frontier()["_best"]["system"]
         progs = {n: five_seed(dom, st.artifact(n)) for n in snap_names}
-        snap_rows[s] = {"programs": progs, "incumbent": inc,
-                        "summaries": {n: summary_path(st, n).read_text() if summary_path(st, n).exists() else None
-                                      for n in snap_names}}
+        snap_rows[s] = {
+            "programs": progs,
+            "incumbent": inc,
+            "summaries": {
+                n: summary_path(st, n).read_text() if summary_path(st, n).exists() else None for n in snap_names
+            },
+        }
         for arm in ARMS:
             if not under_cap(llm):
                 rows.append({"snapshot": s, "arm": arm, "skipped": "spend cap"})
                 continue
             rows.append(run_arm(llm, dom, s, d, arm, snap_names))
             cands = rows[-1]["candidates"]
-            print(f"s{s} {arm}: {[(c['name'], c['status'], (c.get('five_seed') or {}).get('score')) for c in cands]}"
-                  f" spent ${spent(llm):.3f}", flush=True)
+            print(
+                f"s{s} {arm}: {[(c['name'], c['status'], (c.get('five_seed') or {}).get('score')) for c in cands]}"
+                f" spent ${spent(llm):.3f}",
+                flush=True,
+            )
     out = analyse(rows, snap_rows)
-    out.update({"per_arm_runs": rows, "snapshots": {str(k): v for k, v in snap_rows.items()},
-                "spend_usd": spent(llm), "summary_calls_live": summ_llm_calls,
-                "cache": str(CACHE), "cache_hits": llm.hits, "cache_misses": llm.misses,
-                "k4": k4_tokens(snaps, rows)})
+    out.update(
+        {
+            "per_arm_runs": rows,
+            "snapshots": {str(k): v for k, v in snap_rows.items()},
+            "spend_usd": spent(llm),
+            "summary_calls_live": summ_llm_calls,
+            "cache": str(CACHE),
+            "cache_hits": llm.hits,
+            "cache_misses": llm.misses,
+            "k4": k4_tokens(snaps, rows),
+        }
+    )
     save("m9_live_history_probe", out)
 
 
@@ -198,8 +269,12 @@ def history_tests(get: dict, invalid_zero: bool) -> dict:
     for name, a, b in PAIRS:
         pairs = [(val[(s, a)], val[(s, b)]) for s in SNAP_SEEDS if val[(s, a)] is not None and val[(s, b)] is not None]
         d = [y - x for x, y in pairs]
-        t[name] = {**paired([x for x, _ in pairs], [y for _, y in pairs]), "diffs": d,
-                   "sign_flip_p_one_sided": sign_flip_p(d), "n_dropped": len(SNAP_SEEDS) - len(pairs)}
+        t[name] = {
+            **paired([x for x, _ in pairs], [y for _, y in pairs]),
+            "diffs": d,
+            "sign_flip_p_one_sided": sign_flip_p(d),
+            "n_dropped": len(SNAP_SEEDS) - len(pairs),
+        }
     t["arm_means"] = {a: summarize([val[(s, a)] for s in SNAP_SEEDS]) for a in ARMS}
     return t
 
@@ -217,15 +292,29 @@ def steering(get: dict, snap_rows: dict) -> tuple[str, dict]:
             logr.append(math.log(max(1.0, float(np.median(dc)))) - math.log(max(1.0, float(np.median(cc)))))
         pts = [(n, v["score"], v["context"]) for n, v in snap_rows[s]["programs"].items()]
         for tag, r in (("C", c), ("D", dd)):
-            pts += [(f"{tag}:{x['name']}", x["five_seed"]["score"], x["five_seed"]["context"])
-                    for x in r["candidates"] if x.get("five_seed")]
+            pts += [
+                (f"{tag}:{x['name']}", x["five_seed"]["score"], x["five_seed"]["context"])
+                for x in r["candidates"]
+                if x.get("five_seed")
+            ]
         on_front += any(n.startswith("D:") for n, _, _ in pareto_frontier(pts))
     steer = summarize(logr)
     steers = bool(logr) and steer["hi"] < 0
-    verdict = ("REPRODUCED" if steers and on_front >= 4 else "PARTIAL" if steers else
-               "NOT REPRODUCED" if logr and steer["mean"] >= 0 else "PARTIAL")
-    return verdict, {"log_ratio_D_over_C_median_context": logr, "summary": steer, "snapshots_with_D_on_frontier":
-                     on_front, "ratio_geo_mean": math.exp(steer["mean"]) if logr else None}
+    verdict = (
+        "REPRODUCED"
+        if steers and on_front >= 4
+        else "PARTIAL"
+        if steers
+        else "NOT REPRODUCED"
+        if logr and steer["mean"] >= 0
+        else "PARTIAL"
+    )
+    return verdict, {
+        "log_ratio_D_over_C_median_context": logr,
+        "summary": steer,
+        "snapshots_with_D_on_frontier": on_front,
+        "ratio_geo_mean": math.exp(steer["mean"]) if logr else None,
+    }
 
 
 def useful_edits(rows: list, snap_rows: dict) -> dict:
@@ -240,42 +329,63 @@ def useful_edits(rows: list, snap_rows: dict) -> dict:
             if not c.get("five_seed"):
                 continue
             n_valid += 1
-            pv = ttest_ind(c["five_seed"]["per_seed"], inc["per_seed"], equal_var=False,
-                           alternative="greater").pvalue
+            pv = ttest_ind(c["five_seed"]["per_seed"], inc["per_seed"], equal_var=False, alternative="greater").pvalue
             is_real = c["five_seed"]["score"] > inc["score"] and pv < 0.05
             real += is_real
             if c.get("single_seed") is not None and c["single_seed"] > inc["per_seed"][0]:
                 apparent += 1
                 apparent_not_real += not is_real
     rate = real / n_valid if n_valid else float("nan")
-    return {"n_valid": n_valid, "n_real_improvements": real, "rate": rate, "wilson95": wilson(real, n_valid),
-            "n_single_seed_apparent_improvements": apparent, "n_apparent_not_real": apparent_not_real}
+    return {
+        "n_valid": n_valid,
+        "n_real_improvements": real,
+        "rate": rate,
+        "wilson95": wilson(real, n_valid),
+        "n_single_seed_apparent_improvements": apparent,
+        "n_apparent_not_real": apparent_not_real,
+    }
 
 
 def analyse(rows: list, snap_rows: dict) -> dict:
     get = {(r["snapshot"], r["arm"]): r for r in rows}
-    out = {"claim": "L1/L2/Q3 history ablation, Q14 trade-off steering, K3 useful-edit rate, L4 hard-coding, "
-                    "K4 tokens (live, single step, paired by snapshot)",
-           "preregistration": "claims-audit-metaharness.md, Retry round 2: preregistration, P3/P4",
-           "config": {"snapshots": list(SNAP_SEEDS), "arms": ARMS, "eval_seeds": list(EVAL_SEEDS),
-                      "proposer": "RewriteProposer(claude-haiku), k=2, 60k rendered chars",
-                      "summarizer": "LLMSummarizer(claude-haiku), fixed input (retry 2)"}}
+    out = {
+        "claim": "L1/L2/Q3 history ablation, Q14 trade-off steering, K3 useful-edit rate, L4 hard-coding, "
+        "K4 tokens (live, single step, paired by snapshot)",
+        "preregistration": "claims-audit-metaharness.md, Retry round 2: preregistration, P3/P4",
+        "config": {
+            "snapshots": list(SNAP_SEEDS),
+            "arms": ARMS,
+            "eval_seeds": list(EVAL_SEEDS),
+            "proposer": "RewriteProposer(claude-haiku), k=2, 60k rendered chars",
+            "summarizer": "LLMSummarizer(claude-haiku), fixed input (retry 2)",
+        },
+    }
     out["tests"] = {"primary": history_tests(get, False), "invalid_as_zero": history_tests(get, True)}
     p = out["tests"]["primary"]
 
     def ci(k: str) -> bool:
         return p[k].get("lo", -1) > 0
 
-    l1 = ("REPRODUCED" if ci("full_minus_scores_only") and ci("full_minus_summary") else
-          "NOT REPRODUCED" if p["full_minus_scores_only"].get("mean_diff", 0) <= 0 else "PARTIAL")
+    l1 = (
+        "REPRODUCED"
+        if ci("full_minus_scores_only") and ci("full_minus_summary")
+        else "NOT REPRODUCED"
+        if p["full_minus_scores_only"].get("mean_diff", 0) <= 0
+        else "PARTIAL"
+    )
     a_ok, b_ok = ci("full_minus_summary"), p["summary_minus_scores_only"].get("mean_diff", 1) <= 0
     l2 = "REPRODUCED" if a_ok and b_ok else "PARTIAL" if a_ok or b_ok else "NOT REPRODUCED"
     q14, out["q14"] = steering(get, snap_rows)
     out["k3"] = useful_edits(rows, snap_rows)
     k3 = "REPRODUCED" if out["k3"]["n_valid"] and out["k3"]["rate"] < 0.05 else "PARTIAL"
     # L4: automatic flags only; the manual rubric is applied in the claims audit
-    flagged = [(r["snapshot"], r["arm"], c["name"]) for r in rows if not r.get("skipped") for c in r["candidates"]
-               if c["hardcoding"]["flag_auto"]]
+    flagged = [
+        (r["snapshot"], r["arm"], c["name"])
+        for r in rows
+        if not r.get("skipped")
+        for c in r["candidates"]
+        if c["hardcoding"]["flag_auto"]
+    ]
     out["l4_auto"] = {"n_candidates": sum(len(r.get("candidates", [])) for r in rows), "flagged": flagged}
     out["verdicts"] = {"L1": l1, "L2": l2, "Q14": q14, "K3": k3}
     return out
@@ -295,8 +405,12 @@ def k4_tokens(snaps: dict, rows: list) -> dict:
     prompt_toks = []
     for s, d in snaps.items():
         rendered, _ = render_view(ExperienceStore(d / "store").view("window", window=4), 60000)
-        prompt = TASK_PROMPT.format(iteration=3, brief=make_domain(seed=s).describe(), ctx="history",
-                                    output=REWRITE_OUTPUT.format(iteration=3, k=2))
+        prompt = TASK_PROMPT.format(
+            iteration=3,
+            brief=make_domain(seed=s).describe(),
+            ctx="history",
+            output=REWRITE_OUTPUT.format(iteration=3, k=2),
+        )
         prompt += "\n\n## History (rendered)\n" + rendered
         prompt_toks.append(estimate_tokens(prompt) + estimate_tokens(format_skill(SKILL_TEXT, 2, PROTOTYPE_ON_PAPER)))
     outs = [r["usage"]["output_tokens"] for r in rows if r.get("usage") and r["usage"].get("output_tokens")]
@@ -305,11 +419,15 @@ def k4_tokens(snaps: dict, rows: list) -> dict:
     agent_toks = [ss["usage"]["input_tokens"] + ss["usage"]["output_tokens"] for ss in agent["sessions"]]
     light = float(np.mean(prompt_toks)) + (float(np.mean(outs)) if outs else 0.0)
     ratios = [a / light for a in agent_toks] if light else []
-    return {"window_prompt_tokens_est": prompt_toks,
-            "rewrite_output_tokens_measured_mean": float(np.mean(outs)) if outs else None,
-            "rewrite_input_tokens_measured_mean": float(np.mean(ins)) if ins else None,
-            "lighter_step_tokens": light, "agent_tokens_per_iteration": agent_toks, "ratios": ratios,
-            "verdict": "REPRODUCED" if ratios and min(ratios) >= 10 else "PARTIAL"}
+    return {
+        "window_prompt_tokens_est": prompt_toks,
+        "rewrite_output_tokens_measured_mean": float(np.mean(outs)) if outs else None,
+        "rewrite_input_tokens_measured_mean": float(np.mean(ins)) if ins else None,
+        "lighter_step_tokens": light,
+        "agent_tokens_per_iteration": agent_toks,
+        "ratios": ratios,
+        "verdict": "REPRODUCED" if ratios and min(ratios) >= 10 else "PARTIAL",
+    }
 
 
 if __name__ == "__main__":

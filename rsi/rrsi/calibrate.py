@@ -1,4 +1,5 @@
 """Noise band delta = z * sd(null dS) from repeated or bootstrapped evaluations of the base harness."""
+
 from __future__ import annotations
 
 import math
@@ -45,8 +46,9 @@ def pooled(evals: list[Measurement]) -> Measurement:
     return aggregate("pooled", sum(e.k for e in evals), per)
 
 
-def calibrate(evals: list[Measurement], z: float = 2.0, reps: int = 2000, seed: int = 7,
-              small_k_correction: bool = False) -> dict:
+def calibrate(
+    evals: list[Measurement], z: float = 2.0, reps: int = 2000, seed: int = 7, small_k_correction: bool = False
+) -> dict:
     """delta from one or more evaluations of the base harness."""
     if not evals:
         raise ValueError("no base evaluations")
@@ -54,7 +56,7 @@ def calibrate(evals: list[Measurement], z: float = 2.0, reps: int = 2000, seed: 
     sd_null = 0.0
     if len(evals) >= 2:
         scores = [e.S for e in evals]
-        diffs = [abs(a - b) for i, a in enumerate(scores) for b in scores[i + 1:]]
+        diffs = [abs(a - b) for i, a in enumerate(scores) for b in scores[i + 1 :]]
         sd_null = noise_from_repeats(scores, z=z).sd_null
         method = "repeated base evaluations"
         observed = {"S_per_eval": scores, "max_abs_diff": max(diffs)}
@@ -66,11 +68,24 @@ def calibrate(evals: list[Measurement], z: float = 2.0, reps: int = 2000, seed: 
     if small_k_correction and pe.k > 1:
         sd_boot *= math.sqrt(pe.k / (pe.k - 1))  # the plug-in bootstrap underestimates variance by (k-1)/k
     sd_use = sd_null if (len(evals) >= 2 and sd_null > 0) else sd_boot
-    out = {"delta": round(z * sd_use, 6), "z": z, "sd_null": round(sd_use, 6),
-           "sd_null_bootstrap": round(sd_boot, 6), "se_bootstrap": round(se, 6), "method": method,
-           "n_evals": len(evals), "k": evals[0].k, "n_tasks": len(pe.per_task), "S_base": round(evals[0].S, 6),
-           "C_base": evals[0].C, "small_k_correction": small_k_correction, **observed}
+    out = {
+        "delta": round(z * sd_use, 6),
+        "z": z,
+        "sd_null": round(sd_use, 6),
+        "sd_null_bootstrap": round(sd_boot, 6),
+        "se_bootstrap": round(se, 6),
+        "method": method,
+        "n_evals": len(evals),
+        "k": evals[0].k,
+        "n_tasks": len(pe.per_task),
+        "S_base": round(evals[0].S, 6),
+        "C_base": evals[0].C,
+        "small_k_correction": small_k_correction,
+        **observed,
+    }
     if out["delta"] == 0.0:
-        out["warning"] = ("delta = 0: the noise band is degenerate (k = 1 with a single base evaluation, or a "
-                          "deterministic grader). Set Config.delta, or use calibration_repeats >= 2 / k >= 2.")
+        out["warning"] = (
+            "delta = 0: the noise band is degenerate (k = 1 with a single base evaluation, or a "
+            "deterministic grader). Set Config.delta, or use calibration_repeats >= 2 / k >= 2."
+        )
     return out

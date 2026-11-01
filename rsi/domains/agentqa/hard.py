@@ -1,4 +1,5 @@
 """Harder AgentQA families where "write Python" is not enough: logic, ledger (practice); schedule, cipher (OOD)."""
+
 from __future__ import annotations
 
 import datetime as _dt
@@ -8,8 +9,24 @@ import string
 
 from ...core.tasks import TaskSuite
 
-NAMES = ["Avery", "Blake", "Casey", "Devon", "Emery", "Finley", "Harper", "Jordan", "Logan", "Morgan", "Parker",
-         "Quinn", "Reese", "Riley", "Sawyer", "Taylor"]
+NAMES = [
+    "Avery",
+    "Blake",
+    "Casey",
+    "Devon",
+    "Emery",
+    "Finley",
+    "Harper",
+    "Jordan",
+    "Logan",
+    "Morgan",
+    "Parker",
+    "Quinn",
+    "Reese",
+    "Riley",
+    "Sawyer",
+    "Taylor",
+]
 COLORS = ["red", "green", "blue", "yellow", "white", "orange"]
 PETS = ["cat", "dog", "fish", "bird", "horse", "rabbit"]
 DRINKS = ["tea", "coffee", "milk", "juice", "water", "cocoa"]
@@ -19,8 +36,13 @@ N_HOUSES = 5
 
 
 def _phrase(attr: str, v: str) -> str:
-    return {"name": v, "color": f"the person in the {v} house", "pet": f"the {v} owner",
-            "drink": f"the person who drinks {v}", "hobby": f"the person who does {v}"}[attr]
+    return {
+        "name": v,
+        "color": f"the person in the {v} house",
+        "pet": f"the {v} owner",
+        "drink": f"the person who drinks {v}",
+        "hobby": f"the person who does {v}",
+    }[attr]
 
 
 def _clue_text(clue) -> str:
@@ -31,8 +53,12 @@ def _clue_text(clue) -> str:
     if kind == "at":
         return f"{a} lives in house {clue[3] + 1}."
     b = _phrase(clue[3], clue[4])
-    return {"same": f"{a} is {b}.", "diff": f"{a} is not {b}.",
-            "left": f"{a} lives immediately to the left of {b}.", "next": f"{a} lives next to {b}."}[kind]
+    return {
+        "same": f"{a} is {b}.",
+        "diff": f"{a} is not {b}.",
+        "left": f"{a} lives immediately to the left of {b}.",
+        "next": f"{a} lives next to {b}.",
+    }[kind]
 
 
 def _solutions(values: dict, clues: list, cap: int = 2) -> list:
@@ -41,8 +67,12 @@ def _solutions(values: dict, clues: list, cap: int = 2) -> list:
     variables = [(a, v) for a in ATTRS for v in values[a]]
     unary: dict = {x: set(range(n)) for x in variables}
     binary: dict = {x: [] for x in variables}
-    rels = {"same": lambda p, q: p == q, "diff": lambda p, q: p != q, "left": lambda p, q: p + 1 == q,
-            "next": lambda p, q: abs(p - q) == 1}
+    rels = {
+        "same": lambda p, q: p == q,
+        "diff": lambda p, q: p != q,
+        "left": lambda p, q: p + 1 == q,
+        "next": lambda p, q: abs(p - q) == 1,
+    }
     for c in clues:
         if c[0] == "at":
             unary[(c[1], c[2])] &= {c[3]}
@@ -55,8 +85,11 @@ def _solutions(values: dict, clues: list, cap: int = 2) -> list:
 
     def domain(x):
         used = {assign[(x[0], v)] for v in values[x[0]] if (x[0], v) in assign}
-        return [h for h in sorted(unary[x]) if h not in used
-                and all(rel(h, assign[y]) for y, rel in binary[x] if y in assign)]
+        return [
+            h
+            for h in sorted(unary[x])
+            if h not in used and all(rel(h, assign[y]) for y, rel in binary[x] if y in assign)
+        ]
 
     def rec():
         if len(out) >= cap:
@@ -79,9 +112,14 @@ def _solutions(values: dict, clues: list, cap: int = 2) -> list:
 
 def _logic(rng: random.Random):
     n = N_HOUSES
-    values = {"name": rng.sample(NAMES, n), "color": rng.sample(COLORS, n), "pet": rng.sample(PETS, n),
-              "drink": rng.sample(DRINKS, n), "hobby": rng.sample(HOBBIES, n)}
-    truth = {a: rng.sample(values[a], n) for a in ATTRS}       # truth[attr][house] = value
+    values = {
+        "name": rng.sample(NAMES, n),
+        "color": rng.sample(COLORS, n),
+        "pet": rng.sample(PETS, n),
+        "drink": rng.sample(DRINKS, n),
+        "hobby": rng.sample(HOBBIES, n),
+    }
+    truth = {a: rng.sample(values[a], n) for a in ATTRS}  # truth[attr][house] = value
     pool = [("at", a, truth[a][h], h) for a in ATTRS for h in range(n)]
     for a1, a2 in itertools.permutations(ATTRS, 2):
         for h in range(n):
@@ -92,26 +130,33 @@ def _logic(rng: random.Random):
             pool.append(("left", a1, truth[a1][h], a2, truth[a2][h + 1]))
             pool.append(("next", a1, truth[a1][h + 1], a2, truth[a2][h]))
     rng.shuffle(pool)
-    pool.sort(key=lambda c: c[0] == "at")          # positional clues last: harder puzzles
+    pool.sort(key=lambda c: c[0] == "at")  # positional clues last: harder puzzles
     clues: list = []
     for c in pool:
         clues.append(c)
         if len(clues) >= 10 and len(_solutions(values, clues)) == 1:
             break
-    for c in list(clues):                          # drop redundant clues, keeping the solution unique
+    for c in list(clues):  # drop redundant clues, keeping the solution unique
         rest = [x for x in clues if x is not c]
         if len(_solutions(values, rest)) == 1:
             clues = rest
     ask_attr = rng.choice(["pet", "drink", "color", "hobby"])
     ask_val = rng.choice(values[ask_attr])
     ans = truth["name"][truth[ask_attr].index(ask_val)]
-    q_word = {"pet": f"owns the {ask_val}", "drink": f"drinks {ask_val}", "color": f"lives in the {ask_val} house",
-              "hobby": f"does {ask_val}"}
-    lines = [f"Five houses stand in a row, numbered 1 to 5 from left to right. Each house has one person, and the "
-             f"five people are {', '.join(sorted(values['name']))}. Each person has a different house color "
-             f"({', '.join(sorted(values['color']))}), a different pet ({', '.join(sorted(values['pet']))}), "
-             f"a different drink ({', '.join(sorted(values['drink']))}) and a different hobby "
-             f"({', '.join(sorted(values['hobby']))}).", "Clues:"]
+    q_word = {
+        "pet": f"owns the {ask_val}",
+        "drink": f"drinks {ask_val}",
+        "color": f"lives in the {ask_val} house",
+        "hobby": f"does {ask_val}",
+    }
+    lines = [
+        f"Five houses stand in a row, numbered 1 to 5 from left to right. Each house has one person, and the "
+        f"five people are {', '.join(sorted(values['name']))}. Each person has a different house color "
+        f"({', '.join(sorted(values['color']))}), a different pet ({', '.join(sorted(values['pet']))}), "
+        f"a different drink ({', '.join(sorted(values['drink']))}) and a different hobby "
+        f"({', '.join(sorted(values['hobby']))}).",
+        "Clues:",
+    ]
     lines += [f"{i + 1}. {_clue_text(c)}" for i, c in enumerate(clues)]
     lines.append(f"Who {q_word[ask_attr]}? Answer with the name only.")
     return "\n".join(lines), ans, []
@@ -119,8 +164,11 @@ def _logic(rng: random.Random):
 
 REGIONS = ["North", "South", "East", "West"]
 CUSTOMERS = ["Acme", "Birch", "Cobalt", "Delta", "Ember", "Fjord", "Garnet"]
-STATUS_WORDS = {"paid": ["paid", "PAID", "settled"], "refunded": ["refunded", "REFUND", "chargeback"],
-                "pending": ["pending", "on hold"]}
+STATUS_WORDS = {
+    "paid": ["paid", "PAID", "settled"],
+    "refunded": ["refunded", "REFUND", "chargeback"],
+    "pending": ["pending", "on hold"],
+}
 
 
 def _fmt_date(d: _dt.date, style: int) -> str:
@@ -128,7 +176,7 @@ def _fmt_date(d: _dt.date, style: int) -> str:
 
 
 def _fmt_amount(a: float, cur: str) -> str:
-    if cur == "EUR":                                # European notation: 1.234,56
+    if cur == "EUR":  # European notation: 1.234,56
         return f"{a:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") + " EUR"
     return f"${a:,.2f}"
 
@@ -142,9 +190,17 @@ def _ledger(rng: random.Random):
     for i in range(n):
         d = start + _dt.timedelta(days=rng.randint(0, 150))
         cur = "EUR" if rng.random() < 0.4 else "USD"
-        rows.append({"id": f"T{1000 + i}", "date": d, "region": rng.choice(REGIONS), "customer": rng.choice(CUSTOMERS),
-                     "amount": round(rng.uniform(40, 4800), 2), "currency": cur,
-                     "status": rng.choices(["paid", "refunded", "pending"], [0.68, 0.2, 0.12])[0]})
+        rows.append(
+            {
+                "id": f"T{1000 + i}",
+                "date": d,
+                "region": rng.choice(REGIONS),
+                "customer": rng.choice(CUSTOMERS),
+                "amount": round(rng.uniform(40, 4800), 2),
+                "currency": cur,
+                "status": rng.choices(["paid", "refunded", "pending"], [0.68, 0.2, 0.12])[0],
+            }
+        )
     lines = list(rows)
     for r in rng.sample(rows, rng.randint(4, 8)):  # corrections, appended later in the export
         c = dict(r)
@@ -153,7 +209,7 @@ def _ledger(rng: random.Random):
         else:
             c["status"] = rng.choice([s for s in STATUS_WORDS if s != r["status"]])
         lines.append(c)
-    rows = list({r["id"]: r for r in lines}.values())   # the last row with an id wins
+    rows = list({r["id"]: r for r in lines}.values())  # the last row with an id wins
     lo = start + _dt.timedelta(days=rng.randint(10, 50))
     hi = lo + _dt.timedelta(days=rng.randint(40, 80))
     region = rng.choice(REGIONS)
@@ -162,8 +218,10 @@ def _ledger(rng: random.Random):
     kind = rng.randrange(3)
     if kind == 0:
         sel = [usd(r) for r in inwin if r["region"] == region and r["status"] == "paid"]
-        q = (f"What is the total of paid transactions in the {region} region dated from {lo} to {hi} inclusive, "
-             f"in US dollars? Round the final total to 2 decimals.")
+        q = (
+            f"What is the total of paid transactions in the {region} region dated from {lo} to {hi} inclusive, "
+            f"in US dollars? Round the final total to 2 decimals."
+        )
         ans = f"{round(sum(sel) + 1e-9, 2):.2f}"
     elif kind == 1:
         net: dict = {}
@@ -171,22 +229,30 @@ def _ledger(rng: random.Random):
             sign = {"paid": 1, "refunded": -1}.get(r["status"], 0)
             net[r["customer"]] = net.get(r["customer"], 0) + sign * usd(r)
         ans = max(sorted(net), key=lambda c: net[c])
-        q = (f"For transactions dated from {lo} to {hi} inclusive, compute each customer's net amount in US "
-             f"dollars (paid adds, refunded subtracts, pending is ignored). Which customer has the highest net "
-             f"amount? Answer with the customer name.")
+        q = (
+            f"For transactions dated from {lo} to {hi} inclusive, compute each customer's net amount in US "
+            f"dollars (paid adds, refunded subtracts, pending is ignored). Which customer has the highest net "
+            f"amount? Answer with the customer name."
+        )
     else:
         sel = [usd(r) for r in inwin if r["status"] == "paid"]
-        q = (f"What is the average value in US dollars of paid transactions dated from {lo} to {hi} inclusive "
-             f"(all regions)? Round the average to 2 decimals.")
+        q = (
+            f"What is the average value in US dollars of paid transactions dated from {lo} to {hi} inclusive "
+            f"(all regions)? Round the average to 2 decimals."
+        )
         ans = f"{round(sum(sel) / len(sel) + 1e-9, 2):.2f}" if sel else "0.00"
-    body = "\n".join(f"{r['id']} | {_fmt_date(r['date'], rng.randrange(3))} | {r['region']} | {r['customer']} | "
-                     f"{_fmt_amount(r['amount'], r['currency'])} | {rng.choice(STATUS_WORDS[r['status']])}"
-                     for r in lines)
-    rules = ("Rules for this export: dates appear as YYYY-MM-DD, DD/MM/YYYY or 'Mon DD YYYY'. USD amounts are "
-             "written like $1,234.56; EUR amounts use European notation, 1.234,56 EUR, and convert at "
-             f"1 EUR = {rate} USD. Status 'paid', 'PAID' and 'settled' mean paid; 'refunded', 'REFUND' and "
-             "'chargeback' mean refunded; 'pending' and 'on hold' mean pending. When an id appears more than once, "
-             "the LAST row with that id is a correction that replaces the earlier ones.")
+    body = "\n".join(
+        f"{r['id']} | {_fmt_date(r['date'], rng.randrange(3))} | {r['region']} | {r['customer']} | "
+        f"{_fmt_amount(r['amount'], r['currency'])} | {rng.choice(STATUS_WORDS[r['status']])}"
+        for r in lines
+    )
+    rules = (
+        "Rules for this export: dates appear as YYYY-MM-DD, DD/MM/YYYY or 'Mon DD YYYY'. USD amounts are "
+        "written like $1,234.56; EUR amounts use European notation, 1.234,56 EUR, and convert at "
+        f"1 EUR = {rate} USD. Status 'paid', 'PAID' and 'settled' mean paid; 'refunded', 'REFUND' and "
+        "'chargeback' mean refunded; 'pending' and 'on hold' mean pending. When an id appears more than once, "
+        "the LAST row with that id is a correction that replaces the earlier ones."
+    )
     return f"{rules}\nTransactions (id | date | region | customer | amount | status):\n{body}\n\n{q}", ans, []
 
 
@@ -203,10 +269,12 @@ def _schedule(rng: random.Random):
             if left == 0:
                 break
         d += _dt.timedelta(days=1)
-    q = (f"A job needs {n} business days of work and starts on {start.isoformat()} ({start.strftime('%A')}). "
-         f"The start day counts as the first business day if it is a business day. Saturdays, Sundays and these "
-         f"holidays are not business days: {', '.join(h.isoformat() for h in holidays)}. On which date is the "
-         f"last business day of the job? Answer in YYYY-MM-DD format.")
+    q = (
+        f"A job needs {n} business days of work and starts on {start.isoformat()} ({start.strftime('%A')}). "
+        f"The start day counts as the first business day if it is a business day. Saturdays, Sundays and these "
+        f"holidays are not business days: {', '.join(h.isoformat() for h in holidays)}. On which date is the "
+        f"last business day of the job? Answer in YYYY-MM-DD format."
+    )
     return q, d.isoformat(), []
 
 
@@ -224,21 +292,26 @@ def _cipher(rng: random.Random):
             ops.append(f"shift every letter forward in the alphabet by {sh} (z wraps around to a)")
         elif k == 2:
             x = "".join(x[i + 1] + x[i] if i + 1 < len(x) else x[i] for i in range(0, len(x), 2))
-            ops.append("swap each pair of adjacent characters (1st with 2nd, 3rd with 4th, ...; a final odd "
-                       "character stays in place)")
+            ops.append(
+                "swap each pair of adjacent characters (1st with 2nd, 3rd with 4th, ...; a final odd "
+                "character stays in place)"
+            )
         elif k == 3:
             r = rng.randint(2, 7)
-            n = r % len(x) if x else 0   # deletions can leave fewer than r characters: rotation wraps around
-            ops.append(f"rotate the string left by {r} positions (move the first {r} characters to the end)"
-                       if r <= len(x) else
-                       f"rotate the string left by {r} positions, wrapping around (move the first character to "
-                       f"the end, {r} times)")
+            n = r % len(x) if x else 0  # deletions can leave fewer than r characters: rotation wraps around
+            ops.append(
+                f"rotate the string left by {r} positions (move the first {r} characters to the end)"
+                if r <= len(x)
+                else f"rotate the string left by {r} positions, wrapping around (move the first character to "
+                f"the end, {r} times)"
+            )
             x = x[n:] + x[:n]
         elif k == 4:
             m = rng.randint(3, 5)
             x = "".join(c for i, c in enumerate(x) if (i + 1) % m)
-            ops.append(f"delete every {m}{'rd' if m == 3 else 'th'} character (positions {m}, {2 * m}, ... counting "
-                       f"from 1)")
+            ops.append(
+                f"delete every {m}{'rd' if m == 3 else 'th'} character (positions {m}, {2 * m}, ... counting from 1)"
+            )
         elif k == 5:
             vw = "aeiou"
             x = "".join(vw[(vw.index(c) + 1) % 5] if c in vw else c for c in x)
@@ -247,8 +320,10 @@ def _cipher(rng: random.Random):
             h = (len(x) + 1) // 2
             a_, b_ = x[:h], x[h:]
             x = "".join(a_[i] + (b_[i] if i < len(b_) else "") for i in range(len(a_)))
-            ops.append("split the string into a first half and a second half (the first half gets the extra "
-                       "character when the length is odd) and interleave them, starting with the first half")
+            ops.append(
+                "split the string into a first half and a second half (the first half gets the extra "
+                "character when the length is odd) and interleave them, starting with the first half"
+            )
     steps = "\n".join(f"{i + 1}. {o}" for i, o in enumerate(ops))
     q = f"Start with the string '{s}'. Apply these steps in order:\n{steps}\nWhat is the final string?"
     return q, x, []
@@ -256,12 +331,21 @@ def _cipher(rng: random.Random):
 
 HARD_FAMILIES = {"logic": _logic, "ledger": _ledger, "schedule": _schedule, "cipher": _cipher}
 
-OOD_HINT = ("The harness will later be run unchanged on other kinds of multi-step questions with exact answers "
-            "(business-day scheduling, chained text transformations), so improvements must be general.")
+OOD_HINT = (
+    "The harness will later be run unchanged on other kinds of multi-step questions with exact answers "
+    "(business-day scheduling, chained text transformations), so improvements must be general."
+)
 
 
 def make_hard_suite(n_evolve: int = 12, n_holdout: int = 8, n_ood_per_family: int = 4, seed: int = 0) -> TaskSuite:
     """Practice families ``logic`` + ``ledger`` (evolve / holdout), sealed OOD families ``schedule`` + ``cipher``."""
     from .generators import make_suite
-    return make_suite(n_evolve=n_evolve, n_holdout=n_holdout, n_ood_per_family=n_ood_per_family,
-                      practice_families=("logic", "ledger"), ood_families=("schedule", "cipher"), seed=seed)
+
+    return make_suite(
+        n_evolve=n_evolve,
+        n_holdout=n_holdout,
+        n_ood_per_family=n_ood_per_family,
+        practice_families=("logic", "ledger"),
+        ood_families=("schedule", "cipher"),
+        seed=seed,
+    )

@@ -1,17 +1,43 @@
 """Dream-RSI audit trace: write-only, complete and consistent with the ledgers; reply-parsing repairs."""
+
 import functools
 import json
 from pathlib import Path
 
+import pytest
+
 from rsi.core import Artifact, MockLLM
 from rsi.domains.discovery import SumDiffDomain
-from rsi.dream import (AttemptRecord, Config, DevContext, EditorAgent, LLMPolicyDeveloper, VersionRecord,
-                       mock_developer_llm, run, template_code)
+from rsi.dream import (
+    AttemptRecord,
+    Config,
+    DevContext,
+    EditorAgent,
+    LLMPolicyDeveloper,
+    VersionRecord,
+    mock_developer_llm,
+    run,
+    template_code,
+)
 from rsi.dream.agent import strip_reply_terminators
 from rsi.trace import inspect, load_trace
 
-KINDS = {"run_start", "noise", "baseline", "round_start", "note", "analysis", "proposal", "critic", "eval", "gate",
-         "decision", "state", "monitor", "run_end"}
+KINDS = {
+    "run_start",
+    "noise",
+    "baseline",
+    "round_start",
+    "note",
+    "analysis",
+    "proposal",
+    "critic",
+    "eval",
+    "gate",
+    "decision",
+    "state",
+    "monitor",
+    "run_end",
+}
 
 
 def decisions(res) -> tuple:
@@ -30,8 +56,11 @@ def events(trace: list[dict], kind: str, **where) -> list[dict]:
 
 
 def _sumdiff(out_dir, **cfg):
-    return run(SumDiffDomain(), config=Config(rounds=3, W=3, branch_count=3, refine_count=2, M=3, seed=1, **cfg),
-               out_dir=out_dir)
+    return run(
+        SumDiffDomain(),
+        config=Config(rounds=3, W=3, branch_count=3, refine_count=2, M=3, seed=1, **cfg),
+        out_dir=out_dir,
+    )
 
 
 def test_trace_and_monitor_are_write_only_agentqa(tmp_path, agentqa_run):
@@ -54,6 +83,7 @@ def test_trace_and_monitor_are_write_only_agentqa(tmp_path, agentqa_run):
     assert len(mon) == 1 + len({e["data"]["kept"] for e in kept})  # the seed + each distinct new best program
 
 
+@pytest.mark.slow
 def test_trace_is_write_only_sumdiff_and_complete(tmp_path):
     a, c, d = _sumdiff(str(tmp_path / "a")), _sumdiff(str(tmp_path / "c"), trace=False), _sumdiff(None)
     assert decisions(a) == decisions(c) == decisions(d)
@@ -102,12 +132,17 @@ def test_trace_is_write_only_sumdiff_and_complete(tmp_path):
 
 
 def test_llm_developer_prompts_and_screen_are_traced(tmp_path):
-    res = run(SumDiffDomain(), config=Config(rounds=2, W=3, branch_count=2, refine_count=1, M=2, seed=0),
-              developer=LLMPolicyDeveloper(mock_developer_llm(0)), out_dir=str(tmp_path))
+    res = run(
+        SumDiffDomain(),
+        config=Config(rounds=2, W=3, branch_count=2, refine_count=1, M=2, seed=0),
+        developer=LLMPolicyDeveloper(mock_developer_llm(0)),
+        out_dir=str(tmp_path),
+    )
     ev = load_trace(tmp_path)
     props = [e["data"] for e in events(ev, "proposal") if e["data"]["candidate"].startswith("r")]
-    assert props and all("Edit only `method.py`" in p["prompt"] or "prefix-only exploration policy" in p["prompt"]
-                         for p in props)
+    assert props and all(
+        "Edit only `method.py`" in p["prompt"] or "prefix-only exploration policy" in p["prompt"] for p in props
+    )
     assert all("=== FILE: method.py ===" in p["reply"] for p in props)
     crit = [e["data"] for e in events(ev, "critic")]
     assert crit and any("static check + leakage screen" in c["stage"] for c in crit)
@@ -117,6 +152,7 @@ def test_llm_developer_prompts_and_screen_are_traced(tmp_path):
 
 def test_editor_agent_prompt_and_reply_are_traced(tmp_path):
     """The Listing-1 agent path records the exact prompt, the raw reply and the actual diff."""
+
     def respond(prompt, system, seed, i):
         if "=== FILE: construct.py ===" not in prompt:
             return "no"
@@ -125,8 +161,12 @@ def test_editor_agent_prompt_and_reply_are_traced(tmp_path):
         hdr = json.dumps({"change": "add a hill stage", "hypothesis": "local search helps", "components": ["program"]})
         return f"```json\n{hdr}\n```\n=== FILE: construct.py ===\n{code}"
 
-    run(SumDiffDomain(), agent=EditorAgent(MockLLM(respond), editable=["construct.py"]),
-        config=Config(rounds=1, W=2, branch_count=2, refine_count=0, M=2), out_dir=str(tmp_path))
+    run(
+        SumDiffDomain(),
+        agent=EditorAgent(MockLLM(respond), editable=["construct.py"]),
+        config=Config(rounds=1, W=2, branch_count=2, refine_count=0, M=2),
+        out_dir=str(tmp_path),
+    )
     props = [e["data"] for e in events(load_trace(tmp_path), "proposal") if e["data"]["candidate"].startswith("t1/")]
     assert len(props) == 2
     for p in props:
@@ -139,18 +179,22 @@ def test_strip_reply_terminators_repairs_fenced_file_ends():
     """A trailing ``===`` or closing fence left by the reply parser is dropped, and only such lines."""
     body = "def construct():\n    return [0, 1, 3]\n"
     for tail in ("===\n", "```\n", "```python\n\n", "=== END FILE ===\n", "=== END ===\n"):
-        a, fixed = strip_reply_terminators(Artifact({"construct.py": body + tail, "notes.md": "x\n===\n"}),
-                                           ["construct.py"])
+        a, fixed = strip_reply_terminators(
+            Artifact({"construct.py": body + tail, "notes.md": "x\n===\n"}), ["construct.py"]
+        )
         assert fixed == ["construct.py"] and a["construct.py"] == body and a["notes.md"] == "x\n===\n"
     a, fixed = strip_reply_terminators(Artifact({"construct.py": body + "x = '==='\n"}), ["construct.py"])
     assert fixed == [] and a["construct.py"].endswith("x = '==='\n")
-    compile(strip_reply_terminators(Artifact({"construct.py": body + "===\n"}), ["*.py"])[0]["construct.py"],
-            "c", "exec")
+    compile(
+        strip_reply_terminators(Artifact({"construct.py": body + "===\n"}), ["*.py"])[0]["construct.py"], "c", "exec"
+    )
 
 
 def test_attempt_record_shows_the_cause_of_a_failure():
-    tb = ('  File "/tmp/x/_runner.py", line 12, in <module>\n    _main()\n' * 6 +
-          '  File "/tmp/x/candidate.py", line 121\n    ===\n    ^^\nSyntaxError: invalid syntax')
+    tb = (
+        '  File "/tmp/x/_runner.py", line 12, in <module>\n    _main()\n' * 6
+        + '  File "/tmp/x/candidate.py", line 121\n    ===\n    ^^\nSyntaxError: invalid syntax'
+    )
     text = AttemptRecord("b0.a1", 0, 1, 2, "p", 0.0, "compile_other", tb).render()
     assert "SyntaxError: invalid syntax" in text and "===" in text
 

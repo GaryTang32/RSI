@@ -1,4 +1,5 @@
 """Offline HarnessWorld mock LLM serving every RRSI search role; replies depend only on (prompt, seed)."""
+
 from __future__ import annotations
 
 import hashlib
@@ -7,7 +8,6 @@ import random
 import re
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Optional
 
 from ...core.llm import MockLLM
 from ...rrsi.analyst import Analyst
@@ -15,28 +15,37 @@ from ...rrsi.propose import parse_sections
 from .world import Mechanism, World
 
 MID = re.compile(r"\[([a-z]{3}_\d{2})\]")
-DEFAULT_SHARES = {"generic": 0.15, "structural": 0.07, "narrow": 0.05, "leak": 0.10, "obfuscated_leak": 0.05,
-                  "null": 0.18, "costly": 0.12, "harmful": 0.20, "decaying": 0.08}
+DEFAULT_SHARES = {
+    "generic": 0.15,
+    "structural": 0.07,
+    "narrow": 0.05,
+    "leak": 0.10,
+    "obfuscated_leak": 0.05,
+    "null": 0.18,
+    "costly": 0.12,
+    "harmful": 0.20,
+    "decaying": 0.08,
+}
 
 
 @dataclass
 class ProposerProfile:
     shares: dict = field(default_factory=lambda: dict(DEFAULT_SHARES))
-    component_bias: dict = field(default_factory=dict)   # e.g. {"prompt": 6.0} = prompt collapse
-    fill_budget_p: float = 0.6        # P(ship exactly b_t edits), else uniform 1..b_t
-    respect_history: bool = True      # avoid mechanisms whose visible record was rejected
+    component_bias: dict = field(default_factory=dict)  # e.g. {"prompt": 6.0} = prompt collapse
+    fill_budget_p: float = 0.6  # P(ship exactly b_t edits), else uniform 1..b_t
+    respect_history: bool = True  # avoid mechanisms whose visible record was rejected
     history_compliance: float = 0.9
-    prune_p: float = 0.5              # P(add a prune edit when B_t lists machinery present in the harness)
-    family_bias: float = 2.0          # weight multiplier for mechanisms aimed at the top failure families
-    repair_compliance: float = 1.0    # P(remove each objected-to edit in a repair round)
+    prune_p: float = 0.5  # P(add a prune edit when B_t lists machinery present in the harness)
+    family_bias: float = 2.0  # weight multiplier for mechanisms aimed at the top failure families
+    repair_compliance: float = 1.0  # P(remove each objected-to edit in a repair round)
     n_predicted: int = 3
 
 
 @dataclass
 class CriticProfile:
-    catch_rate: float = 0.8           # obfuscated leaks caught by the LLM review
-    literal_catch: float = 1.0        # literal leaks (if the regex precheck is bypassed)
-    false_positive: float = 0.0       # clean edits wrongly rejected
+    catch_rate: float = 0.8  # obfuscated leaks caught by the LLM review
+    literal_catch: float = 1.0  # literal leaks (if the regex precheck is bypassed)
+    false_positive: float = 0.0  # clean edits wrongly rejected
 
 
 def _rng(*parts) -> random.Random:
@@ -58,14 +67,19 @@ def _json_after_header(text: str, default):
 
 
 class HarnessWorldMockLLM(MockLLM):
-    def __init__(self, world: World, proposer: Optional[ProposerProfile] = None,
-                 critic: Optional[CriticProfile] = None, name: str = "harnessworld-mock") -> None:
+    def __init__(
+        self,
+        world: World,
+        proposer: ProposerProfile | None = None,
+        critic: CriticProfile | None = None,
+        name: str = "harnessworld-mock",
+    ) -> None:
         self.world = world
         self.pp = proposer or ProposerProfile()
         self.cp = critic or CriticProfile()
         super().__init__(self._respond, name=name)
 
-    def _respond(self, prompt: str, system: Optional[str], seed, i) -> str:
+    def _respond(self, prompt: str, system: str | None, seed, i) -> str:
         s = system or ""
         if s.startswith("You are a harness engineer agent"):
             return self._propose(prompt, seed)
@@ -82,14 +96,23 @@ class HarnessWorldMockLLM(MockLLM):
         return {m.id: m.path for m in mechs}
 
     def _edit(self, i: int, m: Mechanism, targets_mode: str, pred: list[str], prune: bool = False) -> dict:
-        hyp = (f"prune: [{m.id}] {m.title} stopped earning its place" if prune
-               else f"[{m.id}] {m.title}: {m.description}")
-        return {"id": f"C{i + 1}", "component": m.component, "hypothesis": hyp, "targets_mode": targets_mode,
-                "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
-                "trigger_condition": "tasks of the targeted families", "predicted_affected": pred,
-                "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves "
-                                     "passing paths untouched; (transfer) the mechanism is task-agnostic",
-                "regression_risk": "extra tokens", "mechanism_id": m.id, "prune": prune}
+        hyp = (
+            f"prune: [{m.id}] {m.title} stopped earning its place" if prune else f"[{m.id}] {m.title}: {m.description}"
+        )
+        return {
+            "id": f"C{i + 1}",
+            "component": m.component,
+            "hypothesis": hyp,
+            "targets_mode": targets_mode,
+            "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+            "trigger_condition": "tasks of the targeted families",
+            "predicted_affected": pred,
+            "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves "
+            "passing paths untouched; (transfer) the mechanism is task-agnostic",
+            "regression_risk": "extra tokens",
+            "mechanism_id": m.id,
+            "prune": prune,
+        }
 
     def _propose(self, prompt: str, seed) -> str:
         P = parse_sections(prompt)
@@ -141,18 +164,25 @@ class HarnessWorldMockLLM(MockLLM):
                 chosen.append((m, False))
         while len(chosen) < n:
             m = self._draw(rng, present, chosen, avoid, top_fams)
-            if m is None and not chosen:                    # catalog exhausted: revisit refuted mechanisms
+            if m is None and not chosen:  # catalog exhausted: revisit refuted mechanisms
                 m = self._draw(rng, present, chosen, set(), top_fams)
             if m is None:
                 break
             chosen.append((m, False))
         return self._reply(chosen, targets_mode, predicted)
 
-    def _draw(self, rng, present, chosen, avoid, top_fams, comps=None, exclude_kinds=()) -> Optional[Mechanism]:
+    def _draw(self, rng, present, chosen, avoid, top_fams, comps=None, exclude_kinds=()) -> Mechanism | None:
         taken = {m.id for m, _ in chosen}
-        pool = [m for m in self.world.catalog.values()
-                if m.id not in present and m.id not in taken and m.id not in avoid and m.kind not in exclude_kinds
-                and (comps is None or m.component in comps) and self.pp.shares.get(m.kind, 0) > 0]
+        pool = [
+            m
+            for m in self.world.catalog.values()
+            if m.id not in present
+            and m.id not in taken
+            and m.id not in avoid
+            and m.kind not in exclude_kinds
+            and (comps is None or m.component in comps)
+            and self.pp.shares.get(m.kind, 0) > 0
+        ]
         if not pool:
             return None
         n_kind = Counter(m.kind for m in pool)
@@ -164,8 +194,9 @@ class HarnessWorldMockLLM(MockLLM):
             w.append(x)
         return rng.choices(pool, weights=w)[0]
 
-    def _reply(self, chosen: list[tuple[Mechanism, bool]], targets_mode: str, predicted, keep_edits=(),
-               extra_files=None) -> str:
+    def _reply(
+        self, chosen: list[tuple[Mechanism, bool]], targets_mode: str, predicted, keep_edits=(), extra_files=None
+    ) -> str:
         edits = list(keep_edits)
         files = dict(extra_files or {})
         for m, prune in chosen:
@@ -173,12 +204,15 @@ class HarnessWorldMockLLM(MockLLM):
             files[m.path] = "<<DELETE>>" if prune else m.file_text()
         for i, e in enumerate(edits):
             e["id"] = f"C{i + 1}"
-        header = {"action": "done", "summary": "; ".join(e["hypothesis"][:60] for e in edits) or "no change",
-                  "edits": edits}
+        header = {
+            "action": "done",
+            "summary": "; ".join(e["hypothesis"][:60] for e in edits) or "no change",
+            "edits": edits,
+        }
         body = "\n".join(f"=== FILE: {p} ===\n{t}" for p, t in files.items())
         return "```json\n" + json.dumps(header) + "\n```\n" + body
 
-    def _objected(self, m: Optional[Mechanism], e: dict, reasons: str) -> bool:
+    def _objected(self, m: Mechanism | None, e: dict, reasons: str) -> bool:
         """The objections cite this edit's mechanism id or a task id / answer its payload hard-codes."""
         if m is None or e.get("prune"):
             return False
@@ -232,8 +266,10 @@ class HarnessWorldMockLLM(MockLLM):
             if m.payload and m.payload in added:
                 p = self.cp.catch_rate if m.kind == "obfuscated_leak" else self.cp.literal_catch
                 if rng.random() < p:
-                    reasons.append(f"LEAKAGE / RUNTIME MEMORY LEAKAGE: mechanism {mid} injects a lookup table keyed "
-                                   f"by task identity; that is memorization, not a general improvement")
+                    reasons.append(
+                        f"LEAKAGE / RUNTIME MEMORY LEAKAGE: mechanism {mid} injects a lookup table keyed "
+                        f"by task identity; that is memorization, not a general improvement"
+                    )
             elif self.cp.false_positive and rng.random() < self.cp.false_positive:
                 reasons.append(f"mechanism {mid} looks suite-specific")
         verdict = {"verdict": "reject" if reasons else "accept", "reasons": reasons, "risk_notes": []}
@@ -245,13 +281,27 @@ class HarnessWorldMockLLM(MockLLM):
         lens = "success" if "(success lens)" in prompt else "failure"
         tid, fam = (m.group(1), m.group(2)) if m else ("?", "default")
         if lens == "success":
-            return json.dumps({"task_id": tid, "lens": lens, "family": fam,
-                               "habits": [{"habit": f"clean_{fam}", "where_shown": "final"}],
-                               "risk_if_removed": "regressions on passing tasks"})
+            return json.dumps(
+                {
+                    "task_id": tid,
+                    "lens": lens,
+                    "family": fam,
+                    "habits": [{"habit": f"clean_{fam}", "where_shown": "final"}],
+                    "risk_if_removed": "regressions on passing tasks",
+                }
+            )
         quote = fb.group(1)[:160] if fb else ""
-        return json.dumps({"task_id": tid, "lens": lens, "family": fam,
-                           "blocker": re.sub(r"\d+", "#", quote), "narrative": quote,
-                           "evidence": [{"where": "grader", "quote": quote}], "needed_instead": ""})
+        return json.dumps(
+            {
+                "task_id": tid,
+                "lens": lens,
+                "family": fam,
+                "blocker": re.sub(r"\d+", "#", quote),
+                "narrative": quote,
+                "evidence": [{"where": "grader", "quote": quote}],
+                "needed_instead": "",
+            }
+        )
 
     def _analyze(self, prompt: str) -> str:
         body = prompt.split("=== DIGESTS ===", 1)[-1].split("Produce the report JSON now.")[0]
@@ -259,8 +309,9 @@ class HarnessWorldMockLLM(MockLLM):
             digests = json.loads(body.strip())
         except json.JSONDecodeError:
             digests = []
-        digests = [x for x in digests if isinstance(x, dict) and x.get("lens") in ("failure", "success",
-                                                                                   "capability_gap")]
+        digests = [
+            x for x in digests if isinstance(x, dict) and x.get("lens") in ("failure", "success", "capability_gap")
+        ]
         for x in digests:
             x.setdefault("blocker", "unknown")
             x.setdefault("evidence", [{"where": "grader", "quote": ""}])

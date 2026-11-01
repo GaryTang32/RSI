@@ -1,4 +1,5 @@
 """BBEH merge: ``experiments/bbh/merge.py --benchmark bbeh`` (results/bbeh/merged.{json,md}; no cot3 column)."""
+
 from __future__ import annotations
 
 import importlib.util

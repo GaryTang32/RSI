@@ -1,13 +1,34 @@
 """Offline, deterministic tests of the autoresearch core (landscape task, no subprocesses)."""
+
 import csv
 
 import pytest
-
 from autoresearch_helpers import candidates, context, edited, kept, needs_git, quiet, rows, run_threads
-from rsi.autoresearch import (Analyzer, AutoresearchLoop, BootstrapRigorKeep, Config, CrashPolicy, GateKeep,
-                              KeepContext, LandscapeTask, MockResearchAgent, ProgramSpec, RandomSearchAgent,
-                              ResultsLog, RunOutcome, Samples, ScopeGuard, SimplicityWeighted, StrictKeep, Workspace,
-                              landscape_edit_pool, parse_summary, run, scripted_llm)
+
+from rsi.autoresearch import (
+    Analyzer,
+    AutoresearchLoop,
+    BootstrapRigorKeep,
+    Config,
+    CrashPolicy,
+    GateKeep,
+    KeepContext,
+    LandscapeTask,
+    MockResearchAgent,
+    ProgramSpec,
+    RandomSearchAgent,
+    ResultsLog,
+    RunOutcome,
+    Samples,
+    ScopeGuard,
+    SimplicityWeighted,
+    StrictKeep,
+    Workspace,
+    landscape_edit_pool,
+    parse_summary,
+    run,
+    scripted_llm,
+)
 from rsi.autoresearch.agent import get_knob, knob_edit, set_knob
 from rsi.autoresearch.executors import FakeSlurmExecutor
 from rsi.autoresearch.hub import CollaborativeLoop, SanityRule, SharedHub, experiment_key
@@ -130,8 +151,12 @@ def test_knob_helpers():
 
 
 def _loop_run(tmp_path, name, **cfg):
-    return run(LandscapeTask(seed=1), config=Config(**{"max_experiments": 25, "plot": False, **cfg}),
-               out_dir=tmp_path / name, mock={"crash_rate": 0.1})
+    return run(
+        LandscapeTask(seed=1),
+        config=Config(**{"max_experiments": 25, "plot": False, **cfg}),
+        out_dir=tmp_path / name,
+        mock={"crash_rate": 0.1},
+    )
 
 
 def test_loop_end_to_end(tmp_path):
@@ -170,8 +195,9 @@ def test_stop_file_halts(tmp_path):
                 (tmp_path / "s" / "STOP").write_text("")
             return super().propose(ctx)
 
-    loop = AutoresearchLoop(LandscapeTask(), Stopper(landscape_edit_pool()), quiet(max_experiments=None),
-                            out_dir=tmp_path / "s")
+    loop = AutoresearchLoop(
+        LandscapeTask(), Stopper(landscape_edit_pool()), quiet(max_experiments=None), out_dir=tmp_path / "s"
+    )
     assert loop.run().stop_reason == "stop_file" and loop.n_rounds == 5
 
 
@@ -200,12 +226,16 @@ def test_trivial_crash_is_fixed_and_rerun(tmp_path):
 
 def test_rigor_keep_rule_runs_repeats_and_never_repeats(tmp_path):
     agent = MockResearchAgent(landscape_edit_pool(), schedule=["batch_down", "batch_up", "batch_down", "width_down"])
-    res = AutoresearchLoop(LandscapeTask(), agent, quiet(max_experiments=4, keep_rule="rigor"),
-                           out_dir=tmp_path / "r").run()
+    res = AutoresearchLoop(
+        LandscapeTask(), agent, quiet(max_experiments=4, keep_rule="rigor"), out_dir=tmp_path / "r"
+    ).run()
     nodes = res.ledger.nodes()
     assert len(nodes[0].metrics["samples"]) == 3
-    assert all(len(n.metrics["samples"]) == 3 and n.meta["verdict_details"]["p_better"] >= 0.95
-               for n in nodes[1:] if n.status == "keep")
+    assert all(
+        len(n.metrics["samples"]) == 3 and n.meta["verdict_details"]["p_better"] >= 0.95
+        for n in nodes[1:]
+        if n.status == "keep"
+    )
     # the second batch_down recreates an already-scored file, which is never re-scored
     assert res.meta["counters"]["duplicate"] >= 1 and any(n.status == "duplicate" for n in nodes)
 
@@ -220,8 +250,12 @@ def test_program_md_edited_by_human_mid_run(tmp_path):
                 prog.write_text(prog.read_text() + "\nPrefer smaller models.\n")
             return super().propose(ctx)
 
-    res = AutoresearchLoop(LandscapeTask(), Human(landscape_edit_pool()), quiet(max_experiments=6, program=str(prog)),
-                           out_dir=tmp_path / "p").run()
+    res = AutoresearchLoop(
+        LandscapeTask(),
+        Human(landscape_edit_pool()),
+        quiet(max_experiments=6, program=str(prog)),
+        out_dir=tmp_path / "p",
+    ).run()
     versions = {n.meta["program_version"] for n in candidates(res)}
     assert len(versions) == 2 and len(res.meta["programs"]) == 2
 
@@ -237,8 +271,13 @@ def test_llm_agent_offline_and_metered(tmp_path):
 def test_analyzer_from_results(tmp_path):
     log = ResultsLog(tmp_path / "r.tsv", "val_bpb")
     log.init()
-    for c, m, s in [("a", 1.0, "keep"), ("b", 0.99, "keep"), ("c", 1.2, "discard"), ("d", 0, "crash"),
-                    ("e", 0.97, "keep")]:
+    for c, m, s in [
+        ("a", 1.0, "keep"),
+        ("b", 0.99, "keep"),
+        ("c", 1.2, "discard"),
+        ("d", 0, "crash"),
+        ("e", 0.97, "keep"),
+    ]:
         log.append(c, m, 1.0, s, f"exp {c}")
     a = Analyzer.from_results(tmp_path / "r.tsv", "min").summary()
     assert a["keep_rate"] == pytest.approx(3 / 4) and a["n_crash"] == 1
@@ -248,8 +287,12 @@ def test_analyzer_from_results(tmp_path):
 
 def test_parallel_local_and_fake_slurm(tmp_path):
     for ex in ("local", "slurm"):
-        res = run(LandscapeTask(sleep_s=0.02), config=quiet(max_experiments=8, workers=3, executor=ex),
-                  out_dir=tmp_path / ex, mock={"crash_rate": 0.2})
+        res = run(
+            LandscapeTask(sleep_s=0.02),
+            config=quiet(max_experiments=8, workers=3, executor=ex),
+            out_dir=tmp_path / ex,
+            mock={"crash_rate": 0.2},
+        )
         assert len(rows(res)) == 9 and res.meta["parallel"]["workers"] == 3
         assert res.best.id == kept(res)[-1].artifact_id
 
@@ -303,10 +346,18 @@ def test_collaborative_swarm_bogus_agent(tmp_path):
     def swarm(root, sanity):
         task = LandscapeTask()
         hub = SharedHub(root, metric="val_loss", verify_delay=0, sanity=sanity)
-        run_threads(CollaborativeLoop(task, MockResearchAgent(landscape_edit_pool(), seed=i),
-                                      quiet(max_experiments=6, seed=i), out_dir=root / f"a{i}", hub=hub,
-                                      agent_id=f"a{i}", report=(lambda v: 0.3) if i == 2 else None)
-                    for i in range(3))
+        run_threads(
+            CollaborativeLoop(
+                task,
+                MockResearchAgent(landscape_edit_pool(), seed=i),
+                quiet(max_experiments=6, seed=i),
+                out_dir=root / f"a{i}",
+                hub=hub,
+                agent_id=f"a{i}",
+                report=(lambda v: 0.3) if i == 2 else None,
+            )
+            for i in range(3)
+        )
         return hub
 
     assert swarm(tmp_path / "nofilter", None).get("best", "metadata")["agent_id"] == "a2"
@@ -355,8 +406,9 @@ def test_rewind_and_multichain(tmp_path):
     assert loop.ledger.nodes()[-1].parent == keeps[0].id
 
     def make(i, out):
-        return AutoresearchLoop(LandscapeTask(), MockResearchAgent(landscape_edit_pool(), seed=i),
-                                quiet(max_experiments=4), out_dir=out)
+        return AutoresearchLoop(
+            LandscapeTask(), MockResearchAgent(landscape_edit_pool(), seed=i), quiet(max_experiments=4), out_dir=out
+        )
 
     results = MultiChainLauncher(make, 3, tmp_path / "mc", tag="mar5").launch()
     assert len(results) == 3

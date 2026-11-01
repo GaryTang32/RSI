@@ -1,11 +1,12 @@
 """Gene scoring, drift and selection with memory, failed-capsule and epigenetic bans (spec §3.3, §4.2-4.5)."""
+
 from __future__ import annotations
 
 import math
 import random
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Optional, Sequence
 
 from .assets import Capsule, Gene
 from .memory import Advice
@@ -20,7 +21,7 @@ def gene_tags(g: Gene) -> set[str]:
     return expand_signals([f"action:{g.category}", *g.signals_match, g.id, *tokens(g.summary)])
 
 
-def epigenetic_boost(g: Gene, env: Optional[str]) -> float:
+def epigenetic_boost(g: Gene, env: str | None) -> float:
     if not env:
         return 0.0
     for m in reversed(g.epigenetic_marks or []):
@@ -29,7 +30,7 @@ def epigenetic_boost(g: Gene, env: Optional[str]) -> float:
     return 0.0
 
 
-def suppressed(g: Gene, env: Optional[str]) -> bool:
+def suppressed(g: Gene, env: str | None) -> bool:
     return epigenetic_boost(g, env) <= EPIGENETIC_HARD_BOOST
 
 
@@ -61,7 +62,7 @@ class GeneScorer:
             return 0.6 * tag
         return hits + 0.6 * tag + self.w_sem * _semantic(g, signals)
 
-    def adjustment(self, g: Gene, signals: Sequence[str], env: Optional[str]) -> float:
+    def adjustment(self, g: Gene, signals: Sequence[str], env: str | None) -> float:
         if self.mode == "spec":
             return 0.0
         adj = 0.0
@@ -70,7 +71,7 @@ class GeneScorer:
                 adj += 0.12
             elif h.get("mode") == "hard":
                 adj -= 0.22
-            elif h.get("mode") == "soft":        # any other mode adds nothing (selector.js)
+            elif h.get("mode") == "soft":  # any other mode adds nothing (selector.js)
                 adj -= 0.08
         adj += epigenetic_boost(g, env)
         ex = expand_signals(signals)
@@ -79,7 +80,7 @@ class GeneScorer:
                 adj -= 0.4 if a.get("mode") == "hard" else 0.18
         return max(-1.5, min(1.5, adj))
 
-    def score(self, g: Gene, signals: Sequence[str], env: Optional[str] = None) -> float:
+    def score(self, g: Gene, signals: Sequence[str], env: str | None = None) -> float:
         if self.require_match and not self.relevant(g, signals):
             return 0.0
         s = self.base(g, signals) + self.adjustment(g, signals, env)
@@ -99,8 +100,13 @@ def drift_intensity(ne: int, drift_enabled: bool, memory_evidence: int = 0) -> f
     return min(1.0, 1.0 / math.sqrt(ne)) if ne > 0 else 0.0
 
 
-def ban_from_failed_capsules(failed: Sequence[dict], signals: Sequence[str], min_overlap: float = 0.6,
-                             min_count: int = 2, successes: Optional[dict] = None) -> set[str]:
+def ban_from_failed_capsules(
+    failed: Sequence[dict],
+    signals: Sequence[str],
+    min_overlap: float = 0.6,
+    min_count: int = 2,
+    successes: dict | None = None,
+) -> set[str]:
     """Genes with >= ``min_count`` failed capsules overlapping the signals; with ``successes`` the failures
     must also outnumber the gene's successes (safe mode, stochastic graders)."""
     sig = set(signals)
@@ -120,10 +126,10 @@ BAN_RE = re.compile(r"^ban_gene:([A-Za-z0-9][A-Za-z0-9_\-]{0,127})$")
 
 @dataclass
 class SelectorDecision:
-    gene: Optional[Gene]
-    capsule: Optional[Capsule] = None
+    gene: Gene | None
+    capsule: Capsule | None = None
     alternatives: list[str] = field(default_factory=list)
-    mode: str = "none"               # selection | random | random_weighted | diversity_directed | forced_gene | ...
+    mode: str = "none"  # selection | random | random_weighted | diversity_directed | forced_gene | ...
     reasons: list[str] = field(default_factory=list)
     scores: dict = field(default_factory=dict)
     banned: set = field(default_factory=set)
@@ -132,18 +138,30 @@ class SelectorDecision:
 
 
 class GeneSelector:
-    def __init__(self, scorer: Optional[GeneScorer] = None, *, use_memory: bool = True,
-                 distilled_fallback: bool = True) -> None:
+    def __init__(
+        self, scorer: GeneScorer | None = None, *, use_memory: bool = True, distilled_fallback: bool = True
+    ) -> None:
         self.scorer = scorer or GeneScorer()
         self.use_memory = use_memory
         self.distilled_fallback = distilled_fallback
 
-    def select(self, genes: Sequence[Gene], capsules: Sequence[Capsule], signals: Sequence[str], *,
-               advice: Optional[Advice] = None, failed_capsules: Sequence[dict] = (),
-               rng: Optional[random.Random] = None, drift_enabled: bool = False,
-               plateau: Optional[PlateauOverride] = None, env: Optional[str] = None,
-               forced_gene_id: Optional[str] = None, capability_gaps: Sequence[str] = (), novelty: float = 1.0,
-               gene_successes: Optional[dict] = None) -> SelectorDecision:
+    def select(
+        self,
+        genes: Sequence[Gene],
+        capsules: Sequence[Capsule],
+        signals: Sequence[str],
+        *,
+        advice: Advice | None = None,
+        failed_capsules: Sequence[dict] = (),
+        rng: random.Random | None = None,
+        drift_enabled: bool = False,
+        plateau: PlateauOverride | None = None,
+        env: str | None = None,
+        forced_gene_id: str | None = None,
+        capability_gaps: Sequence[str] = (),
+        novelty: float = 1.0,
+        gene_successes: dict | None = None,
+    ) -> SelectorDecision:
         rng = rng or random.Random(0)
         advice = advice if (advice is not None and self.use_memory) else Advice()
         bans = set(advice.banned_gene_ids)
@@ -151,8 +169,12 @@ class GeneSelector:
         bans |= {m.group(1) for s in signals for m in [BAN_RE.match(s)] if m}
         dec = SelectorDecision(None, banned=bans, memory_used=advice.total_attempts > 0)
         by_id = {g.id: g for g in genes}
-        if forced_gene_id and forced_gene_id in by_id and forced_gene_id not in bans \
-                and not suppressed(by_id[forced_gene_id], env):
+        if (
+            forced_gene_id
+            and forced_gene_id in by_id
+            and forced_gene_id not in bans
+            and not suppressed(by_id[forced_gene_id], env)
+        ):
             dec.gene, dec.mode = by_id[forced_gene_id], "forced_gene"
             dec.capsule = self.best_capsule(capsules, signals)
             return dec
@@ -167,8 +189,14 @@ class GeneSelector:
         scored.sort(key=lambda x: (-x[1], x[0].id))
         if not scored:
             if self.distilled_fallback:
-                dec.gene = next((g for g in genes if g.id.startswith("gene_distilled_") and g.id not in bans
-                                 and not suppressed(g, env)), None)
+                dec.gene = next(
+                    (
+                        g
+                        for g in genes
+                        if g.id.startswith("gene_distilled_") and g.id not in bans and not suppressed(g, env)
+                    ),
+                    None,
+                )
                 if dec.gene is not None:
                     dec.mode = "distilled_fallback"
             dec.capsule = self.best_capsule(capsules, signals)
@@ -196,8 +224,15 @@ class GeneSelector:
             n = min(len(cands), max(2, math.ceil(len(cands) * I)))
             gaps = list(capability_gaps)[:5]
             if gaps:
-                hits = [sum(1 for gp in gaps if match_pattern(gp, c[0].signals_match) or
-                            any(match_pattern(p, [gp]) for p in c[0].signals_match)) for c in cands]
+                hits = [
+                    sum(
+                        1
+                        for gp in gaps
+                        if match_pattern(gp, c[0].signals_match)
+                        or any(match_pattern(p, [gp]) for p in c[0].signals_match)
+                    )
+                    for c in cands
+                ]
                 if max(hits) > 0:
                     idx = max(range(len(cands)), key=lambda i: (hits[i], cands[i][1]))
                     mode = "diversity_directed"
@@ -213,7 +248,7 @@ class GeneSelector:
         return dec
 
     @staticmethod
-    def best_capsule(capsules: Sequence[Capsule], signals: Sequence[str]) -> Optional[Capsule]:
+    def best_capsule(capsules: Sequence[Capsule], signals: Sequence[str]) -> Capsule | None:
         best, best_n = None, 0
         for c in capsules:
             n = sum(1 for t in c.trigger if match_pattern(t, signals))

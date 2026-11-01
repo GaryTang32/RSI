@@ -1,4 +1,5 @@
 """Run machine-written code in a subprocess with a timeout, rlimits, a scratch dir and a scrubbed env (no security)."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -13,9 +14,9 @@ import sys
 import tempfile
 import threading
 import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, Optional, Sequence
 
 from .artifact import is_safe_relpath
 
@@ -36,16 +37,16 @@ class RunResult:
         return "\n".join((self.stdout + "\n" + self.stderr).strip().splitlines()[-n:])
 
 
-def _apply_limits(pid: int, cpu_s: Optional[int], mem_mb: Optional[int]) -> None:
+def _apply_limits(pid: int, cpu_s: int | None, mem_mb: int | None) -> None:
     """Set CPU / address-space rlimits on a just-started child (``preexec_fn`` can deadlock with threads)."""
     limits = []
     if cpu_s:
-        hard = resource.getrlimit(resource.RLIMIT_CPU)[1]   # never above a hard limit this process may not raise
+        hard = resource.getrlimit(resource.RLIMIT_CPU)[1]  # never above a hard limit this process may not raise
         hard = cpu_s + 5 if hard == resource.RLIM_INFINITY else min(cpu_s + 5, hard)
         limits.append((resource.RLIMIT_CPU, (min(cpu_s, hard), hard)))
     if mem_mb:
         limits.append((resource.RLIMIT_AS, (mem_mb * 1024 * 1024,) * 2))
-    for which, limit in limits:   # one at a time: a limit that cannot be set never drops the other
+    for which, limit in limits:  # one at a time: a limit that cannot be set never drops the other
         try:
             resource.prlimit(pid, which, limit)
         except (ProcessLookupError, PermissionError, ValueError):
@@ -114,9 +115,9 @@ def _child_session_leaders(pid: int) -> set[int]:
         if not e.isdigit():
             continue
         try:
-            with open(f"/proc/{e}/stat", "rb") as f:   # bytes: a process name need not be valid UTF-8
+            with open(f"/proc/{e}/stat", "rb") as f:  # bytes: a process name need not be valid UTF-8
                 stat = f.read()
-            fields = stat[stat.rfind(b")") + 2:].split()   # after "pid (comm)": state ppid pgrp ...
+            fields = stat[stat.rfind(b")") + 2 :].split()  # after "pid (comm)": state ppid pgrp ...
             if int(fields[1]) == pid and int(fields[2]) == int(e):
                 found.add(int(e))
         except (OSError, ValueError, IndexError):
@@ -134,9 +135,9 @@ def _mkscratch(prefix: str) -> str:
     base = os.path.abspath(tempfile.gettempdir())
     while True:
         d = os.path.join(base, f"{prefix}{secrets.token_hex(5)}")
-        state = ""   # "made": os.mkdir may have run; "taken": the name is someone else's, never remove it
+        state = ""  # "made": os.mkdir may have run; "taken": the name is someone else's, never remove it
         try:
-            with _LIVE_LOCK:   # close_sandboxes() waits for a creation in progress
+            with _LIVE_LOCK:  # close_sandboxes() waits for a creation in progress
                 if me in _CLOSED:
                     raise _closed_error()
                 _LIVE_DIRS.add((me, d))
@@ -163,7 +164,7 @@ def _rmscratch(d: str) -> None:
         _LIVE_DIRS.discard((os.getpid(), d))
 
 
-def _cpu_backstop(timeout_s: float) -> Optional[int]:
+def _cpu_backstop(timeout_s: float) -> int | None:
     """RLIMIT_CPU backstop for a wall timeout: all cores (at least 4) for the budget + 5 s, within the soft limit."""
     cores = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else (os.cpu_count() or 1)
     cpu = math.ceil(timeout_s) * max(4, cores) + 5
@@ -173,13 +174,29 @@ def _cpu_backstop(timeout_s: float) -> Optional[int]:
     return cpu if cpu > 0 else None
 
 
-SAFE_ENV_KEYS = ("PATH", "HOME", "LANG", "LC_ALL", "PYTHONPATH", "TMPDIR", "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS",
-                 "MKL_NUM_THREADS")
+SAFE_ENV_KEYS = (
+    "PATH",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "PYTHONPATH",
+    "TMPDIR",
+    "OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "MKL_NUM_THREADS",
+)
 
 
-def run_cmd(cmd: Sequence[str], *, cwd: Optional[str | Path] = None, timeout_s: float = 60.0,
-            cpu_s: Optional[int] = None, mem_mb: Optional[int] = 4096, env: Optional[Mapping[str, str]] = None,
-            stdin: Optional[str] = None) -> RunResult:
+def run_cmd(
+    cmd: Sequence[str],
+    *,
+    cwd: str | Path | None = None,
+    timeout_s: float = 60.0,
+    cpu_s: int | None = None,
+    mem_mb: int | None = 4096,
+    env: Mapping[str, str] | None = None,
+    stdin: str | None = None,
+) -> RunResult:
     base_env = {k: os.environ[k] for k in SAFE_ENV_KEYS if k in os.environ}
     for k in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
         base_env.setdefault(k, "1")
@@ -187,13 +204,18 @@ def run_cmd(cmd: Sequence[str], *, cwd: Optional[str | Path] = None, timeout_s: 
     base_env.setdefault("PYTHONHASHSEED", "0")
     base_env.update(env or {})
     t0 = time.time()
-    with _LIVE_LOCK:   # spawn and register in one step, so close_sandboxes() never misses a child
+    with _LIVE_LOCK:  # spawn and register in one step, so close_sandboxes() never misses a child
         if os.getpid() in _CLOSED:
             raise _closed_error()
         proc = subprocess.Popen(
-            list(cmd), cwd=str(cwd) if cwd else None, env=base_env,
+            list(cmd),
+            cwd=str(cwd) if cwd else None,
+            env=base_env,
             stdin=subprocess.PIPE if stdin is not None else None,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,  # own group: killpg
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,  # own group: killpg
         )
         live = (os.getpid(), proc.pid)
         _LIVE_GROUPS.add(live)
@@ -208,21 +230,29 @@ def run_cmd(cmd: Sequence[str], *, cwd: Optional[str | Path] = None, timeout_s: 
         out, err = proc.communicate()
         return RunResult(-9, out or "", (err or "") + "\n[killed: timeout]", time.time() - t0, True)
     except BaseException:
-        _killpg(proc.pid)   # interrupted while waiting: never leave an orphan running
+        _killpg(proc.pid)  # interrupted while waiting: never leave an orphan running
         try:
             proc.communicate(timeout=5)
         except BaseException:  # noqa: BLE001 - best effort reaping
             pass
         raise
     finally:
-        if proc.returncode is not None:   # reaped; one that is not stays registered for close_sandboxes()
+        if proc.returncode is not None:  # reaped; one that is not stays registered for close_sandboxes()
             with _LIVE_LOCK:
                 _LIVE_GROUPS.discard(live)
 
 
-def run_python(code: Optional[str] = None, *, script: Optional[str | Path] = None, args: Sequence[str] = (),
-               cwd: Optional[str | Path] = None, timeout_s: float = 60.0, mem_mb: Optional[int] = 4096,
-               env: Optional[Mapping[str, str]] = None, stdin: Optional[str] = None) -> RunResult:
+def run_python(
+    code: str | None = None,
+    *,
+    script: str | Path | None = None,
+    args: Sequence[str] = (),
+    cwd: str | Path | None = None,
+    timeout_s: float = 60.0,
+    mem_mb: int | None = 4096,
+    env: Mapping[str, str] | None = None,
+    stdin: str | None = None,
+) -> RunResult:
     """Run ``code`` or ``script`` with this interpreter; with no ``cwd``, in a scratch dir deleted afterwards."""
     if code is None and script is None:
         raise ValueError("need code or script")
@@ -235,8 +265,9 @@ def run_python(code: Optional[str] = None, *, script: Optional[str | Path] = Non
         if code is not None:
             script = Path(cwd) / "_rsi_main.py"
             script.write_text(code)
-        rr = run_cmd([sys.executable, str(script), *args], cwd=cwd, timeout_s=timeout_s, mem_mb=mem_mb, env=env,
-                     stdin=stdin)
+        rr = run_cmd(
+            [sys.executable, str(script), *args], cwd=cwd, timeout_s=timeout_s, mem_mb=mem_mb, env=env, stdin=stdin
+        )
         return _stable_paths(rr, tmpdir) if tmpdir is not None else rr
     finally:
         if tmpdir is not None:
@@ -255,9 +286,15 @@ def _stable_paths(rr: RunResult, scratch: str) -> RunResult:
     return dataclasses.replace(rr, stdout=out, stderr=err)
 
 
-def call_function(module_code: str, func: str, payload: dict, *, timeout_s: float = 30.0,
-                  mem_mb: Optional[int] = 2048, extra_files: Optional[Mapping[str, str]] = None,
-                  ) -> tuple[Optional[object], RunResult]:
+def call_function(
+    module_code: str,
+    func: str,
+    payload: dict,
+    *,
+    timeout_s: float = 30.0,
+    mem_mb: int | None = 2048,
+    extra_files: Mapping[str, str] | None = None,
+) -> tuple[object | None, RunResult]:
     """``(func(**payload), run_result)`` with ``module_code`` imported in a subprocess; ``func`` may be dotted."""
     if not func or not all(part.isidentifier() for part in func.split(".")):
         raise ValueError(f"func must be a (dotted) Python identifier, got {func!r}")
@@ -296,8 +333,13 @@ def _call_in(d, module_code, func, payload, timeout_s, mem_mb, extra_files):
     Path(d, "_runner.py").write_text(runner)
     nonce = secrets.token_hex(16)
     tag = f"__RSI_RESULT_{nonce}__"
-    rr = run_cmd([sys.executable, "_runner.py"], cwd=d, timeout_s=timeout_s, mem_mb=mem_mb,
-                 stdin=json.dumps({"nonce": nonce, "payload": payload}))
+    rr = run_cmd(
+        [sys.executable, "_runner.py"],
+        cwd=d,
+        timeout_s=timeout_s,
+        mem_mb=mem_mb,
+        stdin=json.dumps({"nonce": nonce, "payload": payload}),
+    )
     if rr.ok and tag in rr.stdout:
         try:
             return json.loads(rr.stdout.rsplit(tag, 1)[1].strip().splitlines()[0]), rr

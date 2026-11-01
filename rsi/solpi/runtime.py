@@ -1,17 +1,27 @@
 """A minimal agent runtime with Pi's extension API: tools, lifecycle hooks, compaction and a token meter."""
+
 from __future__ import annotations
 
 import hashlib
 import json
 from collections import Counter, defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
-from typing import Any, Callable, Optional, Protocol
+from typing import Any, Protocol
 
 from .meter import TokenMeter, estimate_tokens
 from .pi_compaction import summarization_request_tokens
 
-EVENTS = ("session_start", "context", "before_provider_request", "tool_result", "turn_end", "agent_settled",
-          "input", "session_compact")
+EVENTS = (
+    "session_start",
+    "context",
+    "before_provider_request",
+    "tool_result",
+    "turn_end",
+    "agent_settled",
+    "input",
+    "session_compact",
+)
 MESSAGE_OVERHEAD_TOKENS = 4
 
 
@@ -27,23 +37,35 @@ class ToolCall:
 
 @dataclass
 class Message:
-    role: str                                   # system | user | assistant | tool
+    role: str  # system | user | assistant | tool
     content: str = ""
     tool_calls: tuple[ToolCall, ...] = ()
     tool_call_id: str = ""
     tool_name: str = ""
     is_error: bool = False
     hidden: bool = False
-    pad_tokens: int = 0                         # unmaterialised reasoning prose (simulated)
+    pad_tokens: int = 0  # unmaterialised reasoning prose (simulated)
     details: dict = field(default_factory=dict)
-    _key: Optional[str] = field(default=None, repr=False, compare=False)
-    _tok: Optional[int] = field(default=None, repr=False, compare=False)
+    _key: str | None = field(default=None, repr=False, compare=False)
+    _tok: int | None = field(default=None, repr=False, compare=False)
 
     def key(self) -> str:
         if self._key is None:
             h = hashlib.sha1()
-            h.update(json.dumps([self.role, self.tool_call_id, self.tool_name, self.is_error, self.pad_tokens,
-                                 [c.to_json() for c in self.tool_calls]], sort_keys=True, default=str).encode())
+            h.update(
+                json.dumps(
+                    [
+                        self.role,
+                        self.tool_call_id,
+                        self.tool_name,
+                        self.is_error,
+                        self.pad_tokens,
+                        [c.to_json() for c in self.tool_calls],
+                    ],
+                    sort_keys=True,
+                    default=str,
+                ).encode()
+            )
             h.update(self.content.encode("utf-8", "surrogatepass"))
             self._key = h.hexdigest()
         return self._key
@@ -54,7 +76,7 @@ class Message:
             self._tok = estimate_tokens(self.content) + int((args + 3) // 4) + self.pad_tokens + MESSAGE_OVERHEAD_TOKENS
         return self._tok
 
-    def with_content(self, content: str, **kw: Any) -> "Message":
+    def with_content(self, content: str, **kw: Any) -> Message:
         return replace(self, content=content, _key=None, _tok=None, **kw)
 
 
@@ -73,8 +95,8 @@ class ToolError(Exception):
 class ToolSpec:
     name: str
     description: str
-    parameters: dict                                    # {param: description}
-    execute: Callable[[dict, "AgentRuntime", str], ToolResult]
+    parameters: dict  # {param: description}
+    execute: Callable[[dict, AgentRuntime, str], ToolResult]
 
 
 @dataclass
@@ -86,7 +108,7 @@ class ToolResultEvent:
 class Backend(Protocol):
     name: str
 
-    def act(self, messages: list[Message], tools: list[ToolSpec], rt: "AgentRuntime") -> Message: ...
+    def act(self, messages: list[Message], tools: list[ToolSpec], rt: AgentRuntime) -> Message: ...
 
 
 class Extension:
@@ -97,26 +119,31 @@ class Extension:
     def __init__(self) -> None:
         self.stats: Counter = Counter()
 
-    def register(self, rt: "AgentRuntime") -> None:  # pragma: no cover - interface
+    def register(self, rt: AgentRuntime) -> None:  # pragma: no cover - interface
         raise NotImplementedError
 
 
 @dataclass
 class RunResult:
-    status: str                      # done | max_turns | context_overflow | error
+    status: str  # done | max_turns | context_overflow | error
     turns: int
     final: str = ""
     compactions: int = 0
     overflow: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
-def default_summarizer(archived: list[Message], instructions: str, rt: "AgentRuntime") -> str:
+def default_summarizer(archived: list[Message], instructions: str, rt: AgentRuntime) -> str:
     """Deterministic stand-in for Pi's summariser: the task (or prior summary) and the agent's NOTE/PLAN/DONE lines."""
     task = next((m.content for m in archived if m.role == "user" and not m.details.get("compaction")), "")
     prior = [m.content for m in archived if m.details.get("compaction")]
-    notes = [l for m in archived if m.role == "assistant" for l in m.content.splitlines()
-             if l.startswith(("NOTE:", "PLAN:", "DONE:"))]
+    notes = [
+        l
+        for m in archived
+        if m.role == "assistant"
+        for l in m.content.splitlines()
+        if l.startswith(("NOTE:", "PLAN:", "DONE:"))
+    ]
     parts = []
     if prior:
         parts.append(prior[-1])
@@ -132,11 +159,20 @@ def default_summarizer(archived: list[Message], instructions: str, rt: "AgentRun
 class AgentRuntime:
     """Hosts one agent session; the backend's ``act(messages, tools, runtime)`` returns the assistant message."""
 
-    def __init__(self, backend: Backend, *, system_prompt: str, meter: TokenMeter, max_turns: int = 80,
-                 context_window: int = 200_000, keep_recent_tokens: int = 20_000, auto_compact: bool = True,
-                 auto_compact_reserve: int = 16_384,
-                 summarizer: Callable[[list[Message], str, "AgentRuntime"], str] = default_summarizer,
-                 env: Any = None) -> None:
+    def __init__(
+        self,
+        backend: Backend,
+        *,
+        system_prompt: str,
+        meter: TokenMeter,
+        max_turns: int = 80,
+        context_window: int = 200_000,
+        keep_recent_tokens: int = 20_000,
+        auto_compact: bool = True,
+        auto_compact_reserve: int = 16_384,
+        summarizer: Callable[[list[Message], str, AgentRuntime], str] = default_summarizer,
+        env: Any = None,
+    ) -> None:
         self.backend = backend
         self.system_prompt = system_prompt
         self.meter = meter
@@ -165,7 +201,7 @@ class AgentRuntime:
         self._pending: list[Message] = []
         self._call_seq = 0
 
-    def register_tool(self, spec: ToolSpec, replaces: Optional[str] = None) -> None:
+    def register_tool(self, spec: ToolSpec, replaces: str | None = None) -> None:
         if replaces:
             if replaces in self.tools:
                 self.replaced[replaces] = self.tools[replaces]
@@ -223,21 +259,25 @@ class AgentRuntime:
                 msgs = out
         return msgs
 
-    def context_tokens(self, msgs: Optional[list[Message]] = None) -> int:
+    def context_tokens(self, msgs: list[Message] | None = None) -> int:
         msgs = self.last_context if msgs is None else msgs
         return int(sum(m.tokens() for m in msgs))
 
-    def context_usage(self) -> Optional[int]:
+    def context_usage(self) -> int | None:
         """Pi's ``getContextUsage().tokens``: last valid reply's usage + later estimates (``None``: no reply)."""
         for i in range(len(self.history) - 1, -1, -1):
             m = self.history[i]
             if m.role != "assistant":
                 continue
             u = m.details.get("usage_tokens")
-            if (not isinstance(u, int) or u <= 0 or m.details.get("usage_compactions") != self.compactions
-                    or m.details.get("stop_reason") in ("aborted", "error")):
+            if (
+                not isinstance(u, int)
+                or u <= 0
+                or m.details.get("usage_compactions") != self.compactions
+                or m.details.get("stop_reason") in ("aborted", "error")
+            ):
                 continue
-            return int(u + sum(x.tokens() for x in self.history[i + 1:]))
+            return int(u + sum(x.tokens() for x in self.history[i + 1 :]))
         return None
 
     def emit(self, event: str, *args: Any) -> list[Any]:
@@ -265,21 +305,27 @@ class AgentRuntime:
     def compactable(self) -> bool:
         return self.cut_index() > 1
 
-    def compact(self, custom_instructions: str = "", *, from_extension: bool = False) -> Optional[str]:
+    def compact(self, custom_instructions: str = "", *, from_extension: bool = False) -> str | None:
         cut = self.cut_index()
         if cut <= 1:
             return None
         archived, kept = self.history[:cut], self.history[cut:]
         # Pi sends the summarisation request with cacheRetention "none": it shares no prefix with the conversation
-        self.meter.uncached(summarization_request_tokens(archived, custom_instructions, MESSAGE_OVERHEAD_TOKENS),
-                            role="compaction")
+        self.meter.uncached(
+            summarization_request_tokens(archived, custom_instructions, MESSAGE_OVERHEAD_TOKENS), role="compaction"
+        )
         summary = self.summarizer(archived, custom_instructions, self)
         self.meter.add_output(estimate_tokens(summary), role="compaction")
-        self.history = [Message("user", "[compacted context summary]\n" + summary,
-                                details={"compaction": True})] + kept
+        self.history = [Message("user", "[compacted context summary]\n" + summary, details={"compaction": True})] + kept
         self.compactions += 1
-        self.emit("session_compact", {"from_extension": from_extension, "summary": summary,
-                                      "archived_tokens": sum(m.tokens() for m in archived)})
+        self.emit(
+            "session_compact",
+            {
+                "from_extension": from_extension,
+                "summary": summary,
+                "archived_tokens": sum(m.tokens() for m in archived),
+            },
+        )
         return summary
 
     def run(self, task: str) -> RunResult:
@@ -290,7 +336,7 @@ class AgentRuntime:
             if self.should_auto_compact():
                 self.compact("")
                 self.auto_compactions += 1
-            msgs = self.project()               # exactly one projection per request: handlers have side effects
+            msgs = self.project()  # exactly one projection per request: handlers have side effects
             ctx = self.context_tokens(msgs)
             if ctx > self.context_window:
                 return RunResult("context_overflow", self.turns, compactions=self.compactions, overflow=True)
@@ -303,8 +349,11 @@ class AgentRuntime:
             except Exception as e:  # noqa: BLE001
                 return RunResult("error", self.turns, compactions=self.compactions, error=f"{type(e).__name__}: {e}")
             self.meter.add_output(reply.tokens(), role="main")
-            reply.details = {**reply.details, "usage_tokens": int(ctx + reply.tokens()),
-                             "usage_compactions": self.compactions}
+            reply.details = {
+                **reply.details,
+                "usage_tokens": int(ctx + reply.tokens()),
+                "usage_compactions": self.compactions,
+            }
             self.history.append(reply)
             self.turns += 1
             if not reply.tool_calls:
@@ -346,20 +395,38 @@ class AgentRuntime:
                 continue
             if out is not None:
                 ev.result = out
-        return Message("tool", ev.result.content, tool_call_id=call.id, tool_name=call.name,
-                       is_error=ev.result.is_error, details=dict(ev.result.details))
+        return Message(
+            "tool",
+            ev.result.content,
+            tool_call_id=call.id,
+            tool_name=call.name,
+            is_error=ev.result.is_error,
+            details=dict(ev.result.details),
+        )
 
 
 def builtin_tools(env: Any) -> list[ToolSpec]:
     """Pi's base tools over an environment exposing ``tool_read/tool_write/tool_edit/tool_bash``."""
     return [
-        ToolSpec("read", "Read a file.", {"path": "file path"},
-                 lambda a, rt, cid: env.tool_read(a.get("path", ""), rt)),
-        ToolSpec("write", "Create or overwrite a file.", {"path": "file path", "content": "full content"},
-                 lambda a, rt, cid: env.tool_write(a.get("path", ""), a.get("content", ""), rt)),
-        ToolSpec("edit", "Replace one exact, unique occurrence of text in a file.",
-                 {"path": "file path", "old": "exact text", "new": "replacement"},
-                 lambda a, rt, cid: env.tool_edit(a.get("path", ""), a.get("old", ""), a.get("new", ""), rt)),
-        ToolSpec("bash", "Run a shell command; non-zero exit is reported as an error.", {"command": "command line"},
-                 lambda a, rt, cid: env.tool_bash(a.get("command", ""), rt)),
+        ToolSpec(
+            "read", "Read a file.", {"path": "file path"}, lambda a, rt, cid: env.tool_read(a.get("path", ""), rt)
+        ),
+        ToolSpec(
+            "write",
+            "Create or overwrite a file.",
+            {"path": "file path", "content": "full content"},
+            lambda a, rt, cid: env.tool_write(a.get("path", ""), a.get("content", ""), rt),
+        ),
+        ToolSpec(
+            "edit",
+            "Replace one exact, unique occurrence of text in a file.",
+            {"path": "file path", "old": "exact text", "new": "replacement"},
+            lambda a, rt, cid: env.tool_edit(a.get("path", ""), a.get("old", ""), a.get("new", ""), rt),
+        ),
+        ToolSpec(
+            "bash",
+            "Run a shell command; non-zero exit is reported as an error.",
+            {"command": "command line"},
+            lambda a, rt, cid: env.tool_bash(a.get("command", ""), rt),
+        ),
     ]

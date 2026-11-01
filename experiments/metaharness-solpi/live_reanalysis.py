@@ -1,7 +1,8 @@
 """Offline re-analysis of the live smoke's cached haiku outputs (no new LLM calls, $0).
 
-    python experiments/metaharness-solpi/live_reanalysis.py [--parts metaharness,lineage]
+python experiments/metaharness-solpi/live_reanalysis.py [--parts metaharness,lineage]
 """
+
 from __future__ import annotations
 
 import json
@@ -70,11 +71,18 @@ def replay_metaharness() -> dict:
     replay = []
     for d in sorted(SESSIONS.glob("iter*")):
         it = int(d.name[4:])
-        resp = llm.complete((d / "prompt.md").read_text(), system=LEGACY_SKILL_TEXT.format(k=2), seed=it,
-                            role="proposer")                     # loop seed: run seed (0) * 1000 + iteration
-        replay.append({"iteration": it, "cache_hit": resp.ok, "error": resp.error,
-                       "reply_matches_recorded_response": resp.text == (d / "response.md").read_text(),
-                       "original_usage": (resp.raw or {}).get("usage")})
+        resp = llm.complete(
+            (d / "prompt.md").read_text(), system=LEGACY_SKILL_TEXT.format(k=2), seed=it, role="proposer"
+        )  # loop seed: run seed (0) * 1000 + iteration
+        replay.append(
+            {
+                "iteration": it,
+                "cache_hit": resp.ok,
+                "error": resp.error,
+                "reply_matches_recorded_response": resp.text == (d / "response.md").read_text(),
+                "original_usage": (resp.raw or {}).get("usage"),
+            }
+        )
         if not resp.ok:
             continue
         try:
@@ -85,29 +93,45 @@ def replay_metaharness() -> dict:
         for c in _collect(raw, header if isinstance(header, dict) else {}, 4, dom.baselines(), set(), it):
             ok, msg = val.validate(dom, c.artifact)
             base_src = dom.baselines().get(c.base_system, dom.seed_artifact()).get("memory.py")
-            row = {"iteration": it, "name": c.name, "base_system": c.base_system, "valid": ok,
-                   "reason": None if ok else msg[:300],
-                   "files_in_reply": sorted(p for p in raw if p.startswith(f"agents/{c.name}/")),
-                   "memory_py_differs_from_base": c.artifact.get("memory.py") != base_src,
-                   "base_fallback": bool(c.meta.get("base_fallback"))}
+            row = {
+                "iteration": it,
+                "name": c.name,
+                "base_system": c.base_system,
+                "valid": ok,
+                "reason": None if ok else msg[:300],
+                "files_in_reply": sorted(p for p in raw if p.startswith(f"agents/{c.name}/")),
+                "memory_py_differs_from_base": c.artifact.get("memory.py") != base_src,
+                "base_fallback": bool(c.meta.get("base_fallback")),
+            }
             if ok:
                 rs, rt = ev.evaluate(c.artifact, "evolve"), evt.evaluate(c.artifact, "test")
-                row.update(search=rs.score, test=rt.score, context=context(rs),
-                           llm_calls_per_unit=sum(t.meta.get("llm_calls", 0) for trs in rs.trials.values()
-                                                  for t in trs) / len(rs.trials))
+                row.update(
+                    search=rs.score,
+                    test=rt.score,
+                    context=context(rs),
+                    llm_calls_per_unit=sum(t.meta.get("llm_calls", 0) for trs in rs.trials.values() for t in trs)
+                    / len(rs.trials),
+                )
             rows.append(row)
-    pts = [(n, b["search"], b["context"]) for n, b in base.items()] + \
-        [(r["name"], r["search"], r["context"]) for r in rows if r.get("valid")]
-    return {"baselines": base, "candidates": rows, "replay": replay,
-            "frontier_search": [{"system": n, "score": s, "context_cost": c} for n, s, c in pareto_frontier(pts)],
-            "cache": {"hits": llm.hits, "misses": llm.misses, "spend_usd": llm.meter.total().cost_usd}}
+    pts = [(n, b["search"], b["context"]) for n, b in base.items()] + [
+        (r["name"], r["search"], r["context"]) for r in rows if r.get("valid")
+    ]
+    return {
+        "baselines": base,
+        "candidates": rows,
+        "replay": replay,
+        "frontier_search": [{"system": n, "score": s, "context_cost": c} for n, s, c in pareto_frontier(pts)],
+        "cache": {"hits": llm.hits, "misses": llm.misses, "spend_usd": llm.meter.total().cost_usd},
+    }
 
 
 def replay_lineage() -> list:
     """SoL-Pi: re-parse the cached haiku mechanism files and gate them on the training screen."""
-    from rsi.domains.agentworld import MockAgentLLM, make_domain as make_world
+    from rsi.domains.agentworld import MockAgentLLM
+    from rsi.domains.agentworld import make_domain as make_world
     from rsi.solpi import DualGate, GateSpec, metrics_from_eval
     from rsi.solpi.registry import with_mechanism
+
     world = make_world(seed=0, n_train=2, n_accept=1, n_final=1, n_test=0)
     agent = MockAgentLLM("A")
     wev = Evaluator(world, agent, workers=1)
@@ -122,7 +146,7 @@ def replay_lineage() -> list:
         files = parse_file_blocks(d["text"])
         path = next(p for p in files if p.startswith("extensions/"))
         code = clean_code_block(files[path])
-        name = path[len("extensions/"):-3]
+        name = path[len("extensions/") : -3]
         row = {"cache_file": f.name[:16], "name": name}
         try:
             compile(code, path, "exec")
@@ -133,8 +157,15 @@ def replay_lineage() -> list:
             if err is None:
                 m = metrics_from_eval(wev.evaluate(art, "evolve"))
                 g = gate.accept(bm, m)
-                row.update(gate=g.accept, reason=g.reason, score=m.agg["score"], tokens=m.agg["tokens"],
-                           base_tokens=bm.agg["tokens"], cost=m.agg["cost"], base_cost=bm.agg["cost"])
+                row.update(
+                    gate=g.accept,
+                    reason=g.reason,
+                    score=m.agg["score"],
+                    tokens=m.agg["tokens"],
+                    base_tokens=bm.agg["tokens"],
+                    cost=m.agg["cost"],
+                    base_cost=bm.agg["cost"],
+                )
         except SyntaxError as e:
             row.update(compiles=False, error=str(e))
         out.append(row)
@@ -150,17 +181,20 @@ def make_verdict(out: dict) -> str:
     n_valid = sum(r["valid"] for r in mh_rows)
     n_real = sum(r.get("memory_py_differs_from_base", False) for r in mh_rows)
     beats = "none beats the baseline" if best <= fa else "at least one beats the baseline"
-    return (f"cached replies replayed at $0 (cache hits {cache.get('hits')}, misses {cache.get('misses')}); with the "
-            f"current parser (fix 12: agents/<name>/src/<path> -> <path>) {n_valid}/{len(mh_rows)} haiku Meta-Harness "
-            f"candidates validate and {n_real}/{len(mh_rows)} differ from their base; best search {best:.3f} vs "
-            f"fewshot_all {fa:.3f}: {beats} (the old JSON's 0.4737 / 0.5595 / 8667.7 were fewshot_all's own numbers: "
-            f"dead-file copies); {sum(r.get('compiles', False) for r in ln)}/{len(ln)} cached haiku SoL-Pi mechanism "
-            f"files compile, {sum(1 for r in ln if r.get('gate'))} pass the dual gate on the training screen")
+    return (
+        f"cached replies replayed at $0 (cache hits {cache.get('hits')}, misses {cache.get('misses')}); with the "
+        f"current parser (fix 12: agents/<name>/src/<path> -> <path>) {n_valid}/{len(mh_rows)} haiku Meta-Harness "
+        f"candidates validate and {n_real}/{len(mh_rows)} differ from their base; best search {best:.3f} vs "
+        f"fewshot_all {fa:.3f}: {beats} (the old JSON's 0.4737 / 0.5595 / 8667.7 were fewshot_all's own numbers: "
+        f"dead-file copies); {sum(r.get('compiles', False) for r in ln)}/{len(ln)} cached haiku SoL-Pi mechanism "
+        f"files compile, {sum(1 for r in ln if r.get('gate'))} pass the dual gate on the training screen"
+    )
 
 
 def main():
-    args = parse_args(__doc__.splitlines()[0], default_seeds=1,
-                      extra=lambda ap: ap.add_argument("--parts", default="metaharness"))
+    args = parse_args(
+        __doc__.splitlines()[0], default_seeds=1, extra=lambda ap: ap.add_argument("--parts", default="metaharness")
+    )
     parts = set(args.parts.split(","))
     path = Path(args.out) if args.out else RESULTS / "live_reanalysis.json"
     old = json.loads(path.read_text()) if path.exists() else {}

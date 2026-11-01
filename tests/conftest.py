@@ -1,4 +1,5 @@
 """Shared pytest setup: an importable checkout, per-test isolation of experiment modules, a fresh-interpreter runner."""
+
 from __future__ import annotations
 
 import os
@@ -33,8 +34,16 @@ def _isolate_experiment_modules():
 @pytest.fixture
 def checkout_python():
     """Run code in a fresh interpreter that imports this checkout's ``rsi``, whatever the working directory."""
+
     def run(code: str, *, env: dict | None = None, cwd: Path | str = ROOT) -> subprocess.CompletedProcess:
         path = os.pathsep.join(p for p in (str(ROOT), os.environ.get("PYTHONPATH")) if p)
-        return subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60, cwd=cwd,
-                              env={**os.environ, "PYTHONPATH": path, **(env or {})})
+        return subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd=cwd,
+            env={**os.environ, "PYTHONPATH": path, **(env or {})},
+        )
+
     return run

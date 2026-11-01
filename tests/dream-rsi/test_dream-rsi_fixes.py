@@ -1,4 +1,5 @@
 """Claims-audit regressions: cross-episode state, Listing 1/2 prompts, round budgets, cost meter, autocorrelation."""
+
 import dataclasses
 import gzip
 import json
@@ -12,9 +13,21 @@ import pytest
 from rsi.core import Artifact, MockLLM, Usage
 from rsi.domains.discovery import AutocorrelationDomain, SumDiffDomain, SyntheticConfig, SyntheticDomain
 from rsi.domains.discovery.autocorr import objectives, program
-from rsi.dream import (Config, DiscoveryNode, EditorAgent, GridPlan, GridPlanningContext, LLMPolicyDeveloper,
-                       ParetoSweepObjective, ReplayEvaluator, ReplayQuestion, mock_developer_llm, run, static_check,
-                       template_code)
+from rsi.dream import (
+    Config,
+    DiscoveryNode,
+    EditorAgent,
+    GridPlan,
+    GridPlanningContext,
+    LLMPolicyDeveloper,
+    ParetoSweepObjective,
+    ReplayEvaluator,
+    ReplayQuestion,
+    mock_developer_llm,
+    run,
+    static_check,
+    template_code,
+)
 from rsi.dream.agent import AttemptContext, AttemptRecord, history_records
 from rsi.dream.cost import CostMeter
 from rsi.dream.developer import developer_prompt
@@ -25,15 +38,21 @@ RECORDED_POLICIES = Path(__file__).parent / "data" / "recorded_policies.json.gz"
 REFINE = template_code("parallel_refine")
 MEMO = template_code("memo_module")
 # the memo parked on the imported policy_api module and reached through self: no function names a module global
-POLICY_API_MEMO = MEMO.replace(
-    "_MEMO = {}", "import policy_api\nif not hasattr(policy_api, '_vfy_memo_sandbox'):\n"
-                  "    policy_api._vfy_memo_sandbox = {}\n_MEMO = policy_api._vfy_memo_sandbox").replace(
-    '        self.beta = float(self.config.get("beta", 0.6))',
-    '        self.beta = float(self.config.get("beta", 0.6))\n        self.memo = _MEMO').replace(
-    "target = _MEMO.get(key)", "target = self.memo.get(key)").replace(
-    "_MEMO[key] = (best[1], best[2])", "self.memo[key] = (best[1], best[2])")
+POLICY_API_MEMO = (
+    MEMO.replace(
+        "_MEMO = {}",
+        "import policy_api\nif not hasattr(policy_api, '_vfy_memo_sandbox'):\n"
+        "    policy_api._vfy_memo_sandbox = {}\n_MEMO = policy_api._vfy_memo_sandbox",
+    )
+    .replace(
+        '        self.beta = float(self.config.get("beta", 0.6))',
+        '        self.beta = float(self.config.get("beta", 0.6))\n        self.memo = _MEMO',
+    )
+    .replace("target = _MEMO.get(key)", "target = self.memo.get(key)")
+    .replace("_MEMO[key] = (best[1], best[2])", "self.memo[key] = (best[1], best[2])")
+)
 
-STATE_POLICY = '''
+STATE_POLICY = """
 from policy_api import GridPlan, LLMDesignedMethod, SimResult, _budget_done, _record_curve, finalize_result
 NAME = "OptimalPolicy"
 _SEEN = []
@@ -58,14 +77,18 @@ class OptimalPolicy(LLMDesignedMethod):
             question.probe_batch(legal[:1], on_reveal=lambda _: _record_curve(res, question))
             k += 1
         return finalize_result(question, res)
-'''
+"""
 # one probe per round; the round count leaks module and class state ...
-COUNTER_POLICY = STATE_POLICY.replace("__ROUNDS__", "len(_SEEN) + self.shared[\"n\"]")
+COUNTER_POLICY = STATE_POLICY.replace("__ROUNDS__", 'len(_SEEN) + self.shared["n"]')
 # ... or a message an earlier episode left in the random module's state
-RANDOM_POLICY = ("import random\nMAGIC = random.Random(12345).random()\n" + STATE_POLICY).replace(
-    "__ROUNDS__", "5 if abs(random.random() - MAGIC) < 1e-12 else 2").replace(
-    "        return finalize_result(question, res)", "        random.seed(12345)\n"
-                                                    "        return finalize_result(question, res)")
+RANDOM_POLICY = (
+    ("import random\nMAGIC = random.Random(12345).random()\n" + STATE_POLICY)
+    .replace("__ROUNDS__", "5 if abs(random.random() - MAGIC) < 1e-12 else 2")
+    .replace(
+        "        return finalize_result(question, res)",
+        "        random.seed(12345)\n        return finalize_result(question, res)",
+    )
+)
 
 
 def _cfg(**kw) -> Config:
@@ -89,9 +112,11 @@ def _patch(module: str = "", cls: str = "", solve: str = "") -> str:
     return code
 
 
-@pytest.mark.parametrize("runner,cheater", [("inprocess", MEMO), ("subprocess", MEMO),
-                                            ("subprocess", POLICY_API_MEMO)],
-                         ids=["inprocess", "subprocess", "policy_api-subprocess"])
+@pytest.mark.parametrize(
+    "runner,cheater",
+    [("inprocess", MEMO), ("subprocess", MEMO), ("subprocess", POLICY_API_MEMO)],
+    ids=["inprocess", "subprocess", "policy_api-subprocess"],
+)
 def test_memo_cheater_gains_nothing_across_replay_episodes(worlds, runner, cheater):
     """The cheater remembers each world's best cell and walks to it when the beta sweep revisits the world."""
     ev = ReplayEvaluator(ParetoSweepObjective(), W=4, runner=runner, fallback=(4, 3))
@@ -103,10 +128,15 @@ def test_memo_cheater_gains_nothing_across_replay_episodes(worlds, runner, cheat
     assert shared.evaluate(cheater, worlds).value > r_pr.value + 0.1
 
 
-@pytest.mark.parametrize("runner,policy,shared_probes", [("inprocess", COUNTER_POLICY, [2, 4, 6, 8, 10, 12]),
-                                                         ("subprocess", COUNTER_POLICY, [2, 4, 6, 8, 10, 12]),
-                                                         ("subprocess", RANDOM_POLICY, [2, 5, 5, 5, 5, 5])],
-                         ids=["inprocess", "subprocess", "random-state-subprocess"])
+@pytest.mark.parametrize(
+    "runner,policy,shared_probes",
+    [
+        ("inprocess", COUNTER_POLICY, [2, 4, 6, 8, 10, 12]),
+        ("subprocess", COUNTER_POLICY, [2, 4, 6, 8, 10, 12]),
+        ("subprocess", RANDOM_POLICY, [2, 5, 5, 5, 5, 5]),
+    ],
+    ids=["inprocess", "subprocess", "random-state-subprocess"],
+)
 def test_every_replay_episode_starts_from_a_fresh_namespace(worlds, runner, policy, shared_probes):
     def probes(**kw) -> list[int]:  # one world: 1 episode + 5 sweep episodes
         ev = ReplayEvaluator(ParetoSweepObjective(), W=4, runner=runner, fallback=(4, 3), **kw)
@@ -119,8 +149,9 @@ def test_every_replay_episode_starts_from_a_fresh_namespace(worlds, runner, poli
 
 
 def test_subprocess_session_forks_a_fresh_episode_and_survives_a_crash(worlds):
-    code = COUNTER_POLICY.replace("        rounds = ", "        if self.config.get('crash'):\n"
-                                  "            raise SystemExit(3)\n        rounds = ")
+    code = COUNTER_POLICY.replace(
+        "        rounds = ", "        if self.config.get('crash'):\n            raise SystemExit(3)\n        rounds = "
+    )
     with SubprocessSession(code, timeout_s=20) as sess:
         probes = []
         for crash in (False, True, False, False):
@@ -135,14 +166,17 @@ def test_static_check_rejects_state_that_outlives_an_episode():
     stateful = {
         "module dict store": _patch(module="_M = {}", solve="        _M[1] = 2"),
         "module list append": _patch(module="_L = []", solve="        _L.append(1)"),
-        "global": _patch(module="_K = 0").replace("        res = SimResult()",
-                                                  "        global _K\n        res = SimResult()\n        _K = 1"),
+        "global": _patch(module="_K = 0").replace(
+            "        res = SimResult()", "        global _K\n        res = SimResult()\n        _K = 1"
+        ),
         "imported module attribute": _patch(solve="        math.memo = 1"),
         "class attribute via self": _patch(cls="    cache = {}", solve="        self.cache[1] = 2"),
         "type(self)": _patch(solve="        type(self).x = 1"),
         "__class__": _patch(solve="        self.__class__.x = 1"),
-        "lru_cache": REFINE.replace("class OptimalPolicy", "import functools\n\n\n@functools.lru_cache(None)\n"
-                                                           "def f(x):\n    return x\n\n\nclass OptimalPolicy"),
+        "lru_cache": REFINE.replace(
+            "class OptimalPolicy",
+            "import functools\n\n\n@functools.lru_cache(None)\ndef f(x):\n    return x\n\n\nclass OptimalPolicy",
+        ),
         "memo cheater": MEMO,
         "module-level store into an imported module": _patch(module="import math\nmath.memo = {}"),
         "module-level call on an imported module": _patch(module='import policy_api\npolicy_api.__all__.append("x")'),
@@ -153,9 +187,11 @@ def test_static_check_rejects_state_that_outlives_an_episode():
         "templates": template_code("adaptive"),
         "local mutation + closure over an enclosing local": _patch(
             solve="        seen = set()\n        mark = lambda c: seen.add(c)\n        mark(1)\n"
-                  "        def inner(x):\n            seen.add(x)\n        inner(2)"),
-        "instance cache rebound per instance": _patch(cls="    cache = {}",
-                                                      solve="        self.cache = {}\n        self.cache[1] = 2"),
+            "        def inner(x):\n            seen.add(x)\n        inner(2)"
+        ),
+        "instance cache rebound per instance": _patch(
+            cls="    cache = {}", solve="        self.cache = {}\n        self.cache[1] = 2"
+        ),
         "read-only module constant": _patch(module='P = {"a": 1}', solve="        x = P.get('a')"),
         "module-level reads and local stores": _patch(module='import math\nTAU = math.pi * 2\nD = {}\nD["a"] = 1'),
     }
@@ -233,8 +269,11 @@ def test_developer_prompt_carries_the_listing2_rules(objective):
 
 def test_llm_developer_sends_the_listing2_prompt_and_all_history():
     llm = mock_developer_llm()
-    res = run(SyntheticDomain(SyntheticConfig(seed=3)), config=_cfg(rounds=3, W=4, branch_count=4, refine_count=3, M=3),
-              developer=LLMPolicyDeveloper(llm))
+    res = run(
+        SyntheticDomain(SyntheticConfig(seed=3)),
+        config=_cfg(rounds=3, W=4, branch_count=4, refine_count=3, M=3),
+        developer=LLMPolicyDeveloper(llm),
+    )
     assert res.usage["_cost"]["developer_calls"] == 4
     last = _norm(llm.calls[-1]["prompt"])
     assert all(_norm(r) in last for r in L2_RULES[:5])
@@ -244,9 +283,23 @@ def test_llm_developer_sends_the_listing2_prompt_and_all_history():
 
 def _ctx(siblings=(), history=(), **kw) -> AttemptContext:
     dom = SumDiffDomain()
-    return AttemptContext(dom.describe(), "root", dom.seed_artifact(), 0.91, 0, 0, 2, [], list(siblings),
-                          list(history), 0.91, {"direction": "hill"}, "Direction assigned to this branch: hill.",
-                          ["construct.py"], **kw)
+    return AttemptContext(
+        dom.describe(),
+        "root",
+        dom.seed_artifact(),
+        0.91,
+        0,
+        0,
+        2,
+        [],
+        list(siblings),
+        list(history),
+        0.91,
+        {"direction": "hill"},
+        "Direction assigned to this branch: hill.",
+        ["construct.py"],
+        **kw,
+    )
 
 
 def _instructions(ctx: AttemptContext, **kw) -> str:
@@ -255,14 +308,16 @@ def _instructions(ctx: AttemptContext, **kw) -> str:
 
 def test_exploration_prompt_is_listing1():
     p = _instructions(_ctx())
-    for phrase in ("Never execute pkill, kill, killall, or terminate unrelated processes.",
-                   "not a sample, not just recent cycles or the current branch",
-                   "Look at the shape of what's been tried.",
-                   "(not just guessed from the proposal)",
-                   "`$node_dir` is your own attempt directory -- exclude it when scanning sibling `attempt_*/` dirs.",
-                   "Write only `$node_dir/proposal.md` (mechanism, evidence from history, why it's not a repeat, "
-                   "expected benefit/risk) and `$node_dir/$eval_program`. Everything else is read-only.",
-                   "For each, read its matching `eval/score.json` (and `error.txt` if it failed)."):
+    for phrase in (
+        "Never execute pkill, kill, killall, or terminate unrelated processes.",
+        "not a sample, not just recent cycles or the current branch",
+        "Look at the shape of what's been tried.",
+        "(not just guessed from the proposal)",
+        "`$node_dir` is your own attempt directory -- exclude it when scanning sibling `attempt_*/` dirs.",
+        "Write only `$node_dir/proposal.md` (mechanism, evidence from history, why it's not a repeat, "
+        "expected benefit/risk) and `$node_dir/$eval_program`. Everything else is read-only.",
+        "For each, read its matching `eval/score.json` (and `error.txt` if it failed).",
+    ):
         assert phrase in p, phrase
     assert p.startswith("You must read every historical proposal")
     assert "Direction assigned to this branch: hill." in p and "$direction_guidance" not in p
@@ -308,8 +363,10 @@ def test_loop_passes_every_earlier_search_to_the_agent():
 
 def test_dream_rounds_never_exceed_the_fixed_per_round_budget():
     """A policy may plan a wider grid, but a round spends at most the fallback grid's 3 x 2 calls [paper §4 p.7]."""
-    wide = REFINE.replace('return GridPlan(int(context.fallback_branch_count), int(context.fallback_refine_count),',
-                          'return GridPlan(6, 3,')
+    wide = REFINE.replace(
+        "return GridPlan(int(context.fallback_branch_count), int(context.fallback_refine_count),",
+        "return GridPlan(6, 3,",
+    )
     dom = SyntheticDomain(SyntheticConfig(seed=11))
     cfg = _cfg(rounds=2, W=3, branch_count=3, refine_count=1, dream=False)
     res = run(dom, config=cfg, initial_policy=wide)
@@ -322,9 +379,11 @@ def test_dream_rounds_never_exceed_the_fixed_per_round_budget():
 
 def test_live_solve_gets_the_round_budget():
     """Online, ``solve(question, budget)`` receives the round's call budget."""
-    code = REFINE.replace("            legal = question.legal_actions()",
-                          "            if budget is not None and len(question.observed()) >= budget // 2:\n"
-                          "                break\n            legal = question.legal_actions()")
+    code = REFINE.replace(
+        "            legal = question.legal_actions()",
+        "            if budget is not None and len(question.observed()) >= budget // 2:\n"
+        "                break\n            legal = question.legal_actions()",
+    )
     dom = SyntheticDomain(SyntheticConfig(seed=2))
     cfg = _cfg(rounds=1, W=2, branch_count=2, refine_count=1, dream=False)
     assert run(dom, config=cfg, initial_policy=code).trajectory[0]["calls"] == 2  # budget 4: stop at 2
@@ -351,13 +410,26 @@ def test_cost_meter_counts_the_policy_developer():
 
 def test_adaptive_plan_grid_does_not_call_one_manifest_improving():
     policy = _load_class(template_code("adaptive"))
-    man = {"planned_grid": {"branch_count": 3, "refine_count": 4}, "final_best": 1.0, "gain_early": 0.5,
-           "gain_late": 0.5, "max_depth": 4, "hard_fail_frac": 0.0}
+    man = {
+        "planned_grid": {"branch_count": 3, "refine_count": 4},
+        "final_best": 1.0,
+        "gain_early": 0.5,
+        "gain_late": 0.5,
+        "max_depth": 4,
+        "hard_fail_frac": 0.0,
+    }
 
     def plan(history: list[dict]) -> GridPlan:
-        return policy({}).plan_grid(GridPlanningContext(
-            history=history, fallback_branch_count=3, fallback_refine_count=4, hard_max_branch_count=12,
-            hard_max_refine_count=12, worker_cap=3))
+        return policy({}).plan_grid(
+            GridPlanningContext(
+                history=history,
+                fallback_branch_count=3,
+                fallback_refine_count=4,
+                hard_max_branch_count=12,
+                hard_max_refine_count=12,
+                worker_cap=3,
+            )
+        )
 
     one = plan([man])
     assert "improving" not in one.reason and "insufficient" in one.reason
@@ -385,15 +457,16 @@ def test_autocorrelation_objectives_are_exact():
         if not signed:
             assert o["phi1"] == pytest.approx(np.max(g), rel=2e-3)
             dx = 0.5 / (12 * 40)
-            assert o["phi2"] == pytest.approx((np.sum(g ** 2) * dx) / (np.sum(g) * dx * np.max(g)), rel=5e-3)
+            assert o["phi2"] == pytest.approx((np.sum(g**2) * dx) / (np.sum(g) * dx * np.max(g)), rel=5e-3)
 
 
 def test_autocorrelation_domain_checks_scores_and_improves():
     d3, d1 = AutocorrelationDomain("phi3", sandboxed=False), AutocorrelationDomain("phi1", sandboxed=False)
     assert d3.evaluate_program(d3.seed_artifact()).score == pytest.approx(-2.0)
     signed = [1.0, -0.2, 1.0, 1.0]
-    unprojected = program("phi1", signed, None).replace("h = project(np.asarray(INIT, dtype=float))",
-                                                        "h = np.asarray(INIT, dtype=float)")
+    unprojected = program("phi1", signed, None).replace(
+        "h = project(np.asarray(INIT, dtype=float))", "h = np.asarray(INIT, dtype=float)"
+    )
     assert d1.evaluate_program(Artifact({"construct.py": unprojected})).fail_class == "constraint"  # phi1: f >= 0
     ev3 = d3.evaluate_program(Artifact({"construct.py": program("phi3", signed, None)}))
     assert ev3.fail_class == "ok" and ev3.score == pytest.approx(-objectives(signed)["phi3"])
@@ -406,7 +479,8 @@ def test_sandbox_fixes_the_string_hash_seed(worlds):
     """A policy iterating a set of cell ids picks the same batch order in every sandbox process."""
     code = REFINE.replace(
         "            order = sorted(legal, key=lambda c: (question.meta(c).attempt, question.meta(c).branch))",
-        "            order = [c for c in set(legal)]            # set iteration: string-hash order")
+        "            order = [c for c in set(legal)]            # set iteration: string-hash order",
+    )
     orders = set()
     for _ in range(3):
         ev = ReplayEvaluator(W=4, runner="subprocess", fallback=(4, 3), root_mode="addressable")

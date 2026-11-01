@@ -1,7 +1,8 @@
 """Re-train autoresearch's baseline, previous keep and final ``train.py`` at seeds 10000-10002 on the hidden splits.
 
-    python experiments/demo/autoresearch_hidden.py   # CPU only; writes demo/runs/autoresearch/hidden_reeval*.json
+python experiments/demo/autoresearch_hidden.py   # CPU only; writes demo/runs/autoresearch/hidden_reeval*.json
 """
+
 from __future__ import annotations
 
 import json
@@ -26,17 +27,29 @@ def main() -> None:
     for commit, label in COMMITS.items():
         aid = ids[commit]
         art = Artifact(json.loads((RUN / "artifacts" / aid[:2] / f"{aid}.json").read_text())["files"])
-        runs = [task.audit(art, seed=s) for s in SEEDS]   # audit mode: hidden data visible to the locked evaluator only
+        runs = [task.audit(art, seed=s) for s in SEEDS]  # audit mode: hidden data visible to the locked evaluator only
         row = {"label": label, "runs": runs}
         for k in ("test_iid", "test_shift", "loop_metric_rerun"):
             vals = [r[k] for r in runs if isinstance(r.get(k), (int, float))]
-            row[k] = {"mean": float(np.mean(vals)) if vals else None, "min": min(vals, default=None),
-                      "max": max(vals, default=None), "n": len(vals)}
+            row[k] = {
+                "mean": float(np.mean(vals)) if vals else None,
+                "min": min(vals, default=None),
+                "max": max(vals, default=None),
+                "n": len(vals),
+            }
         out["versions"][commit] = row
-        print(commit, label, {k: round(row[k]["mean"], 4) for k in ("test_iid", "test_shift", "loop_metric_rerun")
-                              if row[k]["mean"] is not None}, flush=True)
+        print(
+            commit,
+            label,
+            {
+                k: round(row[k]["mean"], 4)
+                for k in ("test_iid", "test_shift", "loop_metric_rerun")
+                if row[k]["mean"] is not None
+            },
+            flush=True,
+        )
     dest = RUN / "hidden_reeval.json"
-    if dest.exists():   # training stops on wall-clock time, so another session trains a different amount
+    if dest.exists():  # training stops on wall-clock time, so another session trains a different amount
         dest = RUN / f"hidden_reeval_{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}.json"
     dest.write_text(json.dumps(out, indent=1, default=str))
     print("wrote", dest)

@@ -1,35 +1,81 @@
 """Signals: extraction layers, pattern matching, de-duplication and plateau detection (spec §3.2, §4.2, §4.6)."""
+
 from __future__ import annotations
 
 import math
 import re
 from collections import Counter
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache
 from itertools import takewhile
-from typing import Callable, Iterable, Optional, Sequence
 
 MAX_REGEX_PATTERN_LEN = 1024
-STOPWORDS = {"the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "with", "is", "are", "be", "by", "at",
-             "as", "it", "this", "that", "from", "if", "not", "no", "but", "into"}
+STOPWORDS = {
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "of",
+    "to",
+    "in",
+    "on",
+    "for",
+    "with",
+    "is",
+    "are",
+    "be",
+    "by",
+    "at",
+    "as",
+    "it",
+    "this",
+    "that",
+    "from",
+    "if",
+    "not",
+    "no",
+    "but",
+    "into",
+}
 
-PROBLEM_SIGNALS = ("log_error", "recurring_error", "capability_gap", "perf_bottleneck", "test_failure",
-                   "deployment_issue")
-OPPORTUNITY_SIGNALS = ("user_feature_request", "user_improvement_suggestion", "perf_bottleneck", "capability_gap",
-                       "stable_success_plateau", "external_opportunity", "recurring_error", "unsupported_input_type",
-                       "evolution_stagnation_detected", "repair_loop_detected", "force_innovation_after_repair_loop",
-                       "tool_bypass", "curriculum_target", "issue_already_resolved", "openclaw_self_healed",
-                       "empty_cycle_loop_detected")
+PROBLEM_SIGNALS = (
+    "log_error",
+    "recurring_error",
+    "capability_gap",
+    "perf_bottleneck",
+    "test_failure",
+    "deployment_issue",
+)
+OPPORTUNITY_SIGNALS = (
+    "user_feature_request",
+    "user_improvement_suggestion",
+    "perf_bottleneck",
+    "capability_gap",
+    "stable_success_plateau",
+    "external_opportunity",
+    "recurring_error",
+    "unsupported_input_type",
+    "evolution_stagnation_detected",
+    "repair_loop_detected",
+    "force_innovation_after_repair_loop",
+    "tool_bypass",
+    "curriculum_target",
+    "issue_already_resolved",
+    "openclaw_self_healed",
+    "empty_cycle_loop_detected",
+)
 ERROR_SIGNALS = ("log_error", "error", "exception", "failed", "unstable")
 ADAPTER_TOKENS = {"task"}  # the task adapter's "task:<family>" prefix carries no meaning
 
 
-def _regex(p: str) -> Optional[re.Pattern]:
+def _regex(p: str) -> re.Pattern | None:
     m = re.fullmatch(r"/(.+)/([a-z]*)", p, re.S)
     if not m or len(p) > MAX_REGEX_PATTERN_LEN:
         return None
     flags = 0
-    for ch in (m.group(2) or "i"):
+    for ch in m.group(2) or "i":
         flags |= {"i": re.I, "m": re.M, "s": re.S}.get(ch, 0)
     try:
         return re.compile(m.group(1), flags)
@@ -67,8 +113,11 @@ def pattern_hits(patterns: Iterable[str], signals: Sequence[str]) -> int:
 
 def tokens(text: str) -> list[str]:
     """Lowercase tokens of length >= 2, without stopwords and adapter tokens."""
-    return [t for t in re.split(r"[^a-z0-9_\-]+", str(text).lower())
-            if len(t) >= 2 and t not in STOPWORDS and t not in ADAPTER_TOKENS]
+    return [
+        t
+        for t in re.split(r"[^a-z0-9_\-]+", str(text).lower())
+        if len(t) >= 2 and t not in STOPWORDS and t not in ADAPTER_TOKENS
+    ]
 
 
 def cosine(a: Sequence[str], b: Sequence[str]) -> float:
@@ -144,17 +193,27 @@ class RunContext:
 class RegexSignalExtractor:
     """Layer 1: deterministic regexes over the corpus (§3.2)."""
 
-    ERR = re.compile(r"\[error|error:|exception:|iserror\"\s*:\s*true|\"status\"\s*:\s*\"(?:error|failed)\"|traceback",
-                     re.I)
-    SIG = re.compile(r"^.*(?:TypeError:|ReferenceError:|SyntaxError:|AssertionError|NameError:|ValueError:|"
-                     r"KeyError:|IndexError:|error:|exception:|\[error).*$", re.I | re.M)
-    PERF = re.compile(r"slow|timeout|timed out|latency|bottleneck|took too long|high cpu|high memory|\boom\b|"
-                      r"out of memory", re.I)
-    GAP = re.compile(r"not supported|cannot|doesn't support|no way to|missing feature|unsupported|not available|"
-                     r"not implemented", re.I)
+    ERR = re.compile(
+        r"\[error|error:|exception:|iserror\"\s*:\s*true|\"status\"\s*:\s*\"(?:error|failed)\"|traceback", re.I
+    )
+    SIG = re.compile(
+        r"^.*(?:TypeError:|ReferenceError:|SyntaxError:|AssertionError|NameError:|ValueError:|"
+        r"KeyError:|IndexError:|error:|exception:|\[error).*$",
+        re.I | re.M,
+    )
+    PERF = re.compile(
+        r"slow|timeout|timed out|latency|bottleneck|took too long|high cpu|high memory|\boom\b|"
+        r"out of memory",
+        re.I,
+    )
+    GAP = re.compile(
+        r"not supported|cannot|doesn't support|no way to|missing feature|unsupported|not available|"
+        r"not implemented",
+        re.I,
+    )
     FEATURE = re.compile(r"please add|feature request|would be nice|can you add|support for", re.I)
 
-    def extract_text(self, corpus: str, tool_uses: Optional[Counter] = None) -> list[str]:
+    def extract_text(self, corpus: str, tool_uses: Counter | None = None) -> list[str]:
         out: list[str] = []
         text = corpus or ""
         if self.ERR.search(text):
@@ -164,8 +223,11 @@ class RegexSignalExtractor:
                 out.append("errsig:" + m.group(0).strip()[:260])
             if len(self.ERR.findall(text)) >= 3:
                 out.append("recurring_error")
-        for rx, sig in ((self.PERF, "perf_bottleneck"), (self.GAP, "capability_gap"),
-                        (self.FEATURE, "user_feature_request")):
+        for rx, sig in (
+            (self.PERF, "perf_bottleneck"),
+            (self.GAP, "capability_gap"),
+            (self.FEATURE, "user_feature_request"),
+        ):
             if rx.search(text):
                 out.append(sig)
         out += [f"high_tool_usage:{tool}" for tool, n in (tool_uses or {}).items() if n >= 10]
@@ -184,20 +246,26 @@ class KeywordSignalScorer:
         "recurring_error": ({"error": 2, "failed": 2, "again": 1, "still": 1}, 7),
     }
 
-    def __init__(self, profiles: Optional[dict] = None) -> None:
+    def __init__(self, profiles: dict | None = None) -> None:
         self.profiles = profiles if profiles is not None else dict(self.DEFAULT_PROFILES)
 
     def score(self, text: str) -> list[str]:
         low = (text or "").lower()
-        return [sig for sig, (kws, thr) in self.profiles.items()
-                if sum(low.count(k) * w for k, w in kws.items()) >= thr]
+        return [
+            sig for sig, (kws, thr) in self.profiles.items() if sum(low.count(k) * w for k, w in kws.items()) >= thr
+        ]
 
 
 class TaskSignalExtractor:
     """Task-stream adapter: ``task:<family>``, public meta signals/keywords, optional input keywords, layers 1-2."""
 
-    def __init__(self, *, family_prefix: str = "task:", input_keywords: int = 0,
-                 keyword_scorer: Optional[KeywordSignalScorer] = None) -> None:
+    def __init__(
+        self,
+        *,
+        family_prefix: str = "task:",
+        input_keywords: int = 0,
+        keyword_scorer: KeywordSignalScorer | None = None,
+    ) -> None:
         self.family_prefix = family_prefix
         self.input_keywords = input_keywords
         self.regex = RegexSignalExtractor()
@@ -229,8 +297,15 @@ class HubSignalLayer:
 
     Any error, missing analyzer or malformed reply yields ``[]``; the counter advances on every call."""
 
-    def __init__(self, analyzer=None, *, sender_id: Optional[str] = None, interval: int = 5,
-                 max_chars: int = 2000, max_signals: int = 10) -> None:
+    def __init__(
+        self,
+        analyzer=None,
+        *,
+        sender_id: str | None = None,
+        interval: int = 5,
+        max_chars: int = 2000,
+        max_signals: int = 10,
+    ) -> None:
         self.analyzer = analyzer
         self.sender_id = sender_id
         self.interval = interval
@@ -243,15 +318,21 @@ class HubSignalLayer:
         self.count += 1
         if self.count % self.interval != 1 or self.analyzer is None:
             return []
-        payload = {"corpus_summary": (corpus or "")[: self.max_chars], "signal_types": list(OPPORTUNITY_SIGNALS),
-                   "sender_id": self.sender_id}
+        payload = {
+            "corpus_summary": (corpus or "")[: self.max_chars],
+            "signal_types": list(OPPORTUNITY_SIGNALS),
+            "sender_id": self.sender_id,
+        }
         try:
             reply = self.analyzer(payload)
         except Exception:
             reply = None
         sig = reply.get("signals") if isinstance(reply, dict) else None
-        out = [x for x in sig if isinstance(x, str) and 0 < len(x) < 200][: self.max_signals] \
-            if isinstance(sig, list) else []
+        out = (
+            [x for x in sig if isinstance(x, str) and 0 < len(x) < 200][: self.max_signals]
+            if isinstance(sig, list)
+            else []
+        )
         self.calls.append({"count": self.count, "payload": payload, "signals": out})
         return out
 
@@ -282,14 +363,20 @@ class DedupResult:
     signals: list[str]
     suppressed: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
-    ban_gene: Optional[str] = None
+    ban_gene: str | None = None
 
 
 class SignalDeduper:
     """§4.6 control rules over recent events; task-descriptor signals (``protected_prefixes``) are never suppressed."""
 
-    def __init__(self, *, window: int = 8, suppress_min: int = 3, protected_prefixes: Sequence[str] = ("task:",),
-                 protected: Sequence[str] = ()) -> None:
+    def __init__(
+        self,
+        *,
+        window: int = 8,
+        suppress_min: int = 3,
+        protected_prefixes: Sequence[str] = ("task:",),
+        protected: Sequence[str] = (),
+    ) -> None:
         self.window = window
         self.suppress_min = suppress_min
         self.protected_prefixes = tuple(protected_prefixes)
@@ -303,7 +390,7 @@ class SignalDeduper:
 
     def apply(self, signals: Sequence[str], recent_events: Sequence) -> DedupResult:
         ev = [e.to_dict() if hasattr(e, "to_dict") else e for e in recent_events]
-        last = ev[-self.window:]
+        last = ev[-self.window :]
         S = list(dict.fromkeys(signals))
         res = DedupResult(S)
         counts: Counter = Counter()
@@ -362,7 +449,7 @@ class SignalDeduper:
 @dataclass
 class PlateauOverride:
     active: bool
-    severity: str = "none"      # suggested | required
+    severity: str = "none"  # suggested | required
 
 
 class PlateauDetector:
@@ -371,7 +458,7 @@ class PlateauDetector:
     def __init__(self, suggested: int = 5, required: int = 10) -> None:
         self.suggested, self.required = suggested, required
 
-    def override(self, recent_events: Sequence, hub_directive: Optional[str] = None) -> PlateauOverride:
+    def override(self, recent_events: Sequence, hub_directive: str | None = None) -> PlateauOverride:
         if hub_directive == "pivot_check":
             return PlateauOverride(True, "suggested")
         ev = [e.to_dict() if hasattr(e, "to_dict") else e for e in recent_events][-10:]

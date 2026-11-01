@@ -1,9 +1,10 @@
 """The regularized proposer P_reg(. | H_t, F_t, L_t, b_t, E_t, B_t) of Alg. 1 and its done() contract."""
+
 from __future__ import annotations
 
 import json
 import re
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from ..core.artifact import Artifact, parse_file_blocks
 from ..core.editors import Editor, RewriteEditor
@@ -82,26 +83,37 @@ followed by the single line `<<DELETE>>`.
 object as JSON to `_rrsi_done.json`.)
 """
 
-HISTORY_HDR = ("EDIT HISTORY L_t (every measured edit: component, hypothesis, Delta S, Delta C, accepted). "
-               "A rejected mechanism is negative evidence; do not redraw it unchanged. An accepted one carries "
-               "the gain it produced; refine what has known credit, not what merely preceded a rise.")
+HISTORY_HDR = (
+    "EDIT HISTORY L_t (every measured edit: component, hypothesis, Delta S, Delta C, accepted). "
+    "A rejected mechanism is negative evidence; do not redraw it unchanged. An accepted one carries "
+    "the gain it produced; refine what has known credit, not what merely preceded a rise."
+)
 HISTORY_HDR_MODE = {
     "full": HISTORY_HDR,
     "accepted_only": "EDIT HISTORY (the edits accepted into the harness: component, hypothesis, Delta S, Delta C).",
     "none": "EDIT HISTORY (not shown in this run).",
 }
-SCOREBOARD_HDR = ("ATTRIBUTION SCOREBOARD (how past edits' predictions fared; unpredicted_regressions are tasks an "
-                  "edit likely broke)")
-PRUNE_HDR = ("COMPONENTS TO PRUNE B_t (exercised, no strictly improving edit in the recent window; remove the "
-             "accepted machinery listed, it has stopped earning its place)")
-REPORT_HDR = ("THREE-LENS ANALYSIS REPORT F_t (failure modes ranked; capability gaps often need tool/plumbing "
-              "fixes; success_habits are behaviors your change MUST NOT break)")
-TASK_TEXT = ("Address the highest-impact failure modes / capability gaps within your edit budget. Implement the "
-             "change and submit the done() object with the edits array.")
-REPAIR_TEXT = ("REPAIR ROUND: your previous edits for this candidate are already in the working tree (reflected in "
-               "CURRENT HARNESS SOURCE above). The reviewer raised the objections below. Fix ONLY what the objections "
-               "require (remove leaked content, split or re-declare edits, wire up dead code, or delete the offending "
-               "part) with minimal additional edits, then submit done() again with the corrected edits array.")
+SCOREBOARD_HDR = (
+    "ATTRIBUTION SCOREBOARD (how past edits' predictions fared; unpredicted_regressions are tasks an edit likely broke)"
+)
+PRUNE_HDR = (
+    "COMPONENTS TO PRUNE B_t (exercised, no strictly improving edit in the recent window; remove the "
+    "accepted machinery listed, it has stopped earning its place)"
+)
+REPORT_HDR = (
+    "THREE-LENS ANALYSIS REPORT F_t (failure modes ranked; capability gaps often need tool/plumbing "
+    "fixes; success_habits are behaviors your change MUST NOT break)"
+)
+TASK_TEXT = (
+    "Address the highest-impact failure modes / capability gaps within your edit budget. Implement the "
+    "change and submit the done() object with the edits array."
+)
+REPAIR_TEXT = (
+    "REPAIR ROUND: your previous edits for this candidate are already in the working tree (reflected in "
+    "CURRENT HARNESS SOURCE above). The reviewer raised the objections below. Fix ONLY what the objections "
+    "require (remove leaked content, split or re-declare edits, wire up dead code, or delete the offending "
+    "part) with minimal additional edits, then submit done() again with the corrected edits array."
+)
 
 
 AGENT_NOTE = """
@@ -141,7 +153,7 @@ def parse_sections(prompt: str) -> dict:
     out: dict = {"sections": {}, "files": {}, "task": "", "directives": {}}
     marks = list(_SECTION.finditer(prompt or ""))
     for i, m in enumerate(marks):
-        body = prompt[m.end(): marks[i + 1].start() if i + 1 < len(marks) else len(prompt)].strip("\n")
+        body = prompt[m.end() : marks[i + 1].start() if i + 1 < len(marks) else len(prompt)].strip("\n")
         if m.group(1):
             out["sections"][m.group(1).strip()] = body
         elif m.group(2):
@@ -155,7 +167,7 @@ def parse_sections(prompt: str) -> dict:
     return out
 
 
-def parse_done(text: str) -> Optional[dict]:
+def parse_done(text: str) -> dict | None:
     """The done()/abort object of a reply (JSON before the first file block)."""
     try:
         d = extract_json((text or "").split("=== FILE:")[0])
@@ -174,39 +186,68 @@ def parse_done(text: str) -> Optional[dict]:
 class Proposer:
     """Draft one candidate from the incumbent under the RRSI directives."""
 
-    def __init__(self, editor: Editor, taxonomy: Taxonomy, cfg, *, domain_brief: str = "",
-                 constitution: tuple[str, str] = ("", ""), editable: Optional[Sequence[str]] = None,
-                 history_mode: str = "full") -> None:
+    def __init__(
+        self,
+        editor: Editor,
+        taxonomy: Taxonomy,
+        cfg,
+        *,
+        domain_brief: str = "",
+        constitution: tuple[str, str] = ("", ""),
+        editable: Sequence[str] | None = None,
+        history_mode: str = "full",
+    ) -> None:
         self.editor = editor
         self.tax = taxonomy
         self.cfg = cfg
         self.history_hdr = HISTORY_HDR_MODE.get(history_mode, HISTORY_HDR)
         self.system = SYSTEM_TMPL.format(domain_brief=domain_brief, components=" | ".join(taxonomy.K))
         skill_md, patterns_md = constitution
-        self.stable = "\n\n".join(["=== CONSTITUTION (SKILL.md) ===", skill_md,
-                                   "=== PATTERN LIBRARY (PATTERNS.md) ===", patterns_md])
+        self.stable = "\n\n".join(
+            ["=== CONSTITUTION (SKILL.md) ===", skill_md, "=== PATTERN LIBRARY (PATTERNS.md) ===", patterns_md]
+        )
         self.editable = None if editable is None else list(editable) + [DONE_FILE]
 
-    def build_context(self, *, directives: dict, variant_brief: str, history_rows: list, scoreboard: list,
-                      explore: dict, reserved: bool, prune_set: list, report: dict, budget: int, digests: list,
-                      traces_text: str, task_text: str) -> dict[str, str]:
+    def build_context(
+        self,
+        *,
+        directives: dict,
+        variant_brief: str,
+        history_rows: list,
+        scoreboard: list,
+        explore: dict,
+        reserved: bool,
+        prune_set: list,
+        report: dict,
+        budget: int,
+        digests: list,
+        traces_text: str,
+        task_text: str,
+    ) -> dict[str, str]:
         explore_text = explore.get("text", "") or "(no exploration directives this run)"
         if reserved:
-            explore_text += ("\n\nRESERVED EXPLORATION SLOT: this variant holds one. At least one of your edits MUST "
-                             f"be on a never-exercised component from: {explore.get('untried')}.")
+            explore_text += (
+                "\n\nRESERVED EXPLORATION SLOT: this variant holds one. At least one of your edits MUST "
+                f"be on a never-exercised component from: {explore.get('untried')}."
+            )
         return {
             "round_directives": json.dumps(directives, default=str),
             "variant_brief": variant_brief,
-            "edit_budget": (f"THIS ROUND'S EDIT BUDGET b_t: You may ship AT MOST {budget} independent edit(s) in this "
-                            f"candidate (the budget anneals over the run: early rounds explore, late rounds make "
-                            f"single attributable changes). Ship fewer if the evidence supports fewer."),
+            "edit_budget": (
+                f"THIS ROUND'S EDIT BUDGET b_t: You may ship AT MOST {budget} independent edit(s) in this "
+                f"candidate (the budget anneals over the run: early rounds explore, late rounds make "
+                f"single attributable changes). Ship fewer if the evidence supports fewer."
+            ),
             "exploration_directives": "EXPLORATION DIRECTIVES E_t\n" + explore_text,
-            "components_to_prune": PRUNE_HDR + "\n" + (json.dumps(prune_set, ensure_ascii=False, indent=1)
-                                                       if prune_set else "(none)"),
-            "edit_history": self.history_hdr + "\n" + json.dumps(history_rows, ensure_ascii=False, indent=1,
-                                                                  default=str),
-            "attribution_scoreboard": SCOREBOARD_HDR + "\n" + json.dumps(scoreboard or [], ensure_ascii=False,
-                                                                           indent=1),
+            "components_to_prune": PRUNE_HDR
+            + "\n"
+            + (json.dumps(prune_set, ensure_ascii=False, indent=1) if prune_set else "(none)"),
+            "edit_history": self.history_hdr
+            + "\n"
+            + json.dumps(history_rows, ensure_ascii=False, indent=1, default=str),
+            "attribution_scoreboard": SCOREBOARD_HDR
+            + "\n"
+            + json.dumps(scoreboard or [], ensure_ascii=False, indent=1),
             "analysis_report": REPORT_HDR + "\n" + json.dumps(report, ensure_ascii=False, indent=1, default=str),
             "per_task_digests": json.dumps(digests or [], ensure_ascii=False, indent=1, default=str),
             "traces": traces_text or "(none)",
@@ -231,19 +272,41 @@ class Proposer:
             if e.get("component") and comp not in self.tax.K:
                 problems.append(f"edit {e.get('id')} component {e['component']!r} not in {self.tax.K}")
         untried = explore.get("untried") or []
-        if reserved and untried and edits and not any(
+        if (
+            reserved
+            and untried
+            and edits
+            and not any(
                 isinstance(e, dict) and self.tax.canonical(e.get("component", ""), strip=False) in untried
-                for e in edits):
-            problems.append("this variant holds a RESERVED EXPLORATION SLOT: at least one edit must be on a "
-                            f"never-exercised component from {untried}")
+                for e in edits
+            )
+        ):
+            problems.append(
+                "this variant holds a RESERVED EXPLORATION SLOT: at least one edit must be on a "
+                f"never-exercised component from {untried}"
+            )
         return problems
 
-    def propose(self, base: Artifact, *, working: Optional[Artifact] = None, directives: dict,
-                variant_brief: str = "", history_rows: Optional[list] = None, scoreboard: Optional[list] = None,
-                explore: Optional[dict] = None, reserved: bool = False, prune_set: Optional[list] = None,
-                report: Optional[dict] = None, budget: int = 1, digests: Optional[list] = None,
-                traces_text: str = "", repair_brief: Optional[dict] = None, seed: int = 0,
-                capture: bool = False) -> dict:
+    def propose(
+        self,
+        base: Artifact,
+        *,
+        working: Artifact | None = None,
+        directives: dict,
+        variant_brief: str = "",
+        history_rows: list | None = None,
+        scoreboard: list | None = None,
+        explore: dict | None = None,
+        reserved: bool = False,
+        prune_set: list | None = None,
+        report: dict | None = None,
+        budget: int = 1,
+        digests: list | None = None,
+        traces_text: str = "",
+        repair_brief: dict | None = None,
+        seed: int = 0,
+        capture: bool = False,
+    ) -> dict:
         """``{status, edits, n_changes, artifact, log, usage, ...}``; done() violations and aborts are bounced."""
         explore = explore or {}
         turns: list[dict] = []
@@ -253,8 +316,15 @@ class Proposer:
         usage = Usage()
         aborts_left = self.cfg.max_abort_bounces
         bounces_left = self.cfg.max_done_bounces
-        base_task = (REPAIR_TEXT + "\n\n=== REVIEWER OBJECTIONS ===\n" +
-                     json.dumps(repair_brief, ensure_ascii=False, indent=1, default=str)) if repair_brief else TASK_TEXT
+        base_task = (
+            (
+                REPAIR_TEXT
+                + "\n\n=== REVIEWER OBJECTIONS ===\n"
+                + json.dumps(repair_brief, ensure_ascii=False, indent=1, default=str)
+            )
+            if repair_brief
+            else TASK_TEXT
+        )
         instructions = self.stable if isinstance(self.editor, RewriteEditor) else self.stable + AGENT_NOTE
 
         def result(**fields) -> dict:
@@ -262,22 +332,45 @@ class Proposer:
 
         for turn in range(1 + self.cfg.max_done_bounces + self.cfg.max_abort_bounces):
             task_text = base_task + ("\n\n=== INTERACTION LOG ===\n" + "\n".join(transcript) if transcript else "")
-            ctx = self.build_context(directives=directives, variant_brief=variant_brief,
-                                     history_rows=history_rows or [], scoreboard=scoreboard or [], explore=explore,
-                                     reserved=reserved, prune_set=prune_set or [], report=report or {},
-                                     budget=budget, digests=digests or [], traces_text=traces_text,
-                                     task_text=task_text)
+            ctx = self.build_context(
+                directives=directives,
+                variant_brief=variant_brief,
+                history_rows=history_rows or [],
+                scoreboard=scoreboard or [],
+                explore=explore,
+                reserved=reserved,
+                prune_set=prune_set or [],
+                report=report or {},
+                budget=budget,
+                digests=digests or [],
+                traces_text=traces_text,
+                task_text=task_text,
+            )
             sent = ""
             if capture and isinstance(self.editor, RewriteEditor):
-                try:                                    # capture only; must never affect the proposal
+                try:  # capture only; must never affect the proposal
                     sent = self.editor.build_prompt(working, instructions, ctx, self.editable)
                 except Exception as e:  # noqa: BLE001
                     sent = f"(prompt capture failed: {e!r})"
-            prop = self.editor.edit(working, instructions, context=ctx, editable=self.editable, system=self.system,
-                                    seed=seed * 100 + turn, role="proposer")
+            prop = self.editor.edit(
+                working,
+                instructions,
+                context=ctx,
+                editable=self.editable,
+                system=self.system,
+                seed=seed * 100 + turn,
+                role="proposer",
+            )
             usage = usage + prop.usage
-            rec: dict = {"turn": turn, "prompt": sent, "reply": prop.raw, "error": prop.error,
-                         "blocked": list(prop.blocked_files), "artifact": None, "outcome": ""}
+            rec: dict = {
+                "turn": turn,
+                "prompt": sent,
+                "reply": prop.raw,
+                "error": prop.error,
+                "blocked": list(prop.blocked_files),
+                "artifact": None,
+                "outcome": "",
+            }
             if capture:
                 turns.append(rec)
             if prop.error and prop.error.startswith(("llm error", "agent error")) and prop.artifact is None:
@@ -295,36 +388,59 @@ class Proposer:
                 header = parse_done(prop.raw)
             n_changes = len(base.changed_files(new_art))
             action = (header or {}).get("action")
-            log.append({"turn": turn, "action": action, "n_changes": n_changes, "blocked": prop.blocked_files,
-                        "error": prop.error})
-            rec.update(artifact=new_art, n_changes=n_changes, action=action, summary=(header or {}).get("summary"),
-                       declared_edits=[dict(e) for e in ((header or {}).get("edits") or []) if isinstance(e, dict)])
+            log.append(
+                {
+                    "turn": turn,
+                    "action": action,
+                    "n_changes": n_changes,
+                    "blocked": prop.blocked_files,
+                    "error": prop.error,
+                }
+            )
+            rec.update(
+                artifact=new_art,
+                n_changes=n_changes,
+                action=action,
+                summary=(header or {}).get("summary"),
+                declared_edits=[dict(e) for e in ((header or {}).get("edits") or []) if isinstance(e, dict)],
+            )
             working = new_art
             if action == "abort":
                 if aborts_left > 0:
                     rec["outcome"] = "bounced: abort (there is no abort action)"
                     aborts_left -= 1
-                    transcript.append("[you] abort\n[result] ERROR: there is no abort action. Pick the most "
-                                      "defensible mechanism you can build within the hard rules, implement it, and "
-                                      "call done. A rejection is data; an abort is not.")
+                    transcript.append(
+                        "[you] abort\n[result] ERROR: there is no abort action. Pick the most "
+                        "defensible mechanism you can build within the hard rules, implement it, and "
+                        "call done. A rejection is data; an abort is not."
+                    )
                     continue
                 rec["outcome"] = "abort (bounce limit reached)"
-                return result(status="abort", reason=header.get("reason"), edits=[], n_changes=n_changes,
-                              artifact=None)
+                return result(status="abort", reason=header.get("reason"), edits=[], n_changes=n_changes, artifact=None)
             edits = list(header.get("edits") or header.get("candidates") or []) if header is not None else []
             if header is None:
-                bounce = ("bounced: no done() object", "[you] (no done() object)\n[result] ERROR: submit the done() "
-                          "JSON object together with the changed files.")
+                bounce = (
+                    "bounced: no done() object",
+                    "[you] (no done() object)\n[result] ERROR: submit the done() "
+                    "JSON object together with the changed files.",
+                )
             elif n_changes == 0 and edits:
-                bounce = ("bounced: edits declared but zero file changes",
-                          "[you] done\n[result] ERROR: you declared edits but made ZERO file changes. "
-                          "Implement them (emit the changed files), then call done.")
+                bounce = (
+                    "bounced: edits declared but zero file changes",
+                    "[you] done\n[result] ERROR: you declared edits but made ZERO file changes. "
+                    "Implement them (emit the changed files), then call done.",
+                )
             else:
                 problems = self.validate(edits, n_changes, budget, reserved, explore)
-                bounce = (f"bounced: done() contract violated: {problems}",
-                          f"[you] done\n[result] ERROR: {problems}. Call done again fixed (drop or merge "
-                          f"edits if over budget; add the required edit if a slot is reserved).") \
-                    if problems and n_changes > 0 else None
+                bounce = (
+                    (
+                        f"bounced: done() contract violated: {problems}",
+                        f"[you] done\n[result] ERROR: {problems}. Call done again fixed (drop or merge "
+                        f"edits if over budget; add the required edit if a slot is reserved).",
+                    )
+                    if problems and n_changes > 0
+                    else None
+                )
             if bounce is not None:
                 rec["outcome"] = bounce[0]
                 transcript.append(bounce[1])
@@ -336,8 +452,13 @@ class Proposer:
                 e["component"] = self.tax.canonical(e.get("component", ""), strip=False)
                 e.setdefault("mechanism", e.get("hypothesis"))
             rec["outcome"] = "done: accepted by the done() contract" if n_changes else "done: no file changes"
-            return result(status="done", summary=header.get("summary"), edits=edits,
-                          mechanism=header.get("summary") or "; ".join(str(e.get("hypothesis")) for e in edits)[:200],
-                          targets_mode=", ".join(str(e.get("targets_mode")) for e in edits)[:200],
-                          n_changes=n_changes, artifact=new_art if n_changes else None)
+            return result(
+                status="done",
+                summary=header.get("summary"),
+                edits=edits,
+                mechanism=header.get("summary") or "; ".join(str(e.get("hypothesis")) for e in edits)[:200],
+                targets_mode=", ".join(str(e.get("targets_mode")) for e in edits)[:200],
+                n_changes=n_changes,
+                artifact=new_art if n_changes else None,
+            )
         return result(status="max_turns", edits=[], n_changes=0, artifact=None)

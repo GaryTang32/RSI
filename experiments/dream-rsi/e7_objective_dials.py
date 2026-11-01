@@ -1,7 +1,8 @@
 """E7: Eq. 1's dials (beta1 prices attempts, beta2 rewards batches) and the policy's beta knob, checked on replay.
 
-    python experiments/dream-rsi/e7_objective_dials.py [--llm sim|claude:haiku] [--seeds N] [--quick]
+python experiments/dream-rsi/e7_objective_dials.py [--llm sim|claude:haiku] [--seeds N] [--quick]
 """
+
 import random
 
 import numpy as np
@@ -70,13 +71,24 @@ def main():
     llm_dials = {}
     for name, code in llm_pols.items():  # does the LLM-written policy expose a real beta dial?
         swp = ReplayEvaluator(ParetoSweepObjective(), W=W, fallback=GRID, runner="subprocess").evaluate(code, worlds)
-        llm_dials[name] = {"degenerate_sweep": swp.sweep["degenerate"], "reward": swp.sweep["reward"],
-                           "points": [{k: p[k] for k in ("beta", "N", "attainment")} for p in swp.sweep["points"]]}
-        print(f"LLM policy {name}: beta sweep degenerate={swp.sweep['degenerate']}, "
-              + ", ".join(f"b={p['beta']:.1f}: N={p['N']:.1f} att={p['attainment']:.2f}" for p in swp.sweep["points"]))
-    stats = {n: {"N": float(np.mean([e.N for e in es])), "k": float(np.mean([e.k for e in es])),
-                 "batch": float(np.mean([e.mean_batch for e in es])),
-                 "attainment": float(np.mean([e.attainment for e in es]))} for n, es in eps.items()}
+        llm_dials[name] = {
+            "degenerate_sweep": swp.sweep["degenerate"],
+            "reward": swp.sweep["reward"],
+            "points": [{k: p[k] for k in ("beta", "N", "attainment")} for p in swp.sweep["points"]],
+        }
+        print(
+            f"LLM policy {name}: beta sweep degenerate={swp.sweep['degenerate']}, "
+            + ", ".join(f"b={p['beta']:.1f}: N={p['N']:.1f} att={p['attainment']:.2f}" for p in swp.sweep["points"])
+        )
+    stats = {
+        n: {
+            "N": float(np.mean([e.N for e in es])),
+            "k": float(np.mean([e.k for e in es])),
+            "batch": float(np.mean([e.mean_batch for e in es])),
+            "attainment": float(np.mean([e.attainment for e in es])),
+        }
+        for n, es in eps.items()
+    }
     # 1. the argmax of Eq. 1 over the pool for every (beta1, beta2)
     b1s = [0.0, 0.0025, 0.005, 0.01, 0.02, 0.04]
     b2s = [0.0, 0.005, 0.02, 0.05, 0.1, 0.2, 0.4]
@@ -90,12 +102,16 @@ def main():
     rho_b1_N = spearman([g["beta1"] for g in grid], [g["N"] for g in grid])
     rho_b2_batch = spearman([g["beta2"] for g in grid], [g["batch"] for g in grid])
     rho_b2_k = spearman([g["beta2"] for g in grid], [g["k"] for g in grid])
-    print(f"selected policy vs dials: rho(beta1, N) = {rho_b1_N:+.2f}; rho(beta2, batch) = {rho_b2_batch:+.2f}; "
-          f"rho(beta2, rounds) = {rho_b2_k:+.2f}")
+    print(
+        f"selected policy vs dials: rho(beta1, N) = {rho_b1_N:+.2f}; rho(beta2, batch) = {rho_b2_batch:+.2f}; "
+        f"rho(beta2, rounds) = {rho_b2_k:+.2f}"
+    )
     for g in grid:
         if g["beta2"] in (0.0, 0.05) and g["beta1"] in (0.0, 0.01, 0.04):
-            print(f"   beta1={g['beta1']:<6} beta2={g['beta2']:<5} -> {g['selected']:<16} N={g['N']:.1f} "
-                  f"k={g['k']:.1f} batch={g['batch']:.2f} attain={g['attainment']:.3f}")
+            print(
+                f"   beta1={g['beta1']:<6} beta2={g['beta2']:<5} -> {g['selected']:<16} N={g['N']:.1f} "
+                f"k={g['k']:.1f} batch={g['batch']:.2f} attain={g['attainment']:.3f}"
+            )
     # 2. the adaptive policy's beta dial
     betas = [round(0.1 * i, 1) for i in range(11)]
     sw = ReplayEvaluator(ParetoSweepObjective(beta_grid=tuple(betas)), W=W, fallback=GRID, runner="inprocess")
@@ -103,15 +119,19 @@ def main():
     pts = sorted(rep.sweep["points"], key=lambda p: p["beta"])
     rho_beta_N = spearman(betas, [p["N"] for p in pts])
     rho_beta_att = spearman(betas, [p["attainment"] for p in pts])
-    print(f"adaptive beta dial: rho(beta, probes) = {rho_beta_N:+.2f}, rho(beta, attainment) = {rho_beta_att:+.2f}; "
-          f"pareto reward {rep.sweep['reward']:.3f} (auc {rep.sweep['auc']:.3f}, "
-          f"penalty {rep.sweep['parallel_penalty']:.3f})")
+    print(
+        f"adaptive beta dial: rho(beta, probes) = {rho_beta_N:+.2f}, rho(beta, attainment) = {rho_beta_att:+.2f}; "
+        f"pareto reward {rep.sweep['reward']:.3f} (auc {rep.sweep['auc']:.3f}, "
+        f"penalty {rep.sweep['parallel_penalty']:.3f})"
+    )
     for p in pts[::2]:
-        print(f"   beta={p['beta']:.1f} probes={p['N']:.1f} attainment={p['attainment']:.3f} "
-              f"batch={p['mean_batch']:.2f}")
+        print(
+            f"   beta={p['beta']:.1f} probes={p['N']:.1f} attainment={p['attainment']:.3f} batch={p['mean_batch']:.2f}"
+        )
     # 3. Eq. 1 vs the Pareto sweep reward as the selection objective among the adaptive variants
-    par = ReplayEvaluator(ParetoSweepObjective(beta_grid=(0.2, 0.4, 0.6, 0.8, 1.0)), W=W, fallback=GRID,
-                          runner="inprocess")
+    par = ReplayEvaluator(
+        ParetoSweepObjective(beta_grid=(0.2, 0.4, 0.6, 0.8, 1.0)), W=W, fallback=GRID, runner="inprocess"
+    )
     adaptive_pool = {n: c for n, c in pool.items() if n.startswith("adaptive_r")}
     pv = {n: par.evaluate(c, worlds).value for n, c in adaptive_pool.items()}
     ev1 = {n: Eq1Objective().score(eps[n]) for n in adaptive_pool}
@@ -123,34 +143,72 @@ def main():
     for b1 in b1s:
         gg = sorted([g for g in grid if g["beta1"] == b1], key=lambda g: g["beta2"])
         first_switch = next((g["beta2"] for g in gg if g["selected"] != gg[0]["selected"]), None)
-        rows_b2.append({"beta1": b1, "batch_at_0": gg[0]["batch"], "batch_at_max": gg[-1]["batch"],
-                        "rounds_at_0": gg[0]["k"], "rounds_at_max": gg[-1]["k"], "first_beta2_that_changes_pick":
-                        first_switch})
+        rows_b2.append(
+            {
+                "beta1": b1,
+                "batch_at_0": gg[0]["batch"],
+                "batch_at_max": gg[-1]["batch"],
+                "rounds_at_0": gg[0]["k"],
+                "rounds_at_max": gg[-1]["k"],
+                "first_beta2_that_changes_pick": first_switch,
+            }
+        )
     ok1, ok3 = rho_b1_N < -0.3, rho_beta_N > 0.5 and rho_beta_att > 0.3
     ok2 = sum(r["batch_at_max"] > r["batch_at_0"] + 1e-9 for r in rows_b2) >= len(rows_b2) / 2
-    min_switch = min([r["first_beta2_that_changes_pick"] for r in rows_b2 if r["first_beta2_that_changes_pick"]]
-                     or [None], key=lambda x: x if x is not None else 9)
-    print("beta2 per beta1 row: " + "; ".join(
-        f"b1={r['beta1']}: batch {r['batch_at_0']:.2f}->{r['batch_at_max']:.2f}, "
-        f"first switch at b2={r['first_beta2_that_changes_pick']}" for r in rows_b2))
-    verdict = (f"beta1 -> fewer probes: {'REPRODUCED' if ok1 else 'NOT reproduced'} (rho {rho_b1_N:+.2f}); "
-               f"beta2 -> larger batches / fewer rounds: {'REPRODUCED' if ok2 else 'WEAK'} - the parallelism term only "
-               f"changes the argmax from beta2 >= {min_switch} (the doc's 0.005 changes nothing here; rho batch "
-               f"{rho_b2_batch:+.2f}, rounds {rho_b2_k:+.2f}); policy beta traces a monotone work/attainment "
-               f"frontier: {'REPRODUCED' if ok3 else 'NOT reproduced'} (rho probes {rho_beta_N:+.2f}, attainment "
-               f"{rho_beta_att:+.2f})")
+    min_switch = min(
+        [r["first_beta2_that_changes_pick"] for r in rows_b2 if r["first_beta2_that_changes_pick"]] or [None],
+        key=lambda x: x if x is not None else 9,
+    )
+    print(
+        "beta2 per beta1 row: "
+        + "; ".join(
+            f"b1={r['beta1']}: batch {r['batch_at_0']:.2f}->{r['batch_at_max']:.2f}, "
+            f"first switch at b2={r['first_beta2_that_changes_pick']}"
+            for r in rows_b2
+        )
+    )
+    verdict = (
+        f"beta1 -> fewer probes: {'REPRODUCED' if ok1 else 'NOT reproduced'} (rho {rho_b1_N:+.2f}); "
+        f"beta2 -> larger batches / fewer rounds: {'REPRODUCED' if ok2 else 'WEAK'} - the parallelism term only "
+        f"changes the argmax from beta2 >= {min_switch} (the doc's 0.005 changes nothing here; rho batch "
+        f"{rho_b2_batch:+.2f}, rounds {rho_b2_k:+.2f}); policy beta traces a monotone work/attainment "
+        f"frontier: {'REPRODUCED' if ok3 else 'NOT reproduced'} (rho probes {rho_beta_N:+.2f}, attainment "
+        f"{rho_beta_att:+.2f})"
+    )
     print(verdict)
-    save("e7_objective_dials", {"config": {"worlds": a.seeds, "W": W, "grid": GRID, "candidates": len(pool),
-                                           "beta1_grid": b1s, "beta2_grid": b2s,
-                                           "llm": a.llm if a.llm != "sim" else "not used (replay only)"},
-                                "llm_policy_dials": llm_dials, "llm_policies": llm_pols,
-                                "candidate_stats": stats, "selection_grid": grid,
-                                "beta2_rows": rows_b2,
-                                "rho": {"beta1_N": rho_b1_N, "beta2_batch": rho_b2_batch, "beta2_rounds": rho_b2_k,
-                                        "policy_beta_probes": rho_beta_N, "policy_beta_attainment": rho_beta_att,
-                                        "eq1_vs_pareto_ranking": rho_obj},
-                                "beta_sweep": rep.sweep, "eq1_pick": pick_e, "pareto_pick": pick_p,
-                                "figure": str(png), "verdict": verdict}, a.out)
+    save(
+        "e7_objective_dials",
+        {
+            "config": {
+                "worlds": a.seeds,
+                "W": W,
+                "grid": GRID,
+                "candidates": len(pool),
+                "beta1_grid": b1s,
+                "beta2_grid": b2s,
+                "llm": a.llm if a.llm != "sim" else "not used (replay only)",
+            },
+            "llm_policy_dials": llm_dials,
+            "llm_policies": llm_pols,
+            "candidate_stats": stats,
+            "selection_grid": grid,
+            "beta2_rows": rows_b2,
+            "rho": {
+                "beta1_N": rho_b1_N,
+                "beta2_batch": rho_b2_batch,
+                "beta2_rounds": rho_b2_k,
+                "policy_beta_probes": rho_beta_N,
+                "policy_beta_attainment": rho_beta_att,
+                "eq1_vs_pareto_ranking": rho_obj,
+            },
+            "beta_sweep": rep.sweep,
+            "eq1_pick": pick_e,
+            "pareto_pick": pick_p,
+            "figure": str(png),
+            "verdict": verdict,
+        },
+        a.out,
+    )
 
 
 if __name__ == "__main__":

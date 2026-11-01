@@ -1,10 +1,10 @@
 """Analyze(H_t, D_evolve) -> F_t: three-lens report from the incumbent's own traces (LLM or heuristic)."""
+
 from __future__ import annotations
 
 import json
 import re
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
 
 from ..core.llm import LLM, extract_json
 from .evaluate import Measurement
@@ -108,14 +108,18 @@ def render_trace(rec: dict, task_input=None, cap: int = 6000) -> str:
     if tr:
         parts.append("=== TRAJECTORY ===\n" + tr[: max(500, cap - 2500)])
     parts.append(f"=== OUTPUT ===\n{str(rec.get('output'))[:800]}")
-    parts.append(f"=== GRADING / VERIFIER ===\nscore={rec.get('score')} tokens={rec.get('tokens')} "
-                 f"steps={rec.get('steps')} error={rec.get('error')}\nfeedback: {str(rec.get('feedback'))[:800]}")
+    parts.append(
+        f"=== GRADING / VERIFIER ===\nscore={rec.get('score')} tokens={rec.get('tokens')} "
+        f"steps={rec.get('steps')} error={rec.get('error')}\nfeedback: {str(rec.get('feedback'))[:800]}"
+    )
     return "\n".join(parts)[:cap]
 
 
-def task_row(tid: str, rec: dict, mean: Optional[float]) -> str:
-    return (f"{tid} | mean={mean if mean is None else round(mean, 3)} | family={rec.get('family')} | "
-            f"score={rec.get('score')} | tokens={rec.get('tokens')} | {str(rec.get('feedback'))[:100]}")
+def task_row(tid: str, rec: dict, mean: float | None) -> str:
+    return (
+        f"{tid} | mean={mean if mean is None else round(mean, 3)} | family={rec.get('family')} | "
+        f"score={rec.get('score')} | tokens={rec.get('tokens')} | {str(rec.get('feedback'))[:100]}"
+    )
 
 
 _NUM = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
@@ -144,14 +148,21 @@ def _count(group: dict, d: dict) -> None:
 class Analyst:
     """Builds F_t from the incumbent's traces (``mode="llm"`` digesters + aggregator, or ``"heuristic"``)."""
 
-    def __init__(self, llm: Optional[LLM] = None, *, mode: str = "heuristic", domain_brief: str = "",
-                 max_digests: int = 8, workers: int = DIGEST_PARALLELISM) -> None:
+    def __init__(
+        self,
+        llm: LLM | None = None,
+        *,
+        mode: str = "heuristic",
+        domain_brief: str = "",
+        max_digests: int = 8,
+        workers: int = DIGEST_PARALLELISM,
+    ) -> None:
         self.llm = llm
         self.mode = mode if (mode != "llm" or llm is not None) else "heuristic"
         self.domain_brief = domain_brief
         self.max_digests = max_digests
         self.workers = workers
-        self.last_calls: list[dict] = []        # LLM exchanges of the latest analyze(), for the run trace
+        self.last_calls: list[dict] = []  # LLM exchanges of the latest analyze(), for the run trace
 
     def heuristic_digests(self, traces: dict[str, dict]) -> list[dict]:
         """Unsolved fail traces become failure (or capability_gap on an execution error) digests; the rest success."""
@@ -159,19 +170,38 @@ class Analyst:
         for tid, rec in traces.items():
             failing = rec.get("_role") == "fail" and not _solved(rec)
             if failing and rec.get("error") and not str(rec.get("error")).startswith("infra:"):
-                out.append({"task_id": tid, "lens": "capability_gap", "family": rec.get("family"),
-                            "wanted": "complete the task", "why_couldnt": signature(str(rec.get("error"))),
-                            "evidence": [{"where": "execution", "quote": str(rec.get("error"))[:160]}]})
+                out.append(
+                    {
+                        "task_id": tid,
+                        "lens": "capability_gap",
+                        "family": rec.get("family"),
+                        "wanted": "complete the task",
+                        "why_couldnt": signature(str(rec.get("error"))),
+                        "evidence": [{"where": "execution", "quote": str(rec.get("error"))[:160]}],
+                    }
+                )
             elif failing:
-                out.append({"task_id": tid, "lens": "failure", "family": rec.get("family"),
-                            "blocker": signature(str(rec.get("feedback"))),
-                            "narrative": str(rec.get("feedback"))[:300],
-                            "evidence": [{"where": "grader", "quote": str(rec.get("feedback"))[:160]}],
-                            "needed_instead": ""})
+                out.append(
+                    {
+                        "task_id": tid,
+                        "lens": "failure",
+                        "family": rec.get("family"),
+                        "blocker": signature(str(rec.get("feedback"))),
+                        "narrative": str(rec.get("feedback"))[:300],
+                        "evidence": [{"where": "grader", "quote": str(rec.get("feedback"))[:160]}],
+                        "needed_instead": "",
+                    }
+                )
             else:
-                out.append({"task_id": tid, "lens": "success", "family": rec.get("family"),
-                            "habits": [{"habit": f"clean_{rec.get('family')}", "where_shown": "final"}],
-                            "risk_if_removed": "a change that disrupts this path regresses passing tasks"})
+                out.append(
+                    {
+                        "task_id": tid,
+                        "lens": "success",
+                        "family": rec.get("family"),
+                        "habits": [{"habit": f"clean_{rec.get('family')}", "where_shown": "final"}],
+                        "risk_if_removed": "a change that disrupts this path regresses passing tasks",
+                    }
+                )
         return out
 
     @staticmethod
@@ -183,54 +213,104 @@ class Analyst:
             fam = d.get("family") or "default"
             if d["lens"] == "failure":
                 key = f"{_slug(str(fam))}__{_slug(d['blocker'])}"
-                m = modes.setdefault(key, {"mode": key, "n_tasks": 0, "affected_tasks": [], "loss": 0.0,
-                                           "description": f"tasks of kind '{fam}' end with: {d['blocker']}",
-                                           "needed_instead": "a general mechanism that fixes this outcome",
-                                           "representative_evidence": []})
+                m = modes.setdefault(
+                    key,
+                    {
+                        "mode": key,
+                        "n_tasks": 0,
+                        "affected_tasks": [],
+                        "loss": 0.0,
+                        "description": f"tasks of kind '{fam}' end with: {d['blocker']}",
+                        "needed_instead": "a general mechanism that fixes this outcome",
+                        "representative_evidence": [],
+                    },
+                )
                 m["loss"] += 1.0 - scores.get(d["task_id"], 0.0)
                 _count(m, d)
             elif d["lens"] == "capability_gap":
                 key = _slug(d["why_couldnt"])
-                _count(gaps.setdefault(key, {"gap": key, "n_tasks": 0, "affected_tasks": [],
-                                             "description": f"execution failed: {d['why_couldnt']}",
-                                             "representative_evidence": []}), d)
+                _count(
+                    gaps.setdefault(
+                        key,
+                        {
+                            "gap": key,
+                            "n_tasks": 0,
+                            "affected_tasks": [],
+                            "description": f"execution failed: {d['why_couldnt']}",
+                            "representative_evidence": [],
+                        },
+                    ),
+                    d,
+                )
             else:
                 key = f"clean_{_slug(str(fam))}"
-                h = habits.setdefault(key, {"habit": key, "n_tasks": 0,
-                                            "description": f"passing tasks of kind '{fam}' finish cleanly",
-                                            "risk_if_broken": "regressions on currently solved tasks"})
+                h = habits.setdefault(
+                    key,
+                    {
+                        "habit": key,
+                        "n_tasks": 0,
+                        "description": f"passing tasks of kind '{fam}' finish cleanly",
+                        "risk_if_broken": "regressions on currently solved tasks",
+                    },
+                )
                 h["n_tasks"] += 1
         fm = sorted(modes.values(), key=lambda m: (-m["n_tasks"], -m["loss"], m["mode"]))
         for m in fm:
             m["loss"] = round(m["loss"], 4)
-        return {"failure_modes": fm, "capability_gaps": sorted(gaps.values(), key=lambda g: -g["n_tasks"]),
-                "success_habits": sorted(habits.values(), key=lambda h: -h["n_tasks"]), "n_digests": len(digests),
-                "analyst": "heuristic"}
+        return {
+            "failure_modes": fm,
+            "capability_gaps": sorted(gaps.values(), key=lambda g: -g["n_tasks"]),
+            "success_habits": sorted(habits.values(), key=lambda h: -h["n_tasks"]),
+            "n_digests": len(digests),
+            "analyst": "heuristic",
+        }
 
     def _digest(self, tid: str, rec: dict, lens: str, task_input, seed: int) -> dict:
-        system = DIGESTER_SYSTEM.format(domain_brief=self.domain_brief, lens=lens, cap=DIGEST_MAX_CHARS,
-                                        schema=SCHEMAS[lens])
-        prompt = (f"Digest this trajectory ({lens} lens).\n\n{render_trace(rec, task_input)}\n\n"
-                  "Reply with the JSON digest.")
+        system = DIGESTER_SYSTEM.format(
+            domain_brief=self.domain_brief, lens=lens, cap=DIGEST_MAX_CHARS, schema=SCHEMAS[lens]
+        )
+        prompt = (
+            f"Digest this trajectory ({lens} lens).\n\n{render_trace(rec, task_input)}\n\nReply with the JSON digest."
+        )
         resp = self.llm.complete(prompt, system=system, seed=seed, role="digester")
-        self.last_calls.append({"role": "digester", "task_id": tid, "lens": lens, "system": system, "prompt": prompt,
-                                "reply": resp.text, "error": resp.error})
+        self.last_calls.append(
+            {
+                "role": "digester",
+                "task_id": tid,
+                "lens": lens,
+                "system": system,
+                "prompt": prompt,
+                "reply": resp.text,
+                "error": resp.error,
+            }
+        )
         try:
             d = extract_json(resp.text)
             if isinstance(d, dict):
                 d["task_id"], d["lens"] = tid, lens
                 d.setdefault("family", rec.get("family"))
                 s = json.dumps(d, default=str)
-                if len(s) > DIGEST_MAX_CHARS:     # truncated here; the code bounces it
-                    d = {"task_id": tid, "lens": lens, "family": rec.get("family"),
-                         "blocker": s[: DIGEST_MAX_CHARS // 2], "truncated": True}
+                if len(s) > DIGEST_MAX_CHARS:  # truncated here; the code bounces it
+                    d = {
+                        "task_id": tid,
+                        "lens": lens,
+                        "family": rec.get("family"),
+                        "blocker": s[: DIGEST_MAX_CHARS // 2],
+                        "truncated": True,
+                    }
                 return d
         except ValueError:
             pass
         return {"task_id": tid, "lens": lens, "family": rec.get("family"), "error": "unparseable digest"}
 
-    def analyze(self, traces: dict[str, dict], meas: Measurement, task_inputs: Optional[dict] = None,
-                prior: Optional[dict] = None, seed: int = 0) -> tuple[dict, list[dict]]:
+    def analyze(
+        self,
+        traces: dict[str, dict],
+        meas: Measurement,
+        task_inputs: dict | None = None,
+        prior: dict | None = None,
+        seed: int = 0,
+    ) -> tuple[dict, list[dict]]:
         """Return (report F_t, digests)."""
         scores = meas.task_means()
         self.last_calls = []
@@ -239,27 +319,45 @@ class Analyst:
             return self.aggregate_heuristic(heur_digests, scores), heur_digests
         task_inputs = task_inputs or {}
         fails = [t for t, r in traces.items() if r.get("_role") == "fail" and not _solved(r)]
-        wins = [t for t, r in traces.items() if r.get("_role") != "fail"] + \
-               [t for t, r in traces.items() if r.get("_role") == "fail" and _solved(r)]
+        wins = [t for t, r in traces.items() if r.get("_role") != "fail"] + [
+            t for t, r in traces.items() if r.get("_role") == "fail" and _solved(r)
+        ]
         n_win = min(len(wins), max(1, self.max_digests // 4))
         reqs = [(t, "failure") for t in fails[: self.max_digests - n_win]] + [(t, "success") for t in wins[:n_win]]
         with ThreadPoolExecutor(max_workers=max(1, self.workers)) as ex:
-            digests = list(ex.map(lambda tl: self._digest(tl[0], traces[tl[0]], tl[1], task_inputs.get(tl[0]),
-                                                          seed * 100 + reqs.index(tl)), reqs))
+            digests = list(
+                ex.map(
+                    lambda tl: self._digest(
+                        tl[0], traces[tl[0]], tl[1], task_inputs.get(tl[0]), seed * 100 + reqs.index(tl)
+                    ),
+                    reqs,
+                )
+            )
         table = "\n".join(task_row(t, traces[t], scores.get(t)) for t in sorted(traces, key=lambda x: scores.get(x, 0)))
-        prompt = "\n\n".join([
-            "=== TASK TABLE (one trace per task; lowest scores first) ===", table,
-            "=== PRIOR FAILURE-MODE NAMES (for stable naming) ===",
-            json.dumps([{"mode": m.get("mode"), "description": m.get("description")}
-                        for m in (prior or {}).get("failure_modes") or []], indent=1),
-            "=== PRIOR SUCCESS-HABIT NAMES ===",
-            json.dumps([{"habit": h.get("habit")} for h in (prior or {}).get("success_habits") or []], indent=1),
-            "=== DIGESTS ===", json.dumps(digests, ensure_ascii=False, indent=1)[:60000],
-            "Produce the report JSON now."])
+        prompt = "\n\n".join(
+            [
+                "=== TASK TABLE (one trace per task; lowest scores first) ===",
+                table,
+                "=== PRIOR FAILURE-MODE NAMES (for stable naming) ===",
+                json.dumps(
+                    [
+                        {"mode": m.get("mode"), "description": m.get("description")}
+                        for m in (prior or {}).get("failure_modes") or []
+                    ],
+                    indent=1,
+                ),
+                "=== PRIOR SUCCESS-HABIT NAMES ===",
+                json.dumps([{"habit": h.get("habit")} for h in (prior or {}).get("success_habits") or []], indent=1),
+                "=== DIGESTS ===",
+                json.dumps(digests, ensure_ascii=False, indent=1)[:60000],
+                "Produce the report JSON now.",
+            ]
+        )
         system = ANALYST_SYSTEM.format(domain_brief=self.domain_brief)
         resp = self.llm.complete(prompt, system=system, seed=seed, role="analyst")
-        self.last_calls.append({"role": "analyst", "system": system, "prompt": prompt, "reply": resp.text,
-                                "error": resp.error})
+        self.last_calls.append(
+            {"role": "analyst", "system": system, "prompt": prompt, "reply": resp.text, "error": resp.error}
+        )
         try:
             rep = extract_json(resp.text)
             if not isinstance(rep, dict):
@@ -274,6 +372,7 @@ class Analyst:
                     return -float(m.get("n_tasks") or 0)
                 except (TypeError, ValueError):
                     return 0.0
+
             report["failure_modes"].sort(key=_n)
             report["n_digests"] = len(digests)
             report["analyst"] = "llm"

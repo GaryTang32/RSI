@@ -1,4 +1,5 @@
 """Shared helpers for the autoresearch experiment scripts."""
+
 import argparse
 import json
 import os
@@ -23,9 +24,12 @@ CONST_RE = re.compile(r"^([A-Z_][A-Z0-9_]*)(\s*=\s*)([^#\n]+?)(\s*(#.*)?)$", re.
 
 def parser(description: str, seeds: int = 3) -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=description)
-    ap.add_argument("--llm", default="sim",
-                    help="sim (scripted offline agent) | claude:haiku (live research agent) | scripted (offline "
-                         "MockLLM through the same LLM-agent code path as a live run)")
+    ap.add_argument(
+        "--llm",
+        default="sim",
+        help="sim (scripted offline agent) | claude:haiku (live research agent) | scripted (offline "
+        "MockLLM through the same LLM-agent code path as a live run)",
+    )
     ap.add_argument("--seeds", type=int, default=seeds)
     ap.add_argument("--quick", action="store_true", help="tiny settings for a smoke check")
     ap.add_argument("--workers", type=int, default=2, help="parallel seeds (processes)")
@@ -155,8 +159,9 @@ def time_to(traj, target: float) -> float:
 
 def setk(text: str, k: str, v) -> str:
     """Set the constant ``k`` of a train.py to ``repr(v)``, keeping its comment."""
-    out, n = re.subn(rf"^{k}(\s*=\s*)[^#\n]+?(\s*(#.*)?)$", lambda m: f"{k}{m.group(1)}{v!r}{m.group(2)}", text,
-                     count=1, flags=re.M)
+    out, n = re.subn(
+        rf"^{k}(\s*=\s*)[^#\n]+?(\s*(#.*)?)$", lambda m: f"{k}{m.group(1)}{v!r}{m.group(2)}", text, count=1, flags=re.M
+    )
     assert n == 1, k
     return out
 

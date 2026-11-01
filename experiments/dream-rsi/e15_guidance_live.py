@@ -1,7 +1,8 @@
 """E15a (live): does LLM-written guidance reach the agent's prompt, and does it narrow what the agent explores?
 
-    python experiments/dream-rsi/e15_guidance_live.py [--k 12] [--offline] [--workers 2]   # --offline: cache only, $0
+python experiments/dream-rsi/e15_guidance_live.py [--k 12] [--offline] [--workers 2]   # --offline: cache only, $0
 """
+
 import argparse
 import difflib
 import itertools
@@ -50,8 +51,9 @@ def perm_test(items, labels, f, n=10000, seed=0):
     def stat(lab):
         u = [i for i, l in enumerate(lab) if l == "U"]
         g = [i for i, l in enumerate(lab) if l == "G"]
-        return np.mean([d[i, j] for i, j in itertools.combinations(u, 2)]) - \
-            np.mean([d[i, j] for i, j in itertools.combinations(g, 2)])
+        return np.mean([d[i, j] for i, j in itertools.combinations(u, 2)]) - np.mean(
+            [d[i, j] for i, j in itertools.combinations(g, 2)]
+        )
 
     obs = stat(labels)
     rng = np.random.default_rng(seed)
@@ -65,30 +67,54 @@ def analyse(recs, guidance, root_score, k):
     ok = [r for r in recs if r.get("set")]
     items, labels, codes = [r["set"] for r in ok], [r["arm"] for r in ok], [r["code"] for r in ok]
     jac_obs, jac_p = perm_test(items, labels, jaccard) if len(set(labels)) == 2 else (None, None)
-    code_diff = (mean_pair([c for c, l in zip(codes, labels) if l == "U"], code_dist)
-                 - mean_pair([c for c, l in zip(codes, labels) if l == "G"], code_dist)) if ok else None
-    m27 = {"advice_nonempty": bool(guidance.text.strip()),
-           "advice_in_all_G_prompts": all(r["prompt_has_advice"] for r in recs
-                                          if r["arm"] == "G" and "prompt_has_advice" in r),
-           "advice_in_no_U_prompt": not any(r["prompt_has_advice"] for r in recs
-                                            if r["arm"] == "U" and "prompt_has_advice" in r),
-           "n_G_prompts": sum(1 for r in recs if r["arm"] == "G" and "prompt_has_advice" in r)}
-    m27["passes"] = bool(m27["advice_nonempty"] and m27["advice_in_all_G_prompts"] and m27["advice_in_no_U_prompt"]
-                         and m27["n_G_prompts"] == k)
+    code_diff = (
+        (
+            mean_pair([c for c, l in zip(codes, labels) if l == "U"], code_dist)
+            - mean_pair([c for c, l in zip(codes, labels) if l == "G"], code_dist)
+        )
+        if ok
+        else None
+    )
+    m27 = {
+        "advice_nonempty": bool(guidance.text.strip()),
+        "advice_in_all_G_prompts": all(
+            r["prompt_has_advice"] for r in recs if r["arm"] == "G" and "prompt_has_advice" in r
+        ),
+        "advice_in_no_U_prompt": not any(
+            r["prompt_has_advice"] for r in recs if r["arm"] == "U" and "prompt_has_advice" in r
+        ),
+        "n_G_prompts": sum(1 for r in recs if r["arm"] == "G" and "prompt_has_advice" in r),
+    }
+    m27["passes"] = bool(
+        m27["advice_nonempty"]
+        and m27["advice_in_all_G_prompts"]
+        and m27["advice_in_no_U_prompt"]
+        and m27["n_G_prompts"] == k
+    )
     arm_stats = {}
     for arm in ("U", "G"):
         rs = [r for r in recs if r["arm"] == arm]
         sc = [r["score"] for r in rs if r.get("fail_class") == "ok"]
-        arm_stats[arm] = {"attempts": len(rs), "ok": len(sc), "mean_gamma_ok": float(np.mean(sc)) if sc else None,
-                          "best_gamma": max(sc) if sc else None,
-                          "improved_over_root": sum(s > root_score + 1e-12 for s in sc),
-                          "jaccard_diversity": mean_pair([r["set"] for r in rs if r.get("set")], jaccard),
-                          "code_diversity": mean_pair([r["code"] for r in rs if r.get("set")], code_dist),
-                          "mentions_focus_direction": sum(any(d in (r.get("proposal") or "").lower()
-                                                              for d in guidance.focus) for r in rs)}
-    l6 = {"jaccard_U_minus_G": jac_obs, "permutation_p": jac_p, "code_U_minus_G": code_diff,
-          "passes": bool(jac_obs is not None and jac_obs > 0 and jac_p < 0.05 and code_diff is not None
-                         and code_diff > 0)}
+        arm_stats[arm] = {
+            "attempts": len(rs),
+            "ok": len(sc),
+            "mean_gamma_ok": float(np.mean(sc)) if sc else None,
+            "best_gamma": max(sc) if sc else None,
+            "improved_over_root": sum(s > root_score + 1e-12 for s in sc),
+            "jaccard_diversity": mean_pair([r["set"] for r in rs if r.get("set")], jaccard),
+            "code_diversity": mean_pair([r["code"] for r in rs if r.get("set")], code_dist),
+            "mentions_focus_direction": sum(
+                any(d in (r.get("proposal") or "").lower() for d in guidance.focus) for r in rs
+            ),
+        }
+    l6 = {
+        "jaccard_U_minus_G": jac_obs,
+        "permutation_p": jac_p,
+        "code_U_minus_G": code_diff,
+        "passes": bool(
+            jac_obs is not None and jac_obs > 0 and jac_p < 0.05 and code_diff is not None and code_diff > 0
+        ),
+    }
     return {"M27": m27, "L6": l6}, arm_stats
 
 
@@ -116,13 +142,36 @@ def main():
         arm, b = job
         if llm.meter.total().cost_usd > CAP_USD:
             return job, {"skipped": "spend cap reached"}
-        c = AttemptContext(prob, "root", root, root_ev.score, b, 0, 3, [], [], hist, seed_ev.score, {},
-                           guidance.text if arm == "G" else "", ["construct.py"], None, seed_ev.fail_class,
-                           seed_ev.error, "")
+        c = AttemptContext(
+            prob,
+            "root",
+            root,
+            root_ev.score,
+            b,
+            0,
+            3,
+            [],
+            [],
+            hist,
+            seed_ev.score,
+            {},
+            guidance.text if arm == "G" else "",
+            ["construct.py"],
+            None,
+            seed_ev.fail_class,
+            seed_ev.error,
+            "",
+        )
         prompt = agent.build_instructions(c)
         att = agent.attempt(c, seed=b)
-        rec = {"arm": arm, "branch": b, "prompt_has_advice": bool(guidance.text) and guidance.text in prompt,
-               "prompt_chars": len(prompt), "agent_error": att.error, "proposal": att.proposal[:600]}
+        rec = {
+            "arm": arm,
+            "branch": b,
+            "prompt_has_advice": bool(guidance.text) and guidance.text in prompt,
+            "prompt_chars": len(prompt),
+            "agent_error": att.error,
+            "proposal": att.proposal[:600],
+        }
         if att.artifact is not None:
             rec["code"] = att.artifact.get("construct.py") or ""
             out, err, fc, _ = dom.run_program(att.artifact)
@@ -139,18 +188,35 @@ def main():
     with ThreadPoolExecutor(a.workers) as ex:
         for job, rec in ex.map(work, jobs):
             results[f"{job[0]}{job[1]}"] = rec
-            print(f"[{job[0]}{job[1]}] {rec.get('fail_class', rec.get('skipped') or rec.get('agent_error'))} "
-                  f"score {rec.get('score')} spend ${llm.meter.total().cost_usd:.3f}", flush=True)
+            print(
+                f"[{job[0]}{job[1]}] {rec.get('fail_class', rec.get('skipped') or rec.get('agent_error'))} "
+                f"score {rec.get('score')} spend ${llm.meter.total().cost_usd:.3f}",
+                flush=True,
+            )
     tests, arm_stats = analyse(list(results.values()), guidance, root_ev.score, a.k)
     spend = llm.meter.total()
-    out = {"experiment": "e15_guidance_live", "created": time.strftime("%Y-%m-%d %H:%M:%S"),
-           "config": {"history": str(RUN.relative_to(ROOT)), "root_gamma": root_ev.score, "k_per_arm": a.k,
-                      "model": "claude haiku via ClaudeCLI + CachedLLM", "cache": a.cache, "cap_usd": CAP_USD,
-                      "direction_assignment": "none in both arms", "offline": a.offline},
-           "guidance": {"text": guidance.text, "focus": guidance.focus, "avoid": guidance.avoid},
-           "tests": tests, "arms": arm_stats, "attempts": results,
-           "spend_usd": spend.cost_usd, "llm_calls": spend.calls, "cache_hits": getattr(llm, "hits", None),
-           "wall_s": round(time.time() - t0, 1)}
+    out = {
+        "experiment": "e15_guidance_live",
+        "created": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "config": {
+            "history": str(RUN.relative_to(ROOT)),
+            "root_gamma": root_ev.score,
+            "k_per_arm": a.k,
+            "model": "claude haiku via ClaudeCLI + CachedLLM",
+            "cache": a.cache,
+            "cap_usd": CAP_USD,
+            "direction_assignment": "none in both arms",
+            "offline": a.offline,
+        },
+        "guidance": {"text": guidance.text, "focus": guidance.focus, "avoid": guidance.avoid},
+        "tests": tests,
+        "arms": arm_stats,
+        "attempts": results,
+        "spend_usd": spend.cost_usd,
+        "llm_calls": spend.calls,
+        "cache_hits": getattr(llm, "hits", None),
+        "wall_s": round(time.time() - t0, 1),
+    }
     Path(a.out).write_text(json.dumps(out, indent=1, default=str))
     print(json.dumps({"tests": out["tests"], "arms": arm_stats, "spend_usd": spend.cost_usd}, indent=1, default=str))
     print(f"[saved] {a.out}")

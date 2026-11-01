@@ -22,7 +22,8 @@ too: the CLI, Meta-Harness's mock library and SoL-Pi's offline proposer accept a
 
 ```python
 from rsi.domains.bbh import ensure_all
-ensure_all()            # fetch + verify all 54 files once (about 3 MB)
+
+ensure_all()  # fetch + verify all 54 files once (about 3 MB)
 ```
 
 ## Splits (`make_suite`)

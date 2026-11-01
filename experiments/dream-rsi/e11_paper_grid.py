@@ -1,7 +1,8 @@
 """E11: Dream vs Recursive Fixed Exploration at the paper's grids and equal round counts; preregistered tests T1-T7.
 
-    python experiments/dream-rsi/e11_paper_grid.py [--domains synthetic,lasso,...] [--seeds-scale 1.0] [--reanalyse]
+python experiments/dream-rsi/e11_paper_grid.py [--domains synthetic,lasso,...] [--seeds-scale 1.0] [--reanalyse]
 """
+
 import json
 import time
 from pathlib import Path
@@ -44,9 +45,20 @@ def config_of(name, seed, dream):
     """The run's Config; the hard caps must not be below the grid, since the loop clips every plan to them."""
     st = SETTINGS[name]
     b, r = st["grid"]
-    return Config(rounds=st["rounds"], W=st["W"], branch_count=b, refine_count=r, M=st["M"], dream=dream,
-                  sandbox="inprocess", seed=seed, agent_workers=1, trace=False,
-                  hard_max_branch=max(12, b), hard_max_refine=max(12, r))
+    return Config(
+        rounds=st["rounds"],
+        W=st["W"],
+        branch_count=b,
+        refine_count=r,
+        M=st["M"],
+        dream=dream,
+        sandbox="inprocess",
+        seed=seed,
+        agent_workers=1,
+        trace=False,
+        hard_max_branch=max(12, b),
+        hard_max_refine=max(12, r),
+    )
 
 
 def one(job):
@@ -57,13 +69,21 @@ def one(job):
     loop = DreamRSILoop(dom.as_task(), dom.mock_agent(), config=cfg, developer=ParametricMutator() if dream else None)
     res = loop.run()
     tr = res.trajectory
-    row = {"domain": name, "seed": seed, "arm": "dream" if dream else "fixed", "seed_score": res.meta["seed_score"],
-           "calls": [x["calls"] for x in tr], "cum_calls": [x["cum_calls"] for x in tr],
-           "best": [x["best"] for x in tr],
-           "round_best": [x["round_best"] for x in tr], "betas": [x["beta"] for x in tr],
-           "plans": [[x["plan"]["branch_count"], x["plan"]["refine_count"]] for x in tr],
-           "developer_revisions": res.usage["_cost"]["developer_revisions"],
-           "replay_episodes": res.usage["_cost"]["replay_episodes"], "wall_s": round(time.time() - t0, 1)}
+    row = {
+        "domain": name,
+        "seed": seed,
+        "arm": "dream" if dream else "fixed",
+        "seed_score": res.meta["seed_score"],
+        "calls": [x["calls"] for x in tr],
+        "cum_calls": [x["cum_calls"] for x in tr],
+        "best": [x["best"] for x in tr],
+        "round_best": [x["round_best"] for x in tr],
+        "betas": [x["beta"] for x in tr],
+        "plans": [[x["plan"]["branch_count"], x["plan"]["refine_count"]] for x in tr],
+        "developer_revisions": res.usage["_cost"]["developer_revisions"],
+        "replay_episodes": res.usage["_cost"]["replay_episodes"],
+        "wall_s": round(time.time() - t0, 1),
+    }
     if name == "lasso":  # re-measure the best-so-far program on the held-out split after every round
         row["holdout_seed"] = dom.evaluate_split(program_only(loop.seed_artifact), "holdout").score
         row["holdout"], row["holdout_ms"] = [], []
@@ -102,10 +122,16 @@ def per_round_tests(rows, dom, key):
         t1.append({"round": r + 1, **paired([fx[s][key][r] for s in seeds], b)})
         c = [interp_fixed(fx[s], key, dr[s]["cum_calls"][r]) for s in seeds]
         t2.append({"round": r + 1, "dream_cum_calls": summ([dr[s]["cum_calls"][r] for s in seeds]), **paired(c, b)})
-    return {"T1_equal_rounds": t1, "T1_consistently_superior": all(x["lo"] > 0 for x in t1),
-            "T2_compute_axis": t2, "T2_consistently_superior": all(x["lo"] > 0 for x in t2),
-            "round1_identical": all(abs(fx[s][key][0] - dr[s][key][0]) < 1e-12 for s in seeds) if key != "holdout"
-            else None, "n": len(seeds)}
+    return {
+        "T1_equal_rounds": t1,
+        "T1_consistently_superior": all(x["lo"] > 0 for x in t1),
+        "T2_compute_axis": t2,
+        "T2_consistently_superior": all(x["lo"] > 0 for x in t2),
+        "round1_identical": all(abs(fx[s][key][0] - dr[s][key][0]) < 1e-12 for s in seeds)
+        if key != "holdout"
+        else None,
+        "n": len(seeds),
+    }
 
 
 def _per_round(dom):
@@ -115,12 +141,14 @@ def _per_round(dom):
 def call_ratio(rows, dom):
     fx, dr, seeds = _arms(rows, dom)
     rat = [fx[s]["cum_calls"][-1] / dr[s]["cum_calls"][-1] for s in seeds]
-    out = {"fixed_spends_its_grid_every_round": all(c == _per_round(dom) for s in seeds for c in fx[s]["calls"]),
-           "ratio_fixed_over_dream": summ(rat), "fixed_calls": summ([fx[s]["cum_calls"][-1] for s in seeds]),
-           "dream_calls": summ([dr[s]["cum_calls"][-1] for s in seeds]),
-           "dream_over_fixed": summ([1 / x for x in rat]),
-           "dream_llm_calls_incl_developer": summ([dr[s]["cum_calls"][-1] + dr[s]["developer_revisions"]
-                                                   for s in seeds])}
+    out = {
+        "fixed_spends_its_grid_every_round": all(c == _per_round(dom) for s in seeds for c in fx[s]["calls"]),
+        "ratio_fixed_over_dream": summ(rat),
+        "fixed_calls": summ([fx[s]["cum_calls"][-1] for s in seeds]),
+        "dream_calls": summ([dr[s]["cum_calls"][-1] for s in seeds]),
+        "dream_over_fixed": summ([1 / x for x in rat]),
+        "dream_llm_calls_incl_developer": summ([dr[s]["cum_calls"][-1] + dr[s]["developer_revisions"] for s in seeds]),
+    }
     s = out["ratio_fixed_over_dream"]
     if dom in PAPER_RATIO:
         out["paper_ratio"] = PAPER_RATIO[dom]
@@ -135,8 +163,13 @@ def final_diff(rows, dom, key="best"):
     b = [dr[s][key][-1] for s in seeds]
     base = "holdout_seed" if key == "holdout" else "seed_score"
     gain = float(np.mean(a) - np.mean([fx[s][base] for s in seeds]))
-    return {**paired(a, b), "fixed_gain_over_seed": gain, "margin": NONINF * max(gain, 1e-12),
-            "fixed": summ(a), "dream": summ(b)}
+    return {
+        **paired(a, b),
+        "fixed_gain_over_seed": gain,
+        "margin": NONINF * max(gain, 1e-12),
+        "fixed": summ(a),
+        "dream": summ(b),
+    }
 
 
 def pacing(rows, dom):
@@ -153,21 +186,28 @@ def pacing(rows, dom):
         if pl and im:
             clustered.append(float(np.mean(pl) - np.mean(im)))
     cl = summ(clustered)
-    return {"calls_rounds_2_4": early, "fixed_calls_per_round": _per_round(dom),
-            "conserves": bool(early["hi"] is not None and early["hi"] < _per_round(dom)),
-            "delta_calls_plateau_minus_improving_seed_clustered": cl,
-            "re_expands": bool(cl["lo"] is not None and cl["lo"] > 0),
-            "effort_by_round": [summ([r["calls"][t] for r in dr if len(r["calls"]) > t])["mean"]
-                                for t in range(max(len(r["calls"]) for r in dr))],
-            "strict_improvement_rounds": summ([float(np.mean(np.diff([r["seed_score"]] + r["best"]) > 1e-12))
-                                               for r in dr])}
+    return {
+        "calls_rounds_2_4": early,
+        "fixed_calls_per_round": _per_round(dom),
+        "conserves": bool(early["hi"] is not None and early["hi"] < _per_round(dom)),
+        "delta_calls_plateau_minus_improving_seed_clustered": cl,
+        "re_expands": bool(cl["lo"] is not None and cl["lo"] > 0),
+        "effort_by_round": [
+            summ([r["calls"][t] for r in dr if len(r["calls"]) > t])["mean"]
+            for t in range(max(len(r["calls"]) for r in dr))
+        ],
+        "strict_improvement_rounds": summ([float(np.mean(np.diff([r["seed_score"]] + r["best"]) > 1e-12)) for r in dr]),
+    }
 
 
 def analyse(rows):
     out = {}
     for d in (d for d in SETTINGS if any(r["domain"] == d for r in rows)):
-        res = {"search": per_round_tests(rows, d, "best"), "calls": call_ratio(rows, d),
-               "final_best": final_diff(rows, d)}
+        res = {
+            "search": per_round_tests(rows, d, "best"),
+            "calls": call_ratio(rows, d),
+            "final_best": final_diff(rows, d),
+        }
         if d == "lasso":
             res["holdout"] = per_round_tests(rows, d, "holdout")
             res["final_holdout"] = final_diff(rows, d, "holdout")
@@ -177,33 +217,60 @@ def analyse(rows):
             dr = [r for r in rows if r["domain"] == d and r["arm"] == "dream"]
             res["default_beta_moved_share"] = float(np.mean([len(set(r["betas"])) > 1 for r in dr]))
         out[d] = res
-    tests = {"T1_T2_Q15": {d: {"T1": out[d]["holdout" if d == "lasso" else "search"]["T1_consistently_superior"],
-                               "T2": out[d]["holdout" if d == "lasso" else "search"]["T2_consistently_superior"]}
-                           for d in ("lasso", "synthetic", "synthetic_flash") if d in out},
-             "T3_Q10_Q11": {d: out[d]["calls"] for d in ("synthetic", "lasso", "synthetic_flash") if d in out}}
+    tests = {
+        "T1_T2_Q15": {
+            d: {
+                "T1": out[d]["holdout" if d == "lasso" else "search"]["T1_consistently_superior"],
+                "T2": out[d]["holdout" if d == "lasso" else "search"]["T2_consistently_superior"],
+            }
+            for d in ("lasso", "synthetic", "synthetic_flash")
+            if d in out
+        },
+        "T3_Q10_Q11": {d: out[d]["calls"] for d in ("synthetic", "lasso", "synthetic_flash") if d in out},
+    }
     if all(d in out for d in MATH):
         sd, cp, ac = out["sumdiff"]["final_best"], out["circlepack"]["final_best"], out["autocorr"]["final_best"]
-        t4 = {"sumdiff_better": bool(sd["lo"] > 0),
-              "circlepack_tie": bool(-cp["margin"] < cp["lo"] and cp["hi"] < cp["margin"]),
-              "autocorr_slightly_worse": bool(ac["mean_diff"] <= 0 and ac["lo"] > -ac["margin"])}
+        t4 = {
+            "sumdiff_better": bool(sd["lo"] > 0),
+            "circlepack_tie": bool(-cp["margin"] < cp["lo"] and cp["hi"] < cp["margin"]),
+            "autocorr_slightly_worse": bool(ac["mean_diff"] <= 0 and ac["lo"] > -ac["margin"]),
+        }
         t4["all_three"] = all(t4.values())
         tests["T4_Q20"] = t4
     t5 = {}
     for d in (d for d in REAL if d in out):
         q = out[d]["final_holdout" if d == "lasso" else "final_best"]
-        t5[d] = {"fewer_calls_20pct": bool(out[d]["calls"]["dream_over_fixed"]["hi"] < 0.8),
-                 "non_inferior": bool(q["lo"] > -q["margin"])}
+        t5[d] = {
+            "fewer_calls_20pct": bool(out[d]["calls"]["dream_over_fixed"]["hi"] < 0.8),
+            "non_inferior": bool(q["lo"] > -q["margin"]),
+        }
         t5[d]["both"] = t5[d]["fewer_calls_20pct"] and t5[d]["non_inferior"]
-    tests["T5_L4"] = {"per_domain": t5, "domains_passing": sum(v["both"] for v in t5.values()),
-                      "holds": sum(v["both"] for v in t5.values()) >= 2}
-    t6 = {d: {"conserves": out[d]["pacing"]["conserves"], "re_expands": out[d]["pacing"]["re_expands"]}
-          for d in ("synthetic", "sumdiff", "autocorr") if d in out}
+    tests["T5_L4"] = {
+        "per_domain": t5,
+        "domains_passing": sum(v["both"] for v in t5.values()),
+        "holds": sum(v["both"] for v in t5.values()) >= 2,
+    }
+    t6 = {
+        d: {"conserves": out[d]["pacing"]["conserves"], "re_expands": out[d]["pacing"]["re_expands"]}
+        for d in ("synthetic", "sumdiff", "autocorr")
+        if d in out
+    }
     tests["T6_L7"] = {"per_domain": t6, "holds": sum(v["conserves"] and v["re_expands"] for v in t6.values()) >= 2}
     sh = {d: out[d]["default_beta_moved_share"] for d in out if "default_beta_moved_share" in out[d]}
-    tests["T7_L10"] = {"per_domain": sh,
-                       "pooled_share": float(np.mean([len(set(r["betas"])) > 1 for r in rows if r["arm"] == "dream"
-                                                      and r["domain"] in SETTINGS
-                                                      and SETTINGS[r["domain"]]["rounds"] >= 10])) if sh else None}
+    tests["T7_L10"] = {
+        "per_domain": sh,
+        "pooled_share": float(
+            np.mean(
+                [
+                    len(set(r["betas"])) > 1
+                    for r in rows
+                    if r["arm"] == "dream" and r["domain"] in SETTINGS and SETTINGS[r["domain"]]["rounds"] >= 10
+                ]
+            )
+        )
+        if sh
+        else None,
+    }
     if sh:
         tests["T7_L10"]["holds"] = tests["T7_L10"]["pooled_share"] >= 0.5
     return out, tests
@@ -234,21 +301,40 @@ def _save(rows, path):
     if path != RESULTS / "e11_paper_grid.json":
         png = Path(path).with_suffix(".png")
     plot(plt, rows, png)
-    save("e11_paper_grid", {"config": {"settings": SETTINGS, "objective": "eq1 beta1=0.01 beta2=0.005 normalized",
-                                       "round_budget": "fallback (110 or 640 = Fixed's per-round calls)",
-                                       "comparison": "equal rounds (the paper's protocol)", "developer":
-                                       "ParametricMutator", "agent": "domain mock agents"},
-                            "results": out, "tests": tests, "raw": rows, "figure": str(png)}, str(path))
+    save(
+        "e11_paper_grid",
+        {
+            "config": {
+                "settings": SETTINGS,
+                "objective": "eq1 beta1=0.01 beta2=0.005 normalized",
+                "round_budget": "fallback (110 or 640 = Fixed's per-round calls)",
+                "comparison": "equal rounds (the paper's protocol)",
+                "developer": "ParametricMutator",
+                "agent": "domain mock agents",
+            },
+            "results": out,
+            "tests": tests,
+            "raw": rows,
+            "figure": str(png),
+        },
+        str(path),
+    )
     return tests
 
 
 def main():
-    a = parse_args("E11 paper-protocol grid", default_seeds=0, extra=lambda ap: (
-        ap.add_argument("--domains", default=",".join(SETTINGS)),
-        ap.add_argument("--seeds-scale", type=float, default=1.0, help="fraction of the preregistered seeds"),
-        ap.add_argument("--seed-offset", type=int, default=0,
-                        help="smoke tests only: seeds outside the preregistered range"),
-        ap.add_argument("--reanalyse", action="store_true")))
+    a = parse_args(
+        "E11 paper-protocol grid",
+        default_seeds=0,
+        extra=lambda ap: (
+            ap.add_argument("--domains", default=",".join(SETTINGS)),
+            ap.add_argument("--seeds-scale", type=float, default=1.0, help="fraction of the preregistered seeds"),
+            ap.add_argument(
+                "--seed-offset", type=int, default=0, help="smoke tests only: seeds outside the preregistered range"
+            ),
+            ap.add_argument("--reanalyse", action="store_true"),
+        ),
+    )
     path = Path(a.out or RESULTS / "e11_paper_grid.json")
     rows = list((json.loads(path.read_text()) if path.exists() else {}).get("raw", []))
     if not a.reanalyse:

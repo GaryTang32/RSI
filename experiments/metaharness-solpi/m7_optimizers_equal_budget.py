@@ -1,7 +1,8 @@
 """M7 - Meta-Harness vs structured text optimisers at an equal budget of 40 candidate evaluations (retry round 2).
 
-    python experiments/metaharness-solpi/m7_optimizers_equal_budget.py --seeds 20 [--batch i/n | --merge] [--workers 2]
+python experiments/metaharness-solpi/m7_optimizers_equal_budget.py --seeds 20 [--batch i/n | --merge] [--workers 2]
 """
+
 from __future__ import annotations
 
 import json
@@ -10,10 +11,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import numpy as np  # noqa: E402
 from _common import RESULTS, fmt, fresh_dir, paired, parse_args, plt, pool_map, save, summarize, table  # noqa: E402
 from mh_common import drop_traces  # noqa: E402
-
-import numpy as np  # noqa: E402
 
 from rsi.domains.memoclassify import make_domain  # noqa: E402
 from rsi.metaharness import Config, MemoClassifyLibrary, MockProposer, StructuredOptimizerProposer, run  # noqa: E402
@@ -33,23 +33,45 @@ def job(spec: tuple[str, int], group: str = "m7") -> dict:
     prop = MockProposer(MemoClassifyLibrary(), seed=seed)
     if arm not in ("metaharness", "best_of_n"):
         prop = StructuredOptimizerProposer(prop, arm, seed=seed)
-    res = run(dom, dom.seed_artifact("fewshot_all"), llm_task=dom.make_model("A"), proposer=prop,
-              config=Config(iterations=N_ITER, k=K, history_mode="seed_only" if arm == "best_of_n" else "full",
-                            eval_budget=BUDGET, seed=seed, shadow_monitor=False),
-              out_dir=fresh_dir(group, f"{arm}_s{seed}"), baselines=dom.baselines())
+    res = run(
+        dom,
+        dom.seed_artifact("fewshot_all"),
+        llm_task=dom.make_model("A"),
+        proposer=prop,
+        config=Config(
+            iterations=N_ITER,
+            k=K,
+            history_mode="seed_only" if arm == "best_of_n" else "full",
+            eval_budget=BUDGET,
+            seed=seed,
+            shadow_monitor=False,
+        ),
+        out_dir=fresh_dir(group, f"{arm}_s{seed}"),
+        baselines=dom.baselines(),
+    )
     store = res.loop.store
     curve = [max(store.scores(n)["score"] for n in dom.baselines())] + [c["best_so_far"] for c in res.meta["curve"]]
     curve += [curve[-1]] * (BUDGET + 1 - len(curve))
     cands = [store.scores(n)["score"] for n in store.names() if n not in dom.baselines() and store.scores(n)]
     best = res.meta["best_system"]
     test = res.meta["final"]["splits"]["test"]["results"]
-    dedup = sum(int((json.loads(p.read_text()).get("proposer_meta") or {}).get("dedup_retries", 0) or 0)
-                for p in store.sessions_dir().glob("iter*/meta.json"))
+    dedup = sum(
+        int((json.loads(p.read_text()).get("proposer_meta") or {}).get("dedup_retries", 0) or 0)
+        for p in store.sessions_dir().glob("iter*/meta.json")
+    )
     drop_traces(store.root)
-    return {"arm": arm, "seed": seed, "curve": curve, "final_best": curve[-1],
-            "median_candidate": float(np.median(cands)) if cands else None, "n_evaluated": res.meta["n_evaluated"],
-            "selected": best, "selected_test": test.get(best, {}).get("score"),
-            "fewshot_all_test": test["fewshot_all"]["score"], "dedup_retries": dedup}
+    return {
+        "arm": arm,
+        "seed": seed,
+        "curve": curve,
+        "final_best": curve[-1],
+        "median_candidate": float(np.median(cands)) if cands else None,
+        "n_evaluated": res.meta["n_evaluated"],
+        "selected": best,
+        "selected_test": test.get(best, {}).get("score"),
+        "fewshot_all_test": test["fewshot_all"]["score"],
+        "dedup_retries": dedup,
+    }
 
 
 def evals_to_reach(curve: list[float], target: float) -> int | None:
@@ -59,8 +81,11 @@ def evals_to_reach(curve: list[float], target: float) -> int | None:
 def summary_vs_mh(by: dict, seeds: list[int], arms) -> tuple[dict, dict]:
     """Per-arm summaries of METRICS and paired MH - arm differences."""
     summ = {a: {k: summarize([by[a][s][k] for s in seeds]) for k in METRICS} for a in arms}
-    cmp = {a: {k: paired([by[a][s][k] for s in seeds], [by["metaharness"][s][k] for s in seeds]) for k in METRICS}
-           for a in arms if a != "metaharness"}
+    cmp = {
+        a: {k: paired([by[a][s][k] for s in seeds], [by["metaharness"][s][k] for s in seeds]) for k in METRICS}
+        for a in arms
+        if a != "metaharness"
+    }
     return summ, cmp
 
 
@@ -74,20 +99,33 @@ def match_next_best(by: dict, seeds: list[int], pool: list[str], tol: float = 0.
         evals.append(BUDGET + 1 if x is None else x)
         lead.append(by["metaharness"][s]["final_best"] - target)
         which.append(nb)
-    return {"evals_to_match_per_seed": evals, "median_evals_to_match": float(np.median(evals)),
-            "n_never": sum(x == BUDGET + 1 for x in evals), "lead": summarize(lead), "next_best_arm_per_seed": which,
-            "speed_ok": float(np.median(evals)) <= BUDGET / 10, "lead_ok": float(np.mean(lead)) >= 0.10 - tol}
+    return {
+        "evals_to_match_per_seed": evals,
+        "median_evals_to_match": float(np.median(evals)),
+        "n_never": sum(x == BUDGET + 1 for x in evals),
+        "lead": summarize(lead),
+        "next_best_arm_per_seed": which,
+        "speed_ok": float(np.median(evals)) <= BUDGET / 10,
+        "lead_ok": float(np.mean(lead)) >= 0.10 - tol,
+    }
 
 
 def analyse(rows: list[dict]) -> tuple:
     by = {a: {r["seed"]: r for r in rows if r["arm"] == a} for a in ARMS}
     seeds = sorted(set.intersection(*[set(by[a]) for a in ARMS]))
     summ, cmp = summary_vs_mh(by, seeds, ARMS)
-    q5 = {"next_best_any": match_next_best(by, seeds, OTHERS),
-          "next_best_openevolve_ttt": match_next_best(by, seeds, ["openevolve", "ttt_discover"])}
+    q5 = {
+        "next_best_any": match_next_best(by, seeds, OTHERS),
+        "next_best_openevolve_ttt": match_next_best(by, seeds, ["openevolve", "ttt_discover"]),
+    }
     p = q5["next_best_any"]
-    q5_verdict = ("REPRODUCED" if p["speed_ok"] and p["lead_ok"] else
-                  "PARTIAL" if p["speed_ok"] or p["lead_ok"] else "NOT REPRODUCED")
+    q5_verdict = (
+        "REPRODUCED"
+        if p["speed_ok"] and p["lead_ok"]
+        else "PARTIAL"
+        if p["speed_ok"] or p["lead_ok"]
+        else "NOT REPRODUCED"
+    )
     all_ci = all(cmp[a][k].get("lo", -1) > 0 for a in OTHERS for k in ("final_best", "median_candidate"))
     means = all(cmp[a]["final_best"].get("mean_diff", 0) > 0 for a in OTHERS)
     q4_verdict = "REPRODUCED" if all_ci else "PARTIAL" if means else "NOT REPRODUCED"
@@ -113,12 +151,23 @@ def main():
             return
     rows = [r for p in sorted(RESULTS.glob(f"{NAME}.part*.json")) for r in json.loads(p.read_text())]
     by, seeds, summ, cmp, q5, q5v, q4v = analyse(rows)
-    print(table([[a, fmt(summ[a]["final_best"]), fmt(summ[a]["median_candidate"]), fmt(summ[a]["selected_test"])]
-                 for a in ARMS], ["arm", "final best (search)", "median candidate", "selected (test)"]))
+    print(
+        table(
+            [
+                [a, fmt(summ[a]["final_best"]), fmt(summ[a]["median_candidate"]), fmt(summ[a]["selected_test"])]
+                for a in ARMS
+            ],
+            ["arm", "final best (search)", "median candidate", "selected (test)"],
+        )
+    )
     for a in cmp:
         print(f"MH - {a}: final {cmp[a]['final_best']}, median {cmp[a]['median_candidate']}")
-    print("Q5:", json.dumps({k: {kk: vv for kk, vv in v.items() if kk != 'evals_to_match_per_seed'}
-                             for k, v in q5.items()}, default=str))
+    print(
+        "Q5:",
+        json.dumps(
+            {k: {kk: vv for kk, vv in v.items() if kk != "evals_to_match_per_seed"} for k, v in q5.items()}, default=str
+        ),
+    )
     print("verdicts: Q4", q4v, "| Q5", q5v)
     png = RESULTS / f"{NAME}.png"
     f, ax = plt().subplots(figsize=(6.5, 4))
@@ -131,18 +180,35 @@ def main():
     ax.legend(fontsize=8)
     f.tight_layout()
     f.savefig(png, dpi=120)
-    save(NAME, {
-        "claim": "Q4/Q5: at an equal budget MH beats Best-of-N, OpenEvolve, TTT-Discover and GEPA; it matches the "
-                 "next-best method's final accuracy within 4 evaluations and ends >10 points above [MH §4.1, Table 4, "
-                 "Figs. 1, 4]",
-        "preregistration": "claims-audit-metaharness.md, Retry round 2: preregistration, P1",
-        "config": {"seeds": seeds, "iterations": N_ITER, "k": K, "budget": BUDGET, "proposer": "MockProposer",
-                   "arms": list(ARMS), "domain": "memoclassify scale 1.0", "model": "MemoLM-A"},
-        "summary": summ, "paired_mh_minus_arm": cmp, "q5": q5, "verdict_q4": q4v, "verdict_q5": q5v,
-        "per_seed": rows, "figure": str(png),
-        "caveat": "All arms share the offline MockProposer; they differ in selection rule and context only. Its "
-                  "trace diagnosis is written by us (see M1), so the MH advantage here is the mock's designed-in "
-                  "use of traces, now measured against faithful selection rules."})
+    save(
+        NAME,
+        {
+            "claim": "Q4/Q5: at an equal budget MH beats Best-of-N, OpenEvolve, TTT-Discover and GEPA; it matches the "
+            "next-best method's final accuracy within 4 evaluations and ends >10 points above [MH §4.1, Table 4, "
+            "Figs. 1, 4]",
+            "preregistration": "claims-audit-metaharness.md, Retry round 2: preregistration, P1",
+            "config": {
+                "seeds": seeds,
+                "iterations": N_ITER,
+                "k": K,
+                "budget": BUDGET,
+                "proposer": "MockProposer",
+                "arms": list(ARMS),
+                "domain": "memoclassify scale 1.0",
+                "model": "MemoLM-A",
+            },
+            "summary": summ,
+            "paired_mh_minus_arm": cmp,
+            "q5": q5,
+            "verdict_q4": q4v,
+            "verdict_q5": q5v,
+            "per_seed": rows,
+            "figure": str(png),
+            "caveat": "All arms share the offline MockProposer; they differ in selection rule and context only. Its "
+            "trace diagnosis is written by us (see M1), so the MH advantage here is the mock's designed-in "
+            "use of traces, now measured against faithful selection rules.",
+        },
+    )
 
 
 if __name__ == "__main__":

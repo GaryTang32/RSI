@@ -1,4 +1,5 @@
 """Helpers shared by the autoresearch tests."""
+
 import shutil
 import threading
 
@@ -39,8 +40,9 @@ def task_guard(task) -> ScopeGuard:
 
 
 def context(artifact, program: str = "", git_log: str = "") -> AgentContext:
-    return AgentContext(program=program, artifact=artifact, editable=("train.py",), locked=(), results_tsv="",
-                        git_log=git_log)
+    return AgentContext(
+        program=program, artifact=artifact, editable=("train.py",), locked=(), results_tsv="", git_log=git_log
+    )
 
 
 def run_threads(loops) -> None:

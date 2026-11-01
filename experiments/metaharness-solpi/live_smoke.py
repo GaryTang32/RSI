@@ -1,8 +1,9 @@
 """Live smoke run (one small end-to-end run with a real LLM; cached; well under $1).
 
-    python experiments/metaharness-solpi/live_smoke.py [--llm claude:haiku] [--parts metaharness,epr,lineage]
-                                                      [--cache-dir DIR]
+python experiments/metaharness-solpi/live_smoke.py [--llm claude:haiku] [--parts metaharness,epr,lineage]
+                                                  [--cache-dir DIR]
 """
+
 from __future__ import annotations
 
 import json
@@ -15,11 +16,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _common import RESULTS, candidate_rows, fresh_dir, live_llm, parse_args, save  # noqa: E402
 
 from rsi.core import CachedLLM, ClaudeCLI, Evaluator  # noqa: E402
-from rsi.domains.agentworld import MockAgentLLM, make_domain as make_world  # noqa: E402
+from rsi.domains.agentworld import MockAgentLLM  # noqa: E402
+from rsi.domains.agentworld import make_domain as make_world
 from rsi.domains.memoclassify import make_domain  # noqa: E402
-from rsi.metaharness import Config as MHConfig, run as mh_run  # noqa: E402
-from rsi.solpi import (DualGate, GateSpec, Idea, LLMMechanismProposer, LLMReducer, Lineage, SmokeReviewer,  # noqa
-                       metrics_from_eval)
+from rsi.metaharness import Config as MHConfig  # noqa: E402
+from rsi.metaharness import run as mh_run
+from rsi.solpi import (  # noqa
+    DualGate,
+    GateSpec,
+    Idea,
+    Lineage,
+    LLMMechanismProposer,
+    LLMReducer,
+    SmokeReviewer,
+    metrics_from_eval,
+)
 
 ALL_PARTS = {"metaharness", "epr", "lineage"}
 
@@ -27,31 +38,52 @@ ALL_PARTS = {"metaharness", "epr", "lineage"}
 def mh_part(llm) -> dict:
     """Meta-Harness with a live RewriteProposer on MemoClassify (scale 0.4, 2 iterations x k = 2)."""
     dom = make_domain(seed=0, scale=0.4)
-    res = mh_run(dom, dom.seed_artifact("fewshot_all"), llm_task=dom.make_model("A"), llm_propose=llm,
-                 config=MHConfig(iterations=2, k=2, seed=0), out_dir=fresh_dir("live", "metaharness"),
-                 baselines=dom.baselines())
+    res = mh_run(
+        dom,
+        dom.seed_artifact("fewshot_all"),
+        llm_task=dom.make_model("A"),
+        llm_propose=llm,
+        config=MHConfig(iterations=2, k=2, seed=0),
+        out_dir=fresh_dir("live", "metaharness"),
+        baselines=dom.baselines(),
+    )
     st = res.loop.store
     cands = candidate_rows(st, ("status", "reason", "base_system", "hypothesis"))
     sessions = []
     for d in sorted(st.sessions_dir().glob("iter*")):
         m = json.loads((d / "meta.json").read_text())
-        sessions.append({"iteration": m["iteration"], "files_read_by_kind": m["files_read_by_kind"],
-                         "view_files": m["view_files"], "view_chars": m["view_chars"], "read_chars": m["read_chars"],
-                         "trace_files_rendered": sum("/traces/" in p for p in m["files_read"]),
-                         "reports_written": m.get("reports_written", []),
-                         "usage": m["usage"], "error": m["error"]})
+        sessions.append(
+            {
+                "iteration": m["iteration"],
+                "files_read_by_kind": m["files_read_by_kind"],
+                "view_files": m["view_files"],
+                "view_chars": m["view_chars"],
+                "read_chars": m["read_chars"],
+                "trace_files_rendered": sum("/traces/" in p for p in m["files_read"]),
+                "reports_written": m.get("reports_written", []),
+                "usage": m["usage"],
+                "error": m["error"],
+            }
+        )
     print("[metaharness]", res.meta["best_system"], {c["name"]: (c["status"], c["search"]) for c in cands})
-    return {"candidates": cands, "best": res.meta["best_system"], "frontier": res.meta["frontier"]["_pareto"],
-            "test": {k: v["score"] for k, v in res.meta["final"]["splits"]["test"]["results"].items()},
-            "proposer_usage": llm.meter.snapshot(), "iterations": res.trajectory, "sessions": sessions,
-            "reports": sorted(p.name for p in st.reports_dir().glob("*.md")),
-            "generated_with": "post-audit code (renderer with traces, full traces, all-calls context, skill Step 0/2, "
-                              "objective statement), fresh cache"}
+    return {
+        "candidates": cands,
+        "best": res.meta["best_system"],
+        "frontier": res.meta["frontier"]["_pareto"],
+        "test": {k: v["score"] for k, v in res.meta["final"]["splits"]["test"]["results"].items()},
+        "proposer_usage": llm.meter.snapshot(),
+        "iterations": res.trajectory,
+        "sessions": sessions,
+        "reports": sorted(p.name for p in st.reports_dir().glob("*.md")),
+        "generated_with": "post-audit code (renderer with traces, full traces, all-calls context, skill Step 0/2, "
+        "objective statement), fresh cache",
+    }
 
 
 def epr_part(llm) -> dict:
     """SoL-Pi's Evidence-Preserving Reducer with a live reducer; every receipt is validated byte-for-byte."""
     from s3_reducer import bench_logs, run_bench
+
     bench = run_bench(LLMReducer(llm), bench_logs(1))
     bench["usage"] = llm.meter.snapshot()
     print("[epr]", bench["outcomes"], "nonverbatim", bench["nonverbatim"])
@@ -65,15 +97,38 @@ def lineage_part(llm) -> dict:
     ev = Evaluator(world, agent)
     base = world.seed_artifact()
     bm = metrics_from_eval(ev.evaluate(base, "evolve"))
-    idea = Idea("L1", "C", "Stop replaying large successful tool outputs in every later request; keep them "
-                           "recallable", "", [{}], "none")
-    lr = Lineage(idea, evaluator=ev, gate=DualGate(GateSpec()), proposer=LLMMechanismProposer(llm),
-                 reviewer=SmokeReviewer(world, agent), base=base, base_metrics=bm, max_iters=2, ralph_max=2).run()
-    print("[lineage]", [(it.get("stage"), it.get("outcome"), (it.get("gate") or {}).get("reason"), it.get("error"))
-                        for it in lr.iterations])
-    return {"frozen": lr.frozen is not None,
-            "iterations": [{k: v for k, v in it.items() if k != "metrics"} for it in lr.iterations],
-            "code": (lr.frozen.artifact.files if lr.frozen else None), "usage": llm.meter.snapshot()}
+    idea = Idea(
+        "L1",
+        "C",
+        "Stop replaying large successful tool outputs in every later request; keep them recallable",
+        "",
+        [{}],
+        "none",
+    )
+    lr = Lineage(
+        idea,
+        evaluator=ev,
+        gate=DualGate(GateSpec()),
+        proposer=LLMMechanismProposer(llm),
+        reviewer=SmokeReviewer(world, agent),
+        base=base,
+        base_metrics=bm,
+        max_iters=2,
+        ralph_max=2,
+    ).run()
+    print(
+        "[lineage]",
+        [
+            (it.get("stage"), it.get("outcome"), (it.get("gate") or {}).get("reason"), it.get("error"))
+            for it in lr.iterations
+        ],
+    )
+    return {
+        "frozen": lr.frozen is not None,
+        "iterations": [{k: v for k, v in it.items() if k != "metrics"} for it in lr.iterations],
+        "code": (lr.frozen.artifact.files if lr.frozen else None),
+        "usage": llm.meter.snapshot(),
+    }
 
 
 def part_usd(p: dict, key: str) -> float:
@@ -83,24 +138,34 @@ def part_usd(p: dict, key: str) -> float:
 
 def make_verdict(out: dict, spent: dict) -> str:
     pm, pe, pl = (out["parts"].get(k, {}) for k in ("metaharness", "epr", "lineage"))
-    mh_c = [c for c in pm.get("candidates", []) if c.get("status") == "evaluated" and c["name"] not in
-            ("no_memory", "fewshot_all")]
+    mh_c = [
+        c
+        for c in pm.get("candidates", [])
+        if c.get("status") == "evaluated" and c["name"] not in ("no_memory", "fewshot_all")
+    ]
     fa = next((c["search"] for c in pm.get("candidates", []) if c["name"] == "fewshot_all"), float("nan"))
     best_c = max([c["search"] for c in mh_c] or [float("nan")])
     tr = [s.get("trace_files_rendered", 0) for s in pm.get("sessions", [])]
-    return (f"live end-to-end OK: Meta-Harness evaluated {len(mh_c)} haiku-written candidates (best "
-            f"{pm.get('best')}; best candidate search {best_c:.3f} vs fewshot_all {fa:.3f}; trace files "
-            f"rendered per iteration {tr}; reports {pm.get('reports')}); EPR accepted "
-            f"{pe.get('accepted')}/{pe.get('n_logs')} haiku receipts with {pe.get('nonverbatim')} "
-            f"non-verbatim quotes; LLM lineage "
-            f"{'froze a mechanism' if pl.get('frozen') else 'did not pass the gate'}; "
-            f"cost of all parts ${out['total_usd']:.3f} (this run ${sum(spent.values()):.3f})")
+    return (
+        f"live end-to-end OK: Meta-Harness evaluated {len(mh_c)} haiku-written candidates (best "
+        f"{pm.get('best')}; best candidate search {best_c:.3f} vs fewshot_all {fa:.3f}; trace files "
+        f"rendered per iteration {tr}; reports {pm.get('reports')}); EPR accepted "
+        f"{pe.get('accepted')}/{pe.get('n_logs')} haiku receipts with {pe.get('nonverbatim')} "
+        f"non-verbatim quotes; LLM lineage "
+        f"{'froze a mechanism' if pl.get('frozen') else 'did not pass the gate'}; "
+        f"cost of all parts ${out['total_usd']:.3f} (this run ${sum(spent.values()):.3f})"
+    )
 
 
 def main():
-    args = parse_args(__doc__.splitlines()[0], default_seeds=1, extra=lambda ap: (
-        ap.add_argument("--parts", default="metaharness,epr,lineage"),
-        ap.add_argument("--cache-dir", default=None, help="cache for the Meta-Harness proposer (default: shared)")))
+    args = parse_args(
+        __doc__.splitlines()[0],
+        default_seeds=1,
+        extra=lambda ap: (
+            ap.add_argument("--parts", default="metaharness,epr,lineage"),
+            ap.add_argument("--cache-dir", default=None, help="cache for the Meta-Harness proposer (default: shared)"),
+        ),
+    )
     if not args.live:
         args.llm = "claude:haiku"
         args.live = True

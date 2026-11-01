@@ -1,11 +1,12 @@
 """Parallel variants: several experiments in flight on one branch, and independent chains."""
+
 from __future__ import annotations
 
 import hashlib
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Callable, Optional
 
 from ..core.run import ImprovementResult
 from .executors import Executor, FakeSlurmExecutor, LocalProcessExecutor
@@ -15,22 +16,28 @@ from .loop import AutoresearchLoop
 class ParallelAutoresearchLoop(AutoresearchLoop):
     """Up to ``workers`` experiments in flight, each judged against the incumbent when it completes."""
 
-    def __init__(self, *args, pool: Optional[Executor] = None, **kw) -> None:
+    def __init__(self, *args, pool: Executor | None = None, **kw) -> None:
         super().__init__(*args, **kw)
         w = max(1, self.cfg.workers)
         if pool is None:
-            pool = FakeSlurmExecutor(nodes=w, spool_dir=self.out / "slurm") if self.cfg.executor == "slurm" \
+            pool = (
+                FakeSlurmExecutor(nodes=w, spool_dir=self.out / "slurm")
+                if self.cfg.executor == "slurm"
                 else LocalProcessExecutor(workers=w)
+            )
         self.pool = pool
         self.inflight: dict[str, tuple] = {}
         self.completion_order: list[int] = []
-        self._deferred: list[tuple] = []           # shadow audits postponed while runs are in flight
+        self._deferred: list[tuple] = []  # shadow audits postponed while runs are in flight
         self.n_deferred_audits = 0
 
     def _audit_competes(self) -> bool:
         """A shadow audit re-trains the incumbent; under a wall-clock budget it would steal CPU from in-flight runs."""
-        return (self.monitor is not None and bool(self.inflight)
-                and getattr(self.task.budget, "kind", "") in ("wallclock", "ceiling"))
+        return (
+            self.monitor is not None
+            and bool(self.inflight)
+            and getattr(self.task.budget, "kind", "") in ("wallclock", "ceiling")
+        )
 
     def _kept(self, round: int, name: str, art, score) -> None:
         if self._audit_competes():
@@ -53,8 +60,15 @@ class ParallelAutoresearchLoop(AutoresearchLoop):
         emeta["submitted_on"] = self.inc["sha"][:7]
         emeta["exp_index"] = self.n_rounds
         self.n_runs += 1
-        jid = self.pool.submit(self.task, cand, seed=self._seeds(self.keep.repeats)[0], mode=self.cfg.mode,
-                               log_path=self._log_path(name), val_epoch=self.val_epoch, meta={"tag": name})
+        jid = self.pool.submit(
+            self.task,
+            cand,
+            seed=self._seeds(self.keep.repeats)[0],
+            mode=self.cfg.mode,
+            log_path=self._log_path(name),
+            val_epoch=self.val_epoch,
+            meta={"tag": name},
+        )
         self.inflight[jid] = (ctx, cand, desc, emeta, name, self.n_rounds)
         return True
 
@@ -101,9 +115,12 @@ class ParallelAutoresearchLoop(AutoresearchLoop):
         self.stop_reason = stop
         self.pool.shutdown()
         res = self.finish()
-        par = res.meta["parallel"] = {"workers": self.cfg.workers, "executor": type(self.pool).__name__,
-                                      "completion_order": self.completion_order,
-                                      "deferred_audits": self.n_deferred_audits}
+        par = res.meta["parallel"] = {
+            "workers": self.cfg.workers,
+            "executor": type(self.pool).__name__,
+            "completion_order": self.completion_order,
+            "deferred_audits": self.n_deferred_audits,
+        }
         if isinstance(self.pool, FakeSlurmExecutor):
             par["slurm_states"] = sorted({j.state for j in self.pool.jobs.values()})
             par["slurm_warnings"] = list(self.pool.warnings)
@@ -113,8 +130,14 @@ class ParallelAutoresearchLoop(AutoresearchLoop):
 class MultiChainLauncher:
     """N independent chains (upstream ``spawn.sh``); ``make_loop(i, out_dir)`` builds chain ``i``."""
 
-    def __init__(self, make_loop: Callable[[int, Path], AutoresearchLoop], n: int, out_dir: str | Path,
-                 tag: str = "run", concurrent: bool = True) -> None:
+    def __init__(
+        self,
+        make_loop: Callable[[int, Path], AutoresearchLoop],
+        n: int,
+        out_dir: str | Path,
+        tag: str = "run",
+        concurrent: bool = True,
+    ) -> None:
         self.make_loop = make_loop
         self.n = n
         self.out = Path(out_dir)

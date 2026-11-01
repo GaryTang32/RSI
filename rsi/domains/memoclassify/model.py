@@ -1,4 +1,5 @@
 """MemoLM: a frozen deterministic simulated LLM classifying from in-context demonstrations, label lists and notes."""
+
 from __future__ import annotations
 
 import hashlib
@@ -6,16 +7,22 @@ import json
 import random
 import re
 import threading
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 from ...core.llm import LLM, LLMResponse, Usage, estimate_tokens
 from .data import ClassDataset
 
 _TOK = re.compile(r"[a-z0-9]{3,}")
-_PAIR = re.compile(r"^[ \t>*-]*(?:Q|Input|Text|Question|Example|Query)\s*[:=]\s*(?P<q>.+?)\s*\n"
-                   r"[ \t>*-]*(?:A|Label|Answer|Output|Category|Class)\s*[:=]\s*(?P<a>[^\n]+)", re.M | re.I)
-_LABELS = re.compile(r"^[ \t>*-]*(?:labels|allowed labels|possible labels|valid labels|categories|label set|"
-                     r"options|classes)\s*:\s*(?P<body>.*)$", re.M | re.I)
+_PAIR = re.compile(
+    r"^[ \t>*-]*(?:Q|Input|Text|Question|Example|Query)\s*[:=]\s*(?P<q>.+?)\s*\n"
+    r"[ \t>*-]*(?:A|Label|Answer|Output|Category|Class)\s*[:=]\s*(?P<a>[^\n]+)",
+    re.M | re.I,
+)
+_LABELS = re.compile(
+    r"^[ \t>*-]*(?:labels|allowed labels|possible labels|valid labels|categories|label set|"
+    r"options|classes)\s*:\s*(?P<body>.*)$",
+    re.M | re.I,
+)
 _NOTE = re.compile(r"^[ \t]*(?:[-*]\s*)?(?P<label>[a-z]{2,}-[a-z]{2,})\s*(?::|=>|->)\s*(?P<words>[^\n]+)$", re.M | re.I)
 
 VARIANTS = {
@@ -40,8 +47,14 @@ def _jacc(a: frozenset, b: frozenset) -> float:
 
 
 class MemoLM(LLM):
-    def __init__(self, datasets: Iterable[ClassDataset], variant: str = "A", *, budget_chars: Optional[int] = None,
-                 name: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        datasets: Iterable[ClassDataset],
+        variant: str = "A",
+        *,
+        budget_chars: int | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.variant = variant
         p = VARIANTS[variant]
@@ -52,7 +65,7 @@ class MemoLM(LLM):
         self.name = name or f"memolm-{variant}"
         self.inputs: dict[str, str] = {}
         self.labels: set[str] = set()
-        self.knowledge: dict[str, str] = {}      # keyword -> label the model associates it with
+        self.knowledge: dict[str, str] = {}  # keyword -> label the model associates it with
         for ds in datasets:
             self.labels.update(ds.labels)
             for part in (ds.train, ds.val, ds.test):
@@ -78,7 +91,7 @@ class MemoLM(LLM):
         return s.strip().strip("`*\"'.,;[]{}() ").lower()
 
     def parse(self, prompt: str) -> dict:
-        examples = []   # (start, end, question, label)
+        examples = []  # (start, end, question, label)
         for m in _PAIR.finditer(prompt):
             lab = self._norm_label(m.group("a"))
             if lab in self.labels:
@@ -98,11 +111,11 @@ class MemoLM(LLM):
         query = self._find_query(prompt, [(e[0], e[1]) for e in examples])
         return {"examples": examples, "labels": label_list, "notes": notes, "query": query}
 
-    def _find_query(self, prompt: str, spans: list[tuple[int, int]]) -> Optional[str]:
+    def _find_query(self, prompt: str, spans: list[tuple[int, int]]) -> str | None:
         def inside(pos: int) -> bool:
             return any(a <= pos < b for a, b in spans)
 
-        best: tuple[int, Optional[str]] = (-1, None)
+        best: tuple[int, str | None] = (-1, None)
         pos = 0
         for line in prompt.splitlines(keepends=True):
             s = line.strip()
@@ -116,19 +129,19 @@ class MemoLM(LLM):
             pos += len(line)
         if best[1] is not None:
             return best[1]
-        for inp in self.inputs:            # slow path: inputs embedded mid-line
+        for inp in self.inputs:  # slow path: inputs embedded mid-line
             i = prompt.rfind(inp)
             if i >= 0 and not inside(i) and i > best[0]:
                 best = (i, inp)
         return best[1]
 
-    def classify(self, prompt: str, seed: Optional[int] = None) -> tuple[Optional[str], dict]:
+    def classify(self, prompt: str, seed: int | None = None) -> tuple[str | None, dict]:
         info = self.parse(prompt)
         q = info["query"]
         n = len(prompt)
         overflow = max(0.0, (n - self.budget) / self.budget)
         examples = info["examples"]
-        if overflow > 0:                   # lost in the middle
+        if overflow > 0:  # lost in the middle
             half = self.budget / 2
             examples = [e for e in examples if e[0] < half or e[1] > n - half]
         cand: dict[str, list[float]] = {}
@@ -141,8 +154,13 @@ class MemoLM(LLM):
         for _, _, eq, lab in examples:
             cand.setdefault(lab, []).append(_jacc(qt, self._tok(eq.lower().split("options:", 1)[0])))
         labels = set(cand) | info["labels"] | opts
-        diag = {"n_examples": len(info["examples"]), "n_visible": len(examples), "n_labels": len(labels),
-                "overflow": round(overflow, 3), "query_found": q is not None}
+        diag = {
+            "n_examples": len(info["examples"]),
+            "n_visible": len(examples),
+            "n_labels": len(labels),
+            "overflow": round(overflow, 3),
+            "query_found": q is not None,
+        }
         if not labels or q is None:
             return None, diag
         scores = {}

@@ -1,10 +1,11 @@
 """Resume-safe USD accounting of one run directory (``spend.json``, one segment per process)."""
+
 from __future__ import annotations
 
 import json
 import threading
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from ..core.llm import LLM, UsageMeter
 
@@ -32,8 +33,12 @@ class SpendLedger:
             saved = getattr(l, "saved", None)
             if isinstance(saved, UsageMeter):
                 replayed += saved.total().cost_usd
-        return {"segment": self.index, "usd": round(live + replayed, 6), "live_usd": round(live, 6),
-                "replayed_usd": round(replayed, 6)}
+        return {
+            "segment": self.index,
+            "usd": round(live + replayed, 6),
+            "live_usd": round(live, 6),
+            "replayed_usd": round(replayed, 6),
+        }
 
     def total(self) -> float:
         """USD charged to this run directory so far (earlier processes + this one)."""
@@ -41,8 +46,12 @@ class SpendLedger:
 
     def summary(self) -> dict:
         cur = self.current()
-        return {"prior_segments_usd": round(self.prior_usd, 6), "this_process": cur,
-                "run_total_usd": round(self.prior_usd + cur["usd"], 6), "n_segments": self.index + 1}
+        return {
+            "prior_segments_usd": round(self.prior_usd, 6),
+            "this_process": cur,
+            "run_total_usd": round(self.prior_usd + cur["usd"], 6),
+            "n_segments": self.index + 1,
+        }
 
     def checkpoint(self) -> None:
         """Record this process's segment (atomic write)."""

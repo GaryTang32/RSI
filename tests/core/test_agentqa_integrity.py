@@ -1,4 +1,5 @@
 """AgentQA harness isolation: watchdog on non-terminating harnesses, grader-tampering tripwire, sealed splits."""
+
 from __future__ import annotations
 
 import threading
@@ -24,8 +25,12 @@ def sim(dom):
 
 
 def H(body: str, top: str = "") -> Artifact:
-    return Artifact({"harness.py": top + "def solve(question, llm, tools, files):\n" + body,
-                     "prompts/task.md": "{question}\nReply with ANSWER: <value>.\n"})
+    return Artifact(
+        {
+            "harness.py": top + "def solve(question, llm, tools, files):\n" + body,
+            "prompts/task.md": "{question}\nReply with ANSWER: <value>.\n",
+        }
+    )
 
 
 def _t(dom):
@@ -40,11 +45,14 @@ def _errors(ev):
     return [t.error for trs in ev.trials.values() for t in trs]
 
 
-@pytest.mark.parametrize("art", [
-    H("    while True:\n        pass\n"),
-    H("    while True:\n        try:\n            x = 1\n        except BaseException:\n            pass\n"),
-    H("    return 'x'\n", top="while True:\n    pass\n"),                   # loops at import time
-])
+@pytest.mark.parametrize(
+    "art",
+    [
+        H("    while True:\n        pass\n"),
+        H("    while True:\n        try:\n            x = 1\n        except BaseException:\n            pass\n"),
+        H("    return 'x'\n", top="while True:\n    pass\n"),  # loops at import time
+    ],
+)
 def test_non_terminating_harness_is_stopped_and_graded(dom, sim, art):
     t0 = time.time()
     ev = Evaluator(dom, sim, workers=2).evaluate(art, "evolve", k=1)
@@ -52,19 +60,21 @@ def test_non_terminating_harness_is_stopped_and_graded(dom, sim, art):
     assert ev.score == 0.0 and ev.n_missing == 0
     assert all(e.startswith("HarnessTimeout") for e in _errors(ev))
     deadline = time.time() + 20
-    while _harness_threads() and time.time() < deadline:            # the reaper ends the spinning threads
+    while _harness_threads() and time.time() < deadline:  # the reaper ends the spinning threads
         time.sleep(0.1)
     assert not _harness_threads()
 
 
 def test_time_inside_model_and_tool_calls_is_not_counted(dom):
     slow = MockLLM(lambda p, s, seed, i: (time.sleep(0.25), "ANSWER: 1")[1], name="slow")
-    art = H("    for _ in range(3):\n        r = llm(question)\n"
-            "    out = tools.python('import time; time.sleep(0.6); print(5)')\n    return r + out\n")
-    tr = dom.run(art, _t(dom), llm=slow)                              # 0.75 s in the model + 0.6 s in the tool
+    art = H(
+        "    for _ in range(3):\n        r = llm(question)\n"
+        "    out = tools.python('import time; time.sleep(0.6); print(5)')\n    return r + out\n"
+    )
+    tr = dom.run(art, _t(dom), llm=slow)  # 0.75 s in the model + 0.6 s in the tool
     assert tr.error is None and tr.meta == {"llm_calls": 3, "tool_calls": 1}
     tr = dom.run(H("    import time\n    time.sleep(0.2)\n    return 'ANSWER: 1'\n"), _t(dom), llm=slow)
-    assert tr.error is None                                           # own time under the budget is fine
+    assert tr.error is None  # own time under the budget is fine
 
 
 def test_timed_out_harness_can_no_longer_call_the_model(dom):
@@ -94,11 +104,15 @@ def test_default_budget_and_normal_harnesses_unchanged():
 
 EVIL = [
     ("import rsi.domains.agentqa.domain as d\nd.is_correct = lambda *a: True\n", "is_correct"),
-    ("from rsi.domains.agentqa.domain import AgentQADomain\nAgentQADomain.grade = lambda self, t, e: (1.0, '')\n",
-     "AgentQADomain.grade"),
+    (
+        "from rsi.domains.agentqa.domain import AgentQADomain\nAgentQADomain.grade = lambda self, t, e: (1.0, '')\n",
+        "AgentQADomain.grade",
+    ),
     ("import builtins\nbuiltins.float = lambda *a: 0.0\n", "builtins.float"),
-    ("import rsi.core.evaluate as e\ne.EvalResult.task_scores = lambda self: {k: 1.0 for k in self.trials}\n",
-     "EvalResult.task_scores"),
+    (
+        "import rsi.core.evaluate as e\ne.EvalResult.task_scores = lambda self: {k: 1.0 for k in self.trials}\n",
+        "EvalResult.task_scores",
+    ),
 ]
 
 
@@ -108,13 +122,13 @@ def test_grader_tampering_is_caught_and_undone(dom, sim, patch, name):
     ev = Evaluator(dom, sim, workers=1).evaluate(H("    return 'ANSWER: wrong'\n", top=patch), "evolve", k=2)
     assert ev.score == 0.0
     assert all(e.startswith("tamper:") and name in e for e in _errors(ev)), _errors(ev)
-    assert {n: getattr(o, n) for o, n, _ in aqd._INTEGRITY} == orig   # everything restored
+    assert {n: getattr(o, n) for o, n, _ in aqd._INTEGRITY} == orig  # everything restored
     honest = Evaluator(dom, sim, workers=1).evaluate(H("    return 'ANSWER: wrong'\n"), "evolve", k=2)
-    assert honest.score == 0.0 and honest.error_rate == 0.0          # later trials are graded honestly
+    assert honest.score == 0.0 and honest.error_rate == 0.0  # later trials are graded honestly
 
 
 def test_grade_restores_a_concurrently_patched_grader(dom, monkeypatch):
-    monkeypatch.setattr(aqd, "is_correct", lambda *a: True)          # as if another harness thread did it
+    monkeypatch.setattr(aqd, "is_correct", lambda *a: True)  # as if another harness thread did it
     assert dom.grade(_t(dom), Execution(output="ANSWER: definitely wrong"))[0] == 0.0
     assert aqd.is_correct is is_correct
 

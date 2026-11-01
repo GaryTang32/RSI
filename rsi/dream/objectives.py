@@ -1,9 +1,10 @@
 """Replay objectives: paper v2 Eq. 1 (default), v1's Eq. 1 per episode, and the Listing-2 pooled sweep reward."""
+
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
-from typing import Optional, Sequence
 
 import numpy as np
 
@@ -11,14 +12,14 @@ import numpy as np
 @dataclass
 class EpisodeResult:
     world_id: str
-    beta: Optional[float]
+    beta: float | None
     plan: dict
     requested_plan: dict
     out_of_support: bool
     N: int
     k: int
     batch_sizes: list[int]
-    best: Optional[float]
+    best: float | None
     root: float
     ceiling: float
     world_size: int
@@ -26,10 +27,10 @@ class EpisodeResult:
     curve: list = field(default_factory=list)
     revealed: list[str] = field(default_factory=list)
     reveal_round: dict = field(default_factory=dict)
-    error: Optional[str] = None
+    error: str | None = None
     violations: list[str] = field(default_factory=list)
     batch_errors: list[str] = field(default_factory=list)
-    plan_error: Optional[str] = None
+    plan_error: str | None = None
     cpu_s: float = 0.0
     trace: list[dict] = field(default_factory=list)
 
@@ -97,8 +98,10 @@ class Eq1Objective:
 
     def describe(self) -> str:
         norm = "normalized per world" if self.normalize else "raw scores"
-        return (f"Eq.1 replay score V = best - {self.beta1:g}*N + {self.beta2:g}*N/max(1,k) ({norm}); "
-                f"V of the policy = mean over all replay worlds")
+        return (
+            f"Eq.1 replay score V = best - {self.beta1:g}*N + {self.beta2:g}*N/max(1,k) ({norm}); "
+            f"V of the policy = mean over all replay worlds"
+        )
 
 
 @dataclass
@@ -122,8 +125,9 @@ class ParetoSweepObjective:
         if e.disqualified or e.best is None:
             return 0.0
         if not e.ceiling > 0:
-            raise ValueError("attainment_mode='ratio' (S/G) needs positive trace scores; this trace's best is "
-                             f"{e.ceiling!r}")
+            raise ValueError(
+                f"attainment_mode='ratio' (S/G) needs positive trace scores; this trace's best is {e.ceiling!r}"
+            )
         return float(min(1.0, max(0.0, e.best / e.ceiling)))
 
     def sweep(self, by_beta: dict[float, Sequence[EpisodeResult]]) -> dict:
@@ -133,18 +137,32 @@ class ParetoSweepObjective:
             if not eps:
                 continue
             pen = [(e.eff_rounds / e.N) if (e.N > 0 and not e.disqualified) else 1.0 for e in eps]
-            pts.append({"beta": b, "probes_frac": float(np.mean([e.probe_frac for e in eps])),
-                        "attainment": float(np.mean([self.attainment(e) for e in eps])),
-                        "N": float(np.mean([e.N for e in eps])), "k": float(np.mean([e.k for e in eps])),
-                        "mean_batch": float(np.mean([e.mean_batch for e in eps])),
-                        "parallel_penalty": float(np.mean(pen)), "disqualified": int(sum(e.disqualified for e in eps))})
+            pts.append(
+                {
+                    "beta": b,
+                    "probes_frac": float(np.mean([e.probe_frac for e in eps])),
+                    "attainment": float(np.mean([self.attainment(e) for e in eps])),
+                    "N": float(np.mean([e.N for e in eps])),
+                    "k": float(np.mean([e.k for e in eps])),
+                    "mean_batch": float(np.mean([e.mean_batch for e in eps])),
+                    "parallel_penalty": float(np.mean(pen)),
+                    "disqualified": int(sum(e.disqualified for e in eps)),
+                }
+            )
         auc, frontier = self.frontier_auc(pts)
         penalty = float(np.mean([p["parallel_penalty"] for p in pts])) if pts else 1.0
         att = [p["attainment"] for p in pts]
         work = [p["probes_frac"] for p in pts]
         degenerate = len(pts) < 2 or (max(att) - min(att) < 1e-9 and max(work) - min(work) < 1e-9)
-        return {"reward": auc - self.lam * penalty, "auc": auc, "parallel_penalty": penalty, "lambda": self.lam,
-                "points": pts, "frontier": frontier, "degenerate": bool(degenerate)}
+        return {
+            "reward": auc - self.lam * penalty,
+            "auc": auc,
+            "parallel_penalty": penalty,
+            "lambda": self.lam,
+            "points": pts,
+            "frontier": frontier,
+            "degenerate": bool(degenerate),
+        }
 
     @staticmethod
     def frontier_auc(points: Sequence[dict]) -> tuple[float, list[dict]]:
@@ -166,9 +184,10 @@ class ParetoSweepObjective:
         return float(self.sweep(by_beta)["reward"])
 
     def describe(self) -> str:
-        return (f"pareto.reward = pareto.auc - {self.lam:g} * parallel_penalty over the beta grid "
-                f"{list(self.beta_grid)}" + (" (attainment = clip(S/G, 0, 1))" if self.attainment_mode == "ratio"
-                                             else ""))
+        return (
+            f"pareto.reward = pareto.auc - {self.lam:g} * parallel_penalty over the beta grid "
+            f"{list(self.beta_grid)}" + (" (attainment = clip(S/G, 0, 1))" if self.attainment_mode == "ratio" else "")
+        )
 
 
 @dataclass
@@ -188,14 +207,16 @@ class HypervolumeObjective(ParetoSweepObjective):
     def world_value(self, eps: Sequence[EpisodeResult]) -> float:
         if any(e.disqualified for e in eps):
             return -self.lam - self.disqualified_margin
-        pts = [{"probes_frac": min(1.0, e.N / max(1, e.world_size)), "attainment": self.attainment(e), "beta": e.beta}
-               for e in eps]
+        pts = [
+            {"probes_frac": min(1.0, e.N / max(1, e.world_size)), "attainment": self.attainment(e), "beta": e.beta}
+            for e in eps
+        ]
         auc, _ = self.frontier_auc(pts)
         penalty = sum(e.eff_rounds / e.N for e in eps if e.N > 0) / max(1, len(eps))
         return auc - self.lam * penalty
 
     def sweep(self, by_beta: dict[float, Sequence[EpisodeResult]]) -> dict:
-        res = super().sweep(by_beta)   # pooled points and frontier, kept for reports and the default-beta rule
+        res = super().sweep(by_beta)  # pooled points and frontier, kept for reports and the default-beta rule
         betas = [b for b in sorted(by_beta) if by_beta[b]]
         n = min(len(by_beta[b]) for b in betas) if betas else 0
         per = [self.world_value([by_beta[b][i] for b in betas]) for i in range(n)]
@@ -203,5 +224,7 @@ class HypervolumeObjective(ParetoSweepObjective):
         return res
 
     def describe(self) -> str:
-        return (f"v2 Eq. 1: per world, hypervolume of (calls, attainment) over rho {list(self.beta_grid)} "
-                f"- {self.lam:g} * mean k*/n; V = mean over all replay worlds")
+        return (
+            f"v2 Eq. 1: per world, hypervolume of (calls, attainment) over rho {list(self.beta_grid)} "
+            f"- {self.lam:g} * mean k*/n; V = mean over all replay worlds"
+        )

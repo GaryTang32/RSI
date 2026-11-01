@@ -1,8 +1,10 @@
 """Per-iteration trace, write-only shadow monitor, harmless tracing errors, and the step-by-step audit."""
+
 import json
 from functools import partial
 
 import pytest
+from rrsi_helpers import Paid, aq_run, aq_suite, hw_run, read_jsonl, snapshot, spy_splits
 
 from rsi.core import Budget
 from rsi.domains.agentqa import AgentQADomain, SimModel
@@ -11,10 +13,21 @@ from rsi.rrsi.audit import audit_events, audit_run
 from rsi.rrsi.mocks import AgentQAMockLLM, AgentQAMockProfile
 from rsi.trace import RunTracer, inspect, load_trace
 
-from rrsi_helpers import Paid, aq_run, aq_suite, hw_run, read_jsonl, snapshot, spy_splits
-
-KINDS = {"run_start", "baseline", "noise", "round_start", "analysis", "proposal", "critic", "eval", "gate",
-         "decision", "state", "monitor", "run_end"}
+KINDS = {
+    "run_start",
+    "baseline",
+    "noise",
+    "round_start",
+    "analysis",
+    "proposal",
+    "critic",
+    "eval",
+    "gate",
+    "decision",
+    "state",
+    "monitor",
+    "run_end",
+}
 MARKS = {"aq:self_consistency": "[rrsi:sc3]", "aq:python_tool": "[rrsi:tool]", "aq:checker": "[rrsi:checker]"}
 
 
@@ -22,8 +35,12 @@ _hw = partial(hw_run, seed=1, T=4)
 
 
 def _outcome(d, res) -> dict:
-    return snapshot(d) | {"best": res.best.id, "usage": dict(res.usage), "stop": res.stop_reason,
-                          "rollouts": res.meta["n_rollouts"]}
+    return snapshot(d) | {
+        "best": res.best.id,
+        "usage": dict(res.usage),
+        "stop": res.stop_reason,
+        "rollouts": res.meta["n_rollouts"],
+    }
 
 
 @pytest.mark.parametrize("runner", [aq_run, _hw], ids=["agentqa", "harnessworld"])
@@ -38,7 +55,7 @@ def test_shadow_monitor_and_trace_are_write_only(tmp_path, runner):
     assert "monitor" not in {e["kind"] for e in load_trace(tmp_path / "nomon")}
     assert not (tmp_path / "off" / "trace.jsonl").exists()
     end = [e for e in load_trace(tmp_path / "on") if e["kind"] == "run_end"][-1]["data"]
-    if runner is aq_run:                                  # the monitor ran rollouts on its own meter
+    if runner is aq_run:  # the monitor ran rollouts on its own meter
         assert end["shadow_monitor_usage"]["_total"]["calls"] > 0
     assert end["usage"] == json.loads(json.dumps(on.usage))
 
@@ -69,8 +86,20 @@ def test_trace_covers_every_step_and_renders(tmp_path):
             if d["n_changes"]:
                 assert d["diff"].startswith("--- a/") or d["diff"].startswith("--- /dev/null")
         if kind == "gate" and "gate_failure" not in d["math"]:
-            assert {"S_prime", "S_t", "S_star", "delta", "floor", "dS", "dC", "nu", "branch", "cost_limit",
-                    "shaped", "checks"} <= set(d["math"]) and d["consistent"]
+            assert {
+                "S_prime",
+                "S_t",
+                "S_star",
+                "delta",
+                "floor",
+                "dS",
+                "dC",
+                "nu",
+                "branch",
+                "cost_limit",
+                "shaped",
+                "checks",
+            } <= set(d["math"]) and d["consistent"]
         if kind in ("eval", "baseline"):
             assert d["per_task"] and all(len(v) == 2 for v in d["trials"].values())
         if kind == "round_start":
@@ -90,12 +119,18 @@ def test_loop_reads_only_evolve_and_monitor_reads_its_own_sealed_view(tmp_path):
     suite = aq_suite()
     dom = AgentQADomain(suite)
     calls = spy_splits(dom)
-    run(dom, AgentQADomain.seed_artifact(), llm_task=SimModel(suite), llm_propose=AgentQAMockLLM(),
-        config=Config(T=2, k=2, workers=2), out_dir=tmp_path / "s")
+    run(
+        dom,
+        AgentQADomain.seed_artifact(),
+        llm_task=SimModel(suite),
+        llm_propose=AgentQAMockLLM(),
+        config=Config(T=2, k=2, workers=2),
+        out_dir=tmp_path / "s",
+    )
     assert {n for n, _ in calls} == {"evolve"}
     mon = [e["data"] for e in load_trace(tmp_path / "s") if e["kind"] == "monitor"]
     assert mon and all(set(m["sealed"]) == {"holdout", "ood"} for m in mon)
-    rep = audit_run(tmp_path / "s", domain=dom, write=False)       # no sealed id reached a search-LLM prompt
+    rep = audit_run(tmp_path / "s", domain=dom, write=False)  # no sealed id reached a search-LLM prompt
     row = [r for r in rep["checks"] if r["check"].startswith("sealed holdout/ood")]
     assert row and row[0]["status"] == "pass"
 
@@ -108,6 +143,7 @@ def test_tracing_errors_never_change_a_run(tmp_path, monkeypatch):
         if kind in ("proposal", "gate", "round_start", "monitor", "note") and data.get("stage") != "trace_error":
             raise OSError("disk full (simulated)")
         return orig(self, kind, round, **data)
+
     monkeypatch.setattr(RunTracer, "event", flaky)
     _, res = _hw(tmp_path / "flaky", T=3)
     assert _outcome(tmp_path / "flaky", res) == _outcome(tmp_path / "ref", ref)
@@ -129,9 +165,20 @@ def test_audit_rederives_every_step_and_catches_a_wrong_one(tmp_path):
 
 
 def test_agentqa_mock_never_declares_an_edit_a_later_edit_overwrote(tmp_path):
-    w = {i: 1e-6 for i in ("aq:answer_format", "aq:step_by_step", "aq:verify", "aq:persona", "aq:checker",
-                           "aq:python_skill", "aq:null_reword", "aq:answer_lookup")}
-    w.update({"aq:self_consistency": 1e6, "aq:python_tool": 1.0})   # sc3 first; the tool would overwrite solve()
+    w = {
+        i: 1e-6
+        for i in (
+            "aq:answer_format",
+            "aq:step_by_step",
+            "aq:verify",
+            "aq:persona",
+            "aq:checker",
+            "aq:python_skill",
+            "aq:null_reword",
+            "aq:answer_lookup",
+        )
+    }
+    w.update({"aq:self_consistency": 1e6, "aq:python_tool": 1.0})  # sc3 first; the tool would overwrite solve()
     prop = AgentQAMockLLM(AgentQAMockProfile(fill_budget_p=1.0, weights=w))
     aq_run(tmp_path, T=1, k=1, workers=1, propose=prop, m=1)
     cands = [r for r in read_jsonl(tmp_path / "history.jsonl") if r.get("edit_id") and r.get("diff")]
@@ -145,10 +192,23 @@ def test_agentqa_mock_never_declares_an_edit_a_later_edit_overwrote(tmp_path):
 
 
 def test_heuristic_analyst_never_reports_solved_tasks_as_a_failure_mode():
-    traces = {f"t{i}": {"task_id": f"t{i}", "family": "numeric", "_role": "fail", "score": 1.0,
-                        "feedback": f"Correct (answer '{i}')."} for i in range(5)}
-    traces["t9"] = {"task_id": "t9", "family": "numeric", "_role": "fail", "score": 0.0,
-                    "feedback": "Incorrect. Extracted answer '1'; expected '2'."}
+    traces = {
+        f"t{i}": {
+            "task_id": f"t{i}",
+            "family": "numeric",
+            "_role": "fail",
+            "score": 1.0,
+            "feedback": f"Correct (answer '{i}').",
+        }
+        for i in range(5)
+    }
+    traces["t9"] = {
+        "task_id": "t9",
+        "family": "numeric",
+        "_role": "fail",
+        "score": 0.0,
+        "feedback": "Incorrect. Extracted answer '1'; expected '2'.",
+    }
     a = Analyst(None, mode="heuristic")
     rep = a.aggregate_heuristic(a.heuristic_digests(traces), {t: r["score"] for t, r in traces.items()})
     assert [m["affected_tasks"] for m in rep["failure_modes"]] == [["t9"]]

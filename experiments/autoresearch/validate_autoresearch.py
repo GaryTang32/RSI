@@ -2,6 +2,7 @@
 
 Usage: python experiments/autoresearch/validate_autoresearch.py offline|crashfix|live|check|summarise [--run NAME]
 """
+
 import argparse
 import json
 import sys
@@ -69,10 +70,16 @@ def check_run(out: Path) -> dict:
         exp_eval = [e for e in evs if e["kind"] == "eval" and e["data"]["role"] == "experiment"]
         if node.status in ("keep", "discard") and exp_eval:
             # the first sample is the last experiment/fix run (a fixed crash is re-run, then judged)
-            first = [e["data"]["summary"]["S"] for e in evs if e["kind"] == "eval"
-                     and (e["data"]["role"] == "experiment" or e["data"]["role"].startswith("fix"))]
-            if not first or first[-1] is None or (node.metrics.get("samples")
-                                                  and abs(node.metrics["samples"][0] - first[-1]) > 1e-12):
+            first = [
+                e["data"]["summary"]["S"]
+                for e in evs
+                if e["kind"] == "eval" and (e["data"]["role"] == "experiment" or e["data"]["role"].startswith("fix"))
+            ]
+            if (
+                not first
+                or first[-1] is None
+                or (node.metrics.get("samples") and abs(node.metrics["samples"][0] - first[-1]) > 1e-12)
+            ):
                 probs.append(f"round {r}: eval metric != ledger sample")
         for g in (e for e in evs if e["kind"] == "gate"):
             n_gate += 1
@@ -100,9 +107,17 @@ def check_run(out: Path) -> dict:
             probs.append(f"round {r}: monitor on a non-keep")
     if tsv_i != len(rows):
         probs.append(f"results.tsv has {len(rows)} rows, trace accounts for {tsv_i}")
-    return {"ok": not probs, "problems": probs,
-            "checked": {"rounds": len([k for k in by_round if k]), "decisions": n_dec, "gates": n_gate,
-                        "monitors": n_mon, "tsv_rows": len(rows)}}
+    return {
+        "ok": not probs,
+        "problems": probs,
+        "checked": {
+            "rounds": len([k for k in by_round if k]),
+            "decisions": n_dec,
+            "gates": n_gate,
+            "monitors": n_mon,
+            "tsv_rows": len(rows),
+        },
+    }
 
 
 def summarise_dir(name: str, out: Path, extra: dict, wall_s: float | None = None) -> dict:
@@ -114,14 +129,27 @@ def summarise_dir(name: str, out: Path, extra: dict, wall_s: float | None = None
     end = next((e["data"] for e in ev if e["kind"] == "run_end"), {})
     mons = [e for e in ev if e["kind"] == "monitor"]
     kept = [e["data"] for e in ev if e["kind"] == "decision" and e["data"]["kept"]]
-    rec = {"run": name, "out_dir": str(out.relative_to(ROOT)), "trace_md": str(Path(trace_md).relative_to(ROOT)),
-           "stop_reason": summ.get("stop_reason"), "wall_s": wall_s if wall_s is not None else end.get("wall_s"),
-           "baseline_val_bpb": meta["analysis"].get("baseline"), "final_val_bpb": meta["final_samples"],
-           "analysis": meta["analysis"], "counters": meta["counters"], "crash_kinds": meta["crash_kinds"],
-           "noise": meta.get("noise"), "reeval": meta.get("reeval"), "n_kept_after_baseline": len(kept),
-           "shadow_baseline": mons[0]["data"]["sealed"] if mons else {},
-           "shadow_final": mons[-1]["data"]["sealed"] if mons else None,  # the last new incumbent is the final one
-           "usage_total": end.get("usage"), "n_trace_events": len(ev), "consistency": check_run(out), **extra}
+    rec = {
+        "run": name,
+        "out_dir": str(out.relative_to(ROOT)),
+        "trace_md": str(Path(trace_md).relative_to(ROOT)),
+        "stop_reason": summ.get("stop_reason"),
+        "wall_s": wall_s if wall_s is not None else end.get("wall_s"),
+        "baseline_val_bpb": meta["analysis"].get("baseline"),
+        "final_val_bpb": meta["final_samples"],
+        "analysis": meta["analysis"],
+        "counters": meta["counters"],
+        "crash_kinds": meta["crash_kinds"],
+        "noise": meta.get("noise"),
+        "reeval": meta.get("reeval"),
+        "n_kept_after_baseline": len(kept),
+        "shadow_baseline": mons[0]["data"]["sealed"] if mons else {},
+        "shadow_final": mons[-1]["data"]["sealed"] if mons else None,  # the last new incumbent is the final one
+        "usage_total": end.get("usage"),
+        "n_trace_events": len(ev),
+        "consistency": check_run(out),
+        **extra,
+    }
     (out / "validation_summary.json").write_text(json.dumps(rec, indent=1, default=str))
     return rec
 
@@ -132,8 +160,15 @@ def _summarise(name: str, res, t0: float, extra: dict) -> dict:
 
 def offline() -> dict:
     t0 = time.time()
-    cfg = Config(max_experiments=25, mode="hardened", keep_rule="strict", noise_runs=3, reeval_seeds=3,
-                 tag="validate-offline", seed=0)
+    cfg = Config(
+        max_experiments=25,
+        mode="hardened",
+        keep_rule="strict",
+        noise_runs=3,
+        reeval_seeds=3,
+        tag="validate-offline",
+        seed=0,
+    )
     res = run(_task(), config=cfg, out_dir=VAL / "tinylm_offline", mock={"crash_rate": 0.12, "exploit_rate": 0.12})
     return _summarise("tinylm_offline", res, t0, {"agent": "MockResearchAgent (greedy, crash 12%, exploit 12%)"})
 
@@ -143,11 +178,21 @@ def crashfix() -> dict:
     honest edit (paths the random offline night did not draw)."""
     t0 = time.time()
     task = _task()
-    sched = ["typo_lr_up", "missing_import_warmup", "hang_prefetch", "exploit_grader", "exploit_train_on_val",
-             "warmdown_down"]
+    sched = [
+        "typo_lr_up",
+        "missing_import_warmup",
+        "hang_prefetch",
+        "exploit_grader",
+        "exploit_train_on_val",
+        "warmdown_down",
+    ]
     cfg = Config(max_experiments=len(sched), mode="hardened", keep_rule="strict", tag="validate-crashfix", seed=0)
-    res = run(task, agent=MockResearchAgent(task.mock_edit_pool(), schedule=sched), config=cfg,
-              out_dir=VAL / "tinylm_offline_crashfix")
+    res = run(
+        task,
+        agent=MockResearchAgent(task.mock_edit_pool(), schedule=sched),
+        config=cfg,
+        out_dir=VAL / "tinylm_offline_crashfix",
+    )
     return _summarise("tinylm_offline_crashfix", res, t0, {"agent": f"MockResearchAgent(schedule={sched})"})
 
 
@@ -155,12 +200,27 @@ def live(max_usd: float = 2.5) -> dict:
     t0 = time.time()
     cache = VAL / ".cache_tinylm_live"
     llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), cache)
-    cfg = Config(max_experiments=10, mode="hardened", keep_rule="strict", reeval_seeds=3, max_usd=max_usd,
-                 tag="validate-live", seed=0)
+    cfg = Config(
+        max_experiments=10,
+        mode="hardened",
+        keep_rule="strict",
+        reeval_seeds=3,
+        max_usd=max_usd,
+        tag="validate-live",
+        seed=0,
+    )
     res = run(_task(), llm_propose=llm, config=cfg, out_dir=VAL / "tinylm_live")
-    return _summarise("tinylm_live", res, t0, {"agent": "LLMResearchAgent(RewriteEditor(claude-cli haiku))",
-                                              "cache_dir": str(cache.relative_to(ROOT)),
-                                              "cache_hits": llm.hits, "cache_misses": llm.misses})
+    return _summarise(
+        "tinylm_live",
+        res,
+        t0,
+        {
+            "agent": "LLMResearchAgent(RewriteEditor(claude-cli haiku))",
+            "cache_dir": str(cache.relative_to(ROOT)),
+            "cache_hits": llm.hits,
+            "cache_misses": llm.misses,
+        },
+    )
 
 
 def main() -> None:
@@ -173,15 +233,35 @@ def main() -> None:
         raise SystemExit(0)
     if a.which == "summarise":  # re-render TRACE.md / validation_summary.json, no new runs
         old = VAL / a.run / "validation_summary.json"
-        keep = {k: v for k, v in (json.loads(old.read_text()) if old.exists() else {}).items()
-                if k in ("agent", "cache_dir", "cache_hits", "cache_misses", "wall_s")}
+        keep = {
+            k: v
+            for k, v in (json.loads(old.read_text()) if old.exists() else {}).items()
+            if k in ("agent", "cache_dir", "cache_hits", "cache_misses", "wall_s")
+        }
         wall = keep.pop("wall_s", None)
         print(json.dumps(summarise_dir(a.run, VAL / a.run, keep, wall_s=wall)["consistency"], indent=1))
         raise SystemExit(0)
     rec = {"offline": offline, "crashfix": crashfix, "live": live}[a.which]()
-    print(json.dumps({k: rec[k] for k in ("run", "stop_reason", "wall_s", "final_val_bpb", "counters",
-                                          "usage_total", "shadow_baseline", "shadow_final", "consistency")},
-                     indent=1, default=str))
+    print(
+        json.dumps(
+            {
+                k: rec[k]
+                for k in (
+                    "run",
+                    "stop_reason",
+                    "wall_s",
+                    "final_val_bpb",
+                    "counters",
+                    "usage_total",
+                    "shadow_baseline",
+                    "shadow_final",
+                    "consistency",
+                )
+            },
+            indent=1,
+            default=str,
+        )
+    )
 
 
 if __name__ == "__main__":

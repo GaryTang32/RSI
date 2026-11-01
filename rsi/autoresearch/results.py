@@ -1,4 +1,5 @@
 """``results.tsv`` (upstream's 5-column table) and the kept-commit branch."""
+
 from __future__ import annotations
 
 import csv
@@ -8,7 +9,6 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from ..core.artifact import Artifact
 from ..core.ledger import ArtifactStore
@@ -28,7 +28,7 @@ class Row:
 class ResultsLog:
     """Tab-separated ``commit <metric> memory_gb status description``; crashes are logged as zeros."""
 
-    def __init__(self, path: Optional[str | Path], metric_name: str = "val_bpb", memory_decimals: int = 1) -> None:
+    def __init__(self, path: str | Path | None, metric_name: str = "val_bpb", memory_decimals: int = 1) -> None:
         self.path = Path(path) if path else None
         self.metric_name = metric_name
         self.memory_decimals = int(memory_decimals)
@@ -52,13 +52,18 @@ class ResultsLog:
     def _clean(desc: str) -> str:
         return " ".join(str(desc or "").replace("\t", " ").split())[:300]
 
-    def append(self, commit: str, metric: Optional[float], memory_gb: float, status: str, description: str) -> Row:
+    def append(self, commit: str, metric: float | None, memory_gb: float, status: str, description: str) -> Row:
         if status not in STATUSES:
             raise ValueError(f"status must be one of {STATUSES}, got {status!r}")
         if status == "crash":
             metric, memory_gb = 0.0, 0.0
-        row = Row(str(commit)[:7], float(metric or 0.0), round(float(memory_gb or 0.0), self.memory_decimals), status,
-                  self._clean(description))
+        row = Row(
+            str(commit)[:7],
+            float(metric or 0.0),
+            round(float(memory_gb or 0.0), self.memory_decimals),
+            status,
+            self._clean(description),
+        )
         self._rows.append(row)
         if self.path:
             self._write("a", [row.commit, f"{row.metric:.6f}", self._mem(row.memory_gb), row.status, row.description])
@@ -68,7 +73,7 @@ class ResultsLog:
         return list(self._rows)
 
     @classmethod
-    def read(cls, path: str | Path) -> "ResultsLog":
+    def read(cls, path: str | Path) -> ResultsLog:
         p = Path(path)
         with p.open() as f:
             r = list(csv.reader(f, delimiter="\t"))
@@ -83,13 +88,13 @@ class ResultsLog:
     def _line(self, r: Row) -> str:
         return f"{r.commit}\t{r.metric:.6f}\t{self._mem(r.memory_gb)}\t{r.status}\t{r.description}"
 
-    def text(self, last: Optional[int] = None) -> str:
+    def text(self, last: int | None = None) -> str:
         """The table as the agent reads it; ``last=N``: baseline, a summary of the middle, the last N rows."""
         rows = self._rows
         lines = ["\t".join(self.header)]
         if not last or len(rows) <= last + 1:
             return "\n".join(lines + [self._line(r) for r in rows]) + "\n"
-        mid = rows[1:len(rows) - last]
+        mid = rows[1 : len(rows) - last]
         lines += [self._line(rows[0]), f"# ... {len(mid)} earlier rows summarised (full file has {len(rows)} rows):"]
         for st in STATUSES:
             sel = [r for r in mid if r.status == st]
@@ -97,14 +102,14 @@ class ResultsLog:
                 vals = [r.metric for r in sel if st != "crash"]
                 rng = f"; {self.metric_name} {min(vals):.6f}..{max(vals):.6f}" if vals else ""
                 lines.append(f"# {st} x{len(sel)}{rng}: " + " | ".join(r.description for r in sel))
-        lines += [self._line(r) for r in rows[len(rows) - last:]]
+        lines += [self._line(r) for r in rows[len(rows) - last :]]
         return "\n".join(lines) + "\n"
 
 
 @dataclass
 class Commit:
     sha: str
-    parent: Optional[str]
+    parent: str | None
     artifact_id: str
     message: str
     t: float
@@ -117,7 +122,7 @@ class Commit:
 class Workspace:
     """The single branch ``autoresearch/<tag>`` of kept commits, in memory or in a real git repository."""
 
-    def __init__(self, store: ArtifactStore, *, backend: str = "memory", root: Optional[str | Path] = None) -> None:
+    def __init__(self, store: ArtifactStore, *, backend: str = "memory", root: str | Path | None = None) -> None:
         if backend not in ("memory", "git"):
             raise ValueError("backend must be 'memory' or 'git'")
         if backend == "git" and root is None:
@@ -125,18 +130,29 @@ class Workspace:
         self.store = store
         self.backend = backend
         self.root = Path(root) if root else None
-        self.branch: Optional[str] = None
+        self.branch: str | None = None
         self.commits: dict[str, Commit] = {}
-        self._head: Optional[str] = None
+        self._head: str | None = None
         self.n_resets = 0
         self.n_rewinds = 0
         self._artifacts: dict[str, Artifact] = {}
 
     def _git(self, *args: str) -> str:
-        r = subprocess.run(["git", *args], cwd=self.root, capture_output=True, text=True, check=True,
-                           env={"GIT_AUTHOR_NAME": "autoresearch", "GIT_AUTHOR_EMAIL": "autoresearch@localhost",
-                                "GIT_COMMITTER_NAME": "autoresearch", "GIT_COMMITTER_EMAIL": "autoresearch@localhost",
-                                "PATH": "/usr/bin:/bin:/usr/local/bin", "HOME": str(self.root)})
+        r = subprocess.run(
+            ["git", *args],
+            cwd=self.root,
+            capture_output=True,
+            text=True,
+            check=True,
+            env={
+                "GIT_AUTHOR_NAME": "autoresearch",
+                "GIT_AUTHOR_EMAIL": "autoresearch@localhost",
+                "GIT_COMMITTER_NAME": "autoresearch",
+                "GIT_COMMITTER_EMAIL": "autoresearch@localhost",
+                "PATH": "/usr/bin:/bin:/usr/local/bin",
+                "HOME": str(self.root),
+            },
+        )
         return r.stdout.strip()
 
     def _git_write(self, artifact: Artifact) -> None:
@@ -162,7 +178,7 @@ class Workspace:
             (self.root / ".gitignore").write_text("results.tsv\nrun.log\n")
         return self.commit(base, message)
 
-    def _commit(self, artifact: Artifact, message: str, parent: Optional[str], amend: bool = False) -> str:
+    def _commit(self, artifact: Artifact, message: str, parent: str | None, amend: bool = False) -> str:
         self.store.put(artifact)
         self._artifacts[artifact.id] = artifact
         if self.backend == "git":
@@ -203,7 +219,7 @@ class Workspace:
     def head(self) -> str:
         return self._head
 
-    def artifact(self, sha: Optional[str] = None) -> Artifact:
+    def artifact(self, sha: str | None = None) -> Artifact:
         aid = self.commits[sha or self._head].artifact_id
         return self._artifacts.get(aid) or self.store.get(aid)
 

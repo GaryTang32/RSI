@@ -2,6 +2,7 @@
 
 Usage: python experiments/metaharness-solpi/validate_audit_b.py [<run> ...]
 """
+
 from __future__ import annotations
 
 import difflib
@@ -68,12 +69,14 @@ def _input(task) -> str:
 
 def _agentqa_tasks() -> dict:
     from rsi.domains.agentqa import make_suite
+
     s = make_suite(n_evolve=10, n_holdout=6, n_ood_per_family=1, seed=0)
     return {sp: s.split(sp, allow_sealed=True) for sp in s.splits}
 
 
 def _memo_tasks() -> dict:
     from rsi.domains.memoclassify import make_domain
+
     d = make_domain(seed=0)
     return {sp: d.tasks.split(sp, allow_sealed=True) for sp in d.tasks.splits}
 
@@ -81,10 +84,12 @@ def _memo_tasks() -> dict:
 # Meta-Harness proposals checked by hand (template-level overfitting the token scan cannot see)
 MH_NOTE = {
     ("mh_agentqa_live_r2", "explore-direct-pattern-computation"): (
-        "questionable", "hard-codes regex solvers for the practice generator's four numeric question TEMPLATES "
+        "questionable",
+        "hard-codes regex solvers for the practice generator's four numeric question TEMPLATES "
         "(remainder of a^b, digit sum of a^b, 1-bits of a^b, the ledger wording) - 0 model calls on evolve, cost 0, "
         "joins the Pareto front as its cheapest point; exactly the 'dataset-specific' code the skill forbids and the "
-        "paper's loop has no guard against (spec A2, A8.2)"),
+        "paper's loop has no guard against (spec A2, A8.2)",
+    ),
 }
 
 
@@ -96,12 +101,18 @@ def audit_mh(run: str) -> dict:
     cfg = ev[0]["data"]["config"]
     cost_metric = cfg["cost_metric"]
     st = Steps()
-    meta = {n: json.loads((store / "candidates" / n / "meta.json").read_text())
-            for n in sorted(p.name for p in (store / "candidates").iterdir())}
+    meta = {
+        n: json.loads((store / "candidates" / n / "meta.json").read_text())
+        for n in sorted(p.name for p in (store / "candidates").iterdir())
+    }
     is_live = "agentqa" in run
     tasks = _agentqa_tasks() if is_live else _memo_tasks()
-    sealed_text = [(sp, t.id, inp[:60]) for sp in ("holdout", "ood", "test") for t in tasks.get(sp, [])
-                   if len(inp := _input(t)) >= 30]
+    sealed_text = [
+        (sp, t.id, inp[:60])
+        for sp in ("holdout", "ood", "test")
+        for t in tasks.get(sp, [])
+        if len(inp := _input(t)) >= 30
+    ]
     evolve_ids = {t.id for t in tasks["evolve"]}
 
     def recompute(name):
@@ -128,11 +139,19 @@ def audit_mh(run: str) -> dict:
             n = d["candidate"]
             r = rec[n]
             tr_score = mean(mean(v) for v in d["trials"].values())
-            ok = (abs(r["score"] - d["summary"]["S"]) < 1e-3 and abs(tr_score - r["score"]) < 1e-9
-                  and abs(r["cost"] - d["context_cost"]) < 1e-6 and set(r["per"]) <= evolve_ids)
-            st.add(0, f"baseline eval {n}", "correct" if ok else "wrong",
-                   f"S={r['score']:.4f} from {len(r['per'])} raw per-task records (trace trials mean {tr_score:.4f}); "
-                   f"context cost {r['cost']:.1f} (mean of non-zero per-unit {cost_metric}); units all in evolve")
+            ok = (
+                abs(r["score"] - d["summary"]["S"]) < 1e-3
+                and abs(tr_score - r["score"]) < 1e-9
+                and abs(r["cost"] - d["context_cost"]) < 1e-6
+                and set(r["per"]) <= evolve_ids
+            )
+            st.add(
+                0,
+                f"baseline eval {n}",
+                "correct" if ok else "wrong",
+                f"S={r['score']:.4f} from {len(r['per'])} raw per-task records (trace trials mean {tr_score:.4f}); "
+                f"context cost {r['cost']:.1f} (mean of non-zero per-unit {cost_metric}); units all in evolve",
+            )
     rounds = sorted({e["round"] for e in ev if e["kind"] == "round_start"})
     all_names_by_iter = {n: m.get("iteration", 0) for n, m in meta.items()}
     mon = {e["round"]: e["data"] for e in ev if e["kind"] == "monitor"}
@@ -143,22 +162,31 @@ def audit_mh(run: str) -> dict:
         # (1) state at round start: frontier recomputed from systems of earlier iterations
         pts = [(n, rec[n]["score"], rec[n]["cost"]) for n in prior if rec[n] is not None]
         fr = sorted(_pareto(pts), key=lambda x: (-x[1], x[2], x[0]))
-        ok = ({p["system"] for p in rs["frontier"]["pareto"]} == {p[0] for p in fr} and
-              (rs["frontier"]["best"] or {}).get("system") == fr[0][0] and
-              set(rs["view"]["visible_systems"]) == set(prior) and rs["n_evaluated"] ==
-              sum(1 for n in prior if meta[n].get("kind") == "candidate" and rec[n] is not None))
-        st.add(t, "round_start state (frontier, visible systems, budget)", "correct" if ok else "wrong",
-               f"frontier recomputed from {len(pts)} prior systems = {[p[0] for p in fr]}; view exposes "
-               f"{rs['view']['n_files']} files / {rs['view']['chars']} chars of {len(prior)} systems "
-               f"(by kind {rs['view']['by_kind']})")
+        ok = (
+            {p["system"] for p in rs["frontier"]["pareto"]} == {p[0] for p in fr}
+            and (rs["frontier"]["best"] or {}).get("system") == fr[0][0]
+            and set(rs["view"]["visible_systems"]) == set(prior)
+            and rs["n_evaluated"] == sum(1 for n in prior if meta[n].get("kind") == "candidate" and rec[n] is not None)
+        )
+        st.add(
+            t,
+            "round_start state (frontier, visible systems, budget)",
+            "correct" if ok else "wrong",
+            f"frontier recomputed from {len(pts)} prior systems = {[p[0] for p in fr]}; view exposes "
+            f"{rs['view']['n_files']} files / {rs['view']['chars']} chars of {len(prior)} systems "
+            f"(by kind {rs['view']['by_kind']})",
+        )
         # (2) proposer input: what was read, and never sealed data
         an = next(e["data"] for e in rev if e["kind"] == "analysis")
         sess = store / "sessions" / f"iter{t:03d}"
         prompt = (sess / "prompt.md").read_text() if (sess / "prompt.md").exists() else ""
         smeta = json.loads((sess / "meta.json").read_text())
         leaked = [f"{sp}:{tid}" for sp, tid, s in sealed_text if s in prompt]
-        bad_paths = [p for p in smeta.get("files_read", []) if p.startswith("results/") or "frontier.json" == p
-                     or "finalized" in p]
+        bad_paths = [
+            p
+            for p in smeta.get("files_read", [])
+            if p.startswith("results/") or "frontier.json" == p or "finalized" in p
+        ]
         n_tr = (an.get("files_read_by_kind") or {}).get("traces", 0)
         v_tr = rs["view"]["by_kind"].get("traces", 0)
         verdict = "correct"
@@ -166,18 +194,25 @@ def audit_mh(run: str) -> dict:
         if leaked or bad_paths:
             verdict = "wrong"
         elif n_tr < v_tr and ev[0]["data"].get("proposer") == "MockProposer":
-            note = (" (MockProposer parses the WHOLE view - every candidate's code, scores and traces; files_read "
-                    "lists only the parents it diagnosed)")
+            note = (
+                " (MockProposer parses the WHOLE view - every candidate's code, scores and traces; files_read "
+                "lists only the parents it diagnosed)"
+            )
         elif n_tr < v_tr:
             verdict = "questionable"
-            note = (f" the renderer's budget dropped {v_tr - n_tr} of {v_tr} raw-trace files (the paper's proposer "
-                    f"decides itself what to read; here a priority renderer does)")
+            note = (
+                f" the renderer's budget dropped {v_tr - n_tr} of {v_tr} raw-trace files (the paper's proposer "
+                f"decides itself what to read; here a priority renderer does)"
+            )
         if leaked:
-            evidence = f"SEALED INPUTS IN PROMPT: {leaked[:5]}" + (f"; forbidden paths read {bad_paths}"
-                                                                   if bad_paths else "")
+            evidence = f"SEALED INPUTS IN PROMPT: {leaked[:5]}" + (
+                f"; forbidden paths read {bad_paths}" if bad_paths else ""
+            )
         else:
-            evidence = (f"read {an.get('files_read')} of {rs['view']['n_files']} files (traces {n_tr}/{v_tr}); "
-                        f"prompt {len(prompt)} chars contains 0 of {len(sealed_text)} sealed task inputs" + note)
+            evidence = (
+                f"read {an.get('files_read')} of {rs['view']['n_files']} files (traces {n_tr}/{v_tr}); "
+                f"prompt {len(prompt)} chars contains 0 of {len(sealed_text)} sealed task inputs" + note
+            )
         st.add(t, "proposer input (history read, no sealed data)", verdict, evidence)
         # (3) per proposal: claimed base visible, actual diff, harness file really changed, leakage scan
         props = [e["data"] for e in rev if e["kind"] == "proposal" and e["data"]["candidate"] != "(none)"]
@@ -209,39 +244,70 @@ def audit_mh(run: str) -> dict:
                 v, ev_ = "wrong", f"only NEW files {changed}: the harness that runs is the base unchanged (dead code)"
             elif leaks:
                 v, ev_ = "questionable", f"task-specific content in added lines: {leaks[:6]}"
-            elif rec.get(n) and rec.get(base) and abs(rec[n]["score"] - rec[base]["score"]) < EPS and \
-                    abs(rec[n]["cost"] - rec[base]["cost"]) < EPS and \
-                    all(abs(rec[n]["per"][u] - rec[base]["per"].get(u, -1)) < EPS for u in rec[n]["per"]):
-                v, ev_ = "questionable", (f"BEHAVIOURAL NO-OP: per-unit scores and cost identical to its base {base} "
-                                          f"(diff {real}); one evaluation wasted")
+            elif (
+                rec.get(n)
+                and rec.get(base)
+                and abs(rec[n]["score"] - rec[base]["score"]) < EPS
+                and abs(rec[n]["cost"] - rec[base]["cost"]) < EPS
+                and all(abs(rec[n]["per"][u] - rec[base]["per"].get(u, -1)) < EPS for u in rec[n]["per"])
+            ):
+                v, ev_ = (
+                    "questionable",
+                    (
+                        f"BEHAVIOURAL NO-OP: per-unit scores and cost identical to its base {base} "
+                        f"(diff {real}); one evaluation wasted"
+                    ),
+                )
             elif any(str(c).startswith("param_") for c in (p.get("components") or [])):
-                v, ev_ = "questionable", (f"a parameter variant ({p.get('components')[0]}), which the skill says to "
-                                          f"rewrite ('identical to the base except for numbers'); diff {real}")
+                v, ev_ = (
+                    "questionable",
+                    (
+                        f"a parameter variant ({p.get('components')[0]}), which the skill says to "
+                        f"rewrite ('identical to the base except for numbers'); diff {real}"
+                    ),
+                )
             else:
-                v, ev_ = "correct", (f"base {base} (visible); actual diff touches {real} "
-                                     f"(+{add.count(chr(10)) + 1 if add else 0} lines); no task ids / question text / "
-                                     f"literal answers in added lines")
+                v, ev_ = (
+                    "correct",
+                    (
+                        f"base {base} (visible); actual diff touches {real} "
+                        f"(+{add.count(chr(10)) + 1 if add else 0} lines); no task ids / question text / "
+                        f"literal answers in added lines"
+                    ),
+                )
             st.add(t, f"proposal {n}: claim vs actual diff", v, ev_ + f" | claim: {claimed[:140]}")
         # (4) gate = admissibility; eval recomputed
         gates = {e["data"]["candidate"]: e["data"] for e in rev if e["kind"] == "gate"}
         evals = {e["data"]["candidate"]: e["data"] for e in rev if e["kind"] == "eval"}
         for n, g in gates.items():
             ok = (g["accept"] == (n in evals)) and (g["accept"] == (meta[n].get("status") == "evaluated"))
-            st.add(t, f"gate (admissibility) {n}", "correct" if ok else "wrong",
-                   f"validated={g['math'].get('validated')} -> {'evaluated' if n in evals else 'not evaluated'}; "
-                   f"store status {meta[n].get('status')}")
+            st.add(
+                t,
+                f"gate (admissibility) {n}",
+                "correct" if ok else "wrong",
+                f"validated={g['math'].get('validated')} -> {'evaluated' if n in evals else 'not evaluated'}; "
+                f"store status {meta[n].get('status')}",
+            )
         for n, d in evals.items():
             r = rec[n]
             tr_score = mean(mean(v) for v in d["trials"].values())
             lg = led.get(n, {})
             lsc = lg.get("score") if lg.get("score") is not None else -1
             lco = lg.get("cost") if lg.get("cost") is not None else -1
-            ok = (abs(tr_score - r["score"]) < 1e-9 and abs(lsc - r["score"]) < 1e-9 and
-                  abs(lco - r["cost"]) < 1e-6 and set(r["per"]) <= evolve_ids and
-                  d["summary"]["split"] == cfg["search_split"])
-            st.add(t, f"eval {n}", "correct" if ok else "wrong",
-                   f"S={r['score']:.4f} (raw trials; ledger {lg.get('score')}), cost {r['cost']:.1f} "
-                   f"(ledger {lg.get('cost')}); split {d['summary']['split']}, {len(r['per'])} units all in evolve")
+            ok = (
+                abs(tr_score - r["score"]) < 1e-9
+                and abs(lsc - r["score"]) < 1e-9
+                and abs(lco - r["cost"]) < 1e-6
+                and set(r["per"]) <= evolve_ids
+                and d["summary"]["split"] == cfg["search_split"]
+            )
+            st.add(
+                t,
+                f"eval {n}",
+                "correct" if ok else "wrong",
+                f"S={r['score']:.4f} (raw trials; ledger {lg.get('score')}), cost {r['cost']:.1f} "
+                f"(ledger {lg.get('cost')}); split {d['summary']['split']}, {len(r['per'])} units all in evolve",
+            )
         # (5) decision: frontier recomputed after the iteration, deltas, incumbent
         dec = next(e["data"] for e in rev if e["kind"] == "decision")
         now = [n for n, it in all_names_by_iter.items() if it <= t and rec[n] is not None]
@@ -254,8 +320,14 @@ def audit_mh(run: str) -> dict:
             if "score" not in pc:
                 continue
             onf = n in {x[0] for x in fr2}
-            dom = sorted(o for o, s2, c2 in pts2 if o != n and s2 >= rec[n]["score"] and c2 <= rec[n]["cost"]
-                         and (s2 > rec[n]["score"] or c2 < rec[n]["cost"]))
+            dom = sorted(
+                o
+                for o, s2, c2 in pts2
+                if o != n
+                and s2 >= rec[n]["score"]
+                and c2 <= rec[n]["cost"]
+                and (s2 > rec[n]["score"] or c2 < rec[n]["cost"])
+            )
             if onf != pc["on_frontier"] or dom[:6] != pc["dominated_by"]:
                 errs.append(f"{n}: frontier/dominance mismatch")
             if abs(pc["delta_vs_pre_best_pts"] - round(100 * (rec[n]["score"] - pre), 2)) > 1e-6:
@@ -264,28 +336,39 @@ def audit_mh(run: str) -> dict:
                 errs.append(f"{n}: release delta {pc['delta_logged_release']}")
         if dec["incumbent_after"] != fr2[0][0]:
             errs.append("incumbent")
-        tie = [x[0] for x in pts2
-               if abs(x[1] - fr2[0][1]) < EPS and abs(x[2] - fr2[0][2]) < EPS and x[0] != fr2[0][0]]
+        tie = [x[0] for x in pts2 if abs(x[1] - fr2[0][1]) < EPS and abs(x[2] - fr2[0][2]) < EPS and x[0] != fr2[0][0]]
         changed_inc = dec["incumbent_before"] != dec["incumbent_after"]
         v = "wrong" if errs else "correct"
-        ev_ = (f"frontier after it {t}: {[x[0] for x in fr2]}; incumbent {dec['incumbent_before']} -> "
-               f"{dec['incumbent_after']} (recomputed {fr2[0][0]}, S {pre:.4f} -> {post:.4f})")
+        ev_ = (
+            f"frontier after it {t}: {[x[0] for x in fr2]}; incumbent {dec['incumbent_before']} -> "
+            f"{dec['incumbent_after']} (recomputed {fr2[0][0]}, S {pre:.4f} -> {post:.4f})"
+        )
         if not errs and changed_inc and tie:
             v = "questionable"
-            ev_ += (f"; the new incumbent TIES {tie} exactly on (score, cost) and wins only by the name tie-break "
-                    f"(no improvement)")
+            ev_ += (
+                f"; the new incumbent TIES {tie} exactly on (score, cost) and wins only by the name tie-break "
+                f"(no improvement)"
+            )
         st.add(t, "decision (frontier, deltas, incumbent)", v, ev_ + (f"; errors {errs}" if errs else ""))
         # (6) monitor: only on a new incumbent, sealed splits only, never read back
         m = mon.get(t)
         if changed_inc:
             ok = m is not None and m["version"] == dec["incumbent_after"] and set(m["sealed"]) <= {"holdout", "ood"}
-            st.add(t, "shadow monitor on new incumbent", "correct" if ok else "wrong",
-                   (f"{m['version']}: " + ", ".join(f"{s} {v['S']:.3f}" for s, v in m['sealed'].items()))
-                   if m else "missing")
+            st.add(
+                t,
+                "shadow monitor on new incumbent",
+                "correct" if ok else "wrong",
+                (f"{m['version']}: " + ", ".join(f"{s} {v['S']:.3f}" for s, v in m["sealed"].items()))
+                if m
+                else "missing",
+            )
         elif m is not None:
             st.add(t, "shadow monitor", "wrong", "monitor ran without an incumbent change")
-        best_by_round[t] = {"incumbent": dec["incumbent_after"], "search": post,
-                            "sealed": {s: v["S"] for s, v in m.get("sealed", {}).items()} if m else None}
+        best_by_round[t] = {
+            "incumbent": dec["incumbent_after"],
+            "search": post,
+            "sealed": {s: v["S"] for s, v in m.get("sealed", {}).items()} if m else None,
+        }
     # (7) finalize: once, after the last iteration, on baselines + Pareto + per-unit best
     fin = [e for e in ev if e["kind"] == "note" and "finalize" in e["data"].get("what", "")]
     last_iter_seq = max(e["seq"] for e in ev if e["round"] in rounds)
@@ -301,11 +384,20 @@ def audit_mh(run: str) -> dict:
     if fin:
         d = fin[0]["data"]
         res_dirs = {p.name for sp in (store / "results").iterdir() for p in sp.iterdir()}
-        ok = (len(fin) == 1 and fin[0]["seq"] > last_iter_seq and set(d["systems"]) == expect and
-              res_dirs == expect and d["status"] == "complete")
-        st.add(None, "finalize (test once, on baselines + Pareto + per-unit best)", "correct" if ok else "wrong",
-               f"systems {sorted(d['systems'])} (recomputed {sorted(expect)}); results/ holds exactly these; "
-               f"one finalize event after the last iteration; status {d['status']}")
+        ok = (
+            len(fin) == 1
+            and fin[0]["seq"] > last_iter_seq
+            and set(d["systems"]) == expect
+            and res_dirs == expect
+            and d["status"] == "complete"
+        )
+        st.add(
+            None,
+            "finalize (test once, on baselines + Pareto + per-unit best)",
+            "correct" if ok else "wrong",
+            f"systems {sorted(d['systems'])} (recomputed {sorted(expect)}); results/ holds exactly these; "
+            f"one finalize event after the last iteration; status {d['status']}",
+        )
     # (8) spend
     rep = json.loads((rd / "report.json").read_text())
     prop_usd = sum((e["data"].get("proposer_usage") or {}).get("cost_usd", 0.0) for e in ev if e["kind"] == "analysis")
@@ -317,9 +409,13 @@ def audit_mh(run: str) -> dict:
         mon_usd = sp["shadow_monitor"]["usd"]
         gap = cache - loop - mon_usd - sp.get("report", 0.0)
         ok = gap >= -0.002 and abs(prop_usd + eval_usd - loop) < 0.02
-        st.add(None, "cost accounting", "correct" if ok else "questionable",
-               f"proposer ${prop_usd:.4f} + evals ${eval_usd:.4f} (trace) vs loop meter ${loop:.4f}; monitor "
-               f"${mon_usd:.4f}; cache ground truth ${cache:.4f}; unmetered gap ${gap:.4f} (forked smokes)")
+        st.add(
+            None,
+            "cost accounting",
+            "correct" if ok else "questionable",
+            f"proposer ${prop_usd:.4f} + evals ${eval_usd:.4f} (trace) vs loop meter ${loop:.4f}; monitor "
+            f"${mon_usd:.4f}; cache ground truth ${cache:.4f}; unmetered gap ${gap:.4f} (forked smokes)",
+        )
     else:
         st.add(None, "cost accounting", "correct", "offline: $0 (deterministic MemoLM, MockProposer)")
     return {"run": run, "method": "metaharness", "counts": st.counts(), "steps": st.rows, "incumbents": best_by_round}
@@ -358,88 +454,145 @@ def _apply_harness_diff(diff: str) -> dict | None:
 # context handler that raises or returns None.
 READ_ANY = "agentworld/base.py:_read_any reads rt.store only for keys starting '/.solpi/'"
 REVIEW_CHECK = {
-    ("solpi_agentworld_live", "L2.1"): ("correct", "right: the log is stored under rt.store['bash_log_<id>'] (no "
-                                        "/.solpi/ prefix) and the agent is given no path - unrecallable ("
-                                        + READ_ANY + ")"),
-    ("solpi_agentworld_live", "L1.0"): ("questionable", "passed a SILENT NO-OP: the hook reads event.call_id "
-                                        "(AttributeError, swallowed by the runtime's fail-open), which the review "
-                                        "missed; the gate then measured a saving of exactly 0"),
-    ("solpi_agentworld_live", "L1.1"): ("correct", "right: rt.store['output_<id>'] is not readable by the agent ("
-                                        + READ_ANY + ")"),
-    ("solpi_agentworld_live_r2", "L2.0"): ("correct", "right: stored at rt.store['/bash_log_<id>.txt'] but the agent "
-                                           "is told `/.solpi/bash_log_<id>.txt` -> ENOENT (" + READ_ANY + ")"),
-    ("solpi_agentworld_live_r2", "L2.1"): ("wrong", "FALSE REJECTION: stored at rt.store['/.solpi/full_log_<n>.txt'] "
-                                           "and the hint is `cat /.solpi/full_log_<n>.txt` - recall works ("
-                                           + READ_ANY + "). Stage A's RUNS.md called this rejection right"),
-    ("solpi_agentworld_live_r2", "L1.0"): ("questionable", "passed a mechanism that forces is_error=False on every "
-                                           "large result (a failing command's output is reported as success) and "
-                                           "hides each large output before the agent has seen it once; the review "
-                                           "missed both"),
-    ("solpi_agentworld_live_r2", "L1.1"): ("correct", "right: `self.seen` persists across projections, so from the "
-                                           "next request on even the FIRST appearance is replaced by 'already shown "
-                                           "above' - the content is gone with no recall"),
-    ("solpi_agentworld_live_r3", "L2.0"): ("wrong", "FALSE REJECTION: key '/.solpi/full_log_<n>.txt' is exactly what "
-                                           "`cat` reads (" + READ_ANY + ")"),
-    ("solpi_agentworld_live_r3", "L2.1"): ("questionable", "the handler has no try/except, but the runtime keeps the "
-                                           "original result when a tool_result handler raises (runtime.py, 'result "
-                                           "handlers fail open'), so behaviour IS fail-open; the reviewer could not "
-                                           "know this (not in RUNTIME_API_DOC) and the contract text asks the "
-                                           "mechanism itself to fail open"),
-    ("solpi_agentworld_live_r3", "L1.0"): ("wrong", "FALSE REJECTION for the stated reason: RUNTIME_API_DOC documents "
-                                           "`context -> new list | None`; (an unmentioned real flaw: it replaces the "
-                                           "newest large output before the agent saw it once)"),
-    ("solpi_agentworld_live_r3", "L1.1"): ("wrong", "FALSE REJECTION: key '/.solpi/tool_cache_<id>.txt' is readable "
-                                           "(" + READ_ANY + ")"),
-    ("solpi_agentworld_live_r4", "L2.0"): ("correct", "right to pass: condenses only failing bash outputs >= 2000 "
-                                           "chars, stores the full log under '/.solpi/bash_log_<call id>.txt' and "
-                                           "points the agent at that path (readable), try/except fail-open; minor: "
-                                           "drops the result's `details`"),
-    ("solpi_agentworld_live_r4", "L1.0"): ("questionable", "rejected on a theoretical MD5-collision objection (not a "
-                                           "real contract risk); fix 16 routed it back and the repair (SHA-256 + "
-                                           "content check) passed - the loop recovered, the verdict itself was a "
-                                           "nitpick"),
-    ("solpi_agentworld_live_r4", "L1.0r1"): ("correct", "pass: stores at '/.solpi/obs_<n>.txt' (readable), fail-open "
-                                             "handlers; the gate then rejected it on the numbers"),
-    ("solpi_agentworld_live_r4", "L1.1"): ("questionable", "no try/except in the context handler, but "
-                                           "AgentRuntime.project() already ignores a raising context handler, so "
-                                           "behaviour is fail-open; recall path '/.solpi/obs_<n>.txt' is readable. "
-                                           "Fix 16 routed it back; haiku's repair reply had no file block, so the "
-                                           "iteration was (correctly) abandoned"),
+    ("solpi_agentworld_live", "L2.1"): (
+        "correct",
+        "right: the log is stored under rt.store['bash_log_<id>'] (no "
+        "/.solpi/ prefix) and the agent is given no path - unrecallable (" + READ_ANY + ")",
+    ),
+    ("solpi_agentworld_live", "L1.0"): (
+        "questionable",
+        "passed a SILENT NO-OP: the hook reads event.call_id "
+        "(AttributeError, swallowed by the runtime's fail-open), which the review "
+        "missed; the gate then measured a saving of exactly 0",
+    ),
+    ("solpi_agentworld_live", "L1.1"): (
+        "correct",
+        "right: rt.store['output_<id>'] is not readable by the agent (" + READ_ANY + ")",
+    ),
+    ("solpi_agentworld_live_r2", "L2.0"): (
+        "correct",
+        "right: stored at rt.store['/bash_log_<id>.txt'] but the agent "
+        "is told `/.solpi/bash_log_<id>.txt` -> ENOENT (" + READ_ANY + ")",
+    ),
+    ("solpi_agentworld_live_r2", "L2.1"): (
+        "wrong",
+        "FALSE REJECTION: stored at rt.store['/.solpi/full_log_<n>.txt'] "
+        "and the hint is `cat /.solpi/full_log_<n>.txt` - recall works ("
+        + READ_ANY
+        + "). Stage A's RUNS.md called this rejection right",
+    ),
+    ("solpi_agentworld_live_r2", "L1.0"): (
+        "questionable",
+        "passed a mechanism that forces is_error=False on every "
+        "large result (a failing command's output is reported as success) and "
+        "hides each large output before the agent has seen it once; the review "
+        "missed both",
+    ),
+    ("solpi_agentworld_live_r2", "L1.1"): (
+        "correct",
+        "right: `self.seen` persists across projections, so from the "
+        "next request on even the FIRST appearance is replaced by 'already shown "
+        "above' - the content is gone with no recall",
+    ),
+    ("solpi_agentworld_live_r3", "L2.0"): (
+        "wrong",
+        "FALSE REJECTION: key '/.solpi/full_log_<n>.txt' is exactly what `cat` reads (" + READ_ANY + ")",
+    ),
+    ("solpi_agentworld_live_r3", "L2.1"): (
+        "questionable",
+        "the handler has no try/except, but the runtime keeps the "
+        "original result when a tool_result handler raises (runtime.py, 'result "
+        "handlers fail open'), so behaviour IS fail-open; the reviewer could not "
+        "know this (not in RUNTIME_API_DOC) and the contract text asks the "
+        "mechanism itself to fail open",
+    ),
+    ("solpi_agentworld_live_r3", "L1.0"): (
+        "wrong",
+        "FALSE REJECTION for the stated reason: RUNTIME_API_DOC documents "
+        "`context -> new list | None`; (an unmentioned real flaw: it replaces the "
+        "newest large output before the agent saw it once)",
+    ),
+    ("solpi_agentworld_live_r3", "L1.1"): (
+        "wrong",
+        "FALSE REJECTION: key '/.solpi/tool_cache_<id>.txt' is readable (" + READ_ANY + ")",
+    ),
+    ("solpi_agentworld_live_r4", "L2.0"): (
+        "correct",
+        "right to pass: condenses only failing bash outputs >= 2000 "
+        "chars, stores the full log under '/.solpi/bash_log_<call id>.txt' and "
+        "points the agent at that path (readable), try/except fail-open; minor: "
+        "drops the result's `details`",
+    ),
+    ("solpi_agentworld_live_r4", "L1.0"): (
+        "questionable",
+        "rejected on a theoretical MD5-collision objection (not a "
+        "real contract risk); fix 16 routed it back and the repair (SHA-256 + "
+        "content check) passed - the loop recovered, the verdict itself was a "
+        "nitpick",
+    ),
+    ("solpi_agentworld_live_r4", "L1.0r1"): (
+        "correct",
+        "pass: stores at '/.solpi/obs_<n>.txt' (readable), fail-open "
+        "handlers; the gate then rejected it on the numbers",
+    ),
+    ("solpi_agentworld_live_r4", "L1.1"): (
+        "questionable",
+        "no try/except in the context handler, but "
+        "AgentRuntime.project() already ignores a raising context handler, so "
+        "behaviour is fail-open; recall path '/.solpi/obs_<n>.txt' is readable. "
+        "Fix 16 routed it back; haiku's repair reply had no file block, so the "
+        "iteration was (correctly) abandoned",
+    ),
 }
 GATE_NOTE = {
-    ("solpi_agentworld_live_r2", "L1.0"): ("unverifiable", "arithmetic right, but the capability loss is an artifact "
-                                           "of the offline MockAgent, which never calls a free-form recall tool "
-                                           "(policy.py:_fallback only knows obs_recall placeholders and EPR "
-                                           "receipts) - a real agent was not run"),
+    ("solpi_agentworld_live_r2", "L1.0"): (
+        "unverifiable",
+        "arithmetic right, but the capability loss is an artifact "
+        "of the offline MockAgent, which never calls a free-form recall tool "
+        "(policy.py:_fallback only knows obs_recall placeholders and EPR "
+        "receipts) - a real agent was not run",
+    ),
 }
 
 
 def audit_sp(run: str) -> dict:
     from rsi.domains.agentworld import make_domain
+
     rd = OUT / run
     ev = load(rd / "trace.jsonl")
     st = Steps()
     rs0 = ev[0]["data"]
     spec = rs0["gate_spec"]
     offline = "offline" in run
-    dom = (make_domain(seed=0, n_train=8, n_accept=6, n_final=8, n_test=0) if offline else
-           make_domain(seed=0, n_train=3, n_accept=3, n_final=3, n_test=0))
+    dom = (
+        make_domain(seed=0, n_train=8, n_accept=6, n_final=8, n_test=0)
+        if offline
+        else make_domain(seed=0, n_train=3, n_accept=3, n_final=3, n_test=0)
+    )
     evolve_ids = {t.id for t in dom.tasks.split("evolve")}
     base_ev = next(e for e in ev if e["kind"] == "baseline")
     bm = base_ev["data"]["metrics"]["agg"]
     tr_score = mean(x for v in base_ev["data"]["trials"].values() for x in v)
-    st.add(1, "baseline on the training screen", "correct" if abs(tr_score - bm["score"]) < 1e-9 and
-           set(base_ev["data"]["per_task"]) == evolve_ids else "wrong",
-           f"S={bm['score']:.4f} from {len(base_ev['data']['trials'])} raw trials, tokens {bm['tokens']:.0f}, "
-           f"cost {bm['cost']:.4f}; tasks = the whole evolve split ({len(evolve_ids)})")
+    st.add(
+        1,
+        "baseline on the training screen",
+        "correct" if abs(tr_score - bm["score"]) < 1e-9 and set(base_ev["data"]["per_task"]) == evolve_ids else "wrong",
+        f"S={bm['score']:.4f} from {len(base_ev['data']['trials'])} raw trials, tokens {bm['tokens']:.0f}, "
+        f"cost {bm['cost']:.4f}; tasks = the whole evolve split ({len(evolve_ids)})",
+    )
     an = next(e["data"] for e in ev if e["kind"] == "analysis" and "oracle" in e["data"])
     ranked = sorted(an["oracle"].items(), key=lambda kv: (-kv[1], kv[0]))
     n_lin = rs0["config"]["n_lineages"]
     ok = [i for i, _ in ranked[:n_lin]] == an["chosen"]
-    st.add(1, "oracle ranking + selection", "correct" if ok else "wrong",
-           f"top-{n_lin} by (-estimate, id) = {[f'{i}:{v:.3f}' for i, v in ranked[:n_lin]]}")
-    rounds = sorted({e["round"] for e in ev if e["kind"] == "round_start" and
-                     e["data"].get("phase") == "lineage iteration"})
+    st.add(
+        1,
+        "oracle ranking + selection",
+        "correct" if ok else "wrong",
+        f"top-{n_lin} by (-estimate, id) = {[f'{i}:{v:.3f}' for i, v in ranked[:n_lin]]}",
+    )
+    rounds = sorted(
+        {e["round"] for e in ev if e["kind"] == "round_start" and e["data"].get("phase") == "lineage iteration"}
+    )
     last_gate_fail_art: dict[str, str] = {}
     gates = {}
     frozen_names = {}
@@ -451,32 +604,53 @@ def audit_sp(run: str) -> dict:
         evals = [e["data"] for e in rev if e["kind"] == "eval"]
         ro = next((d for d in evals if d["candidate"].startswith("rollouts(")), None)
         want = last_gate_fail_art.get(idea, base_ev["data"]["artifact"])
-        got = ro["candidate"][len("rollouts("):-1] if ro else None
+        got = ro["candidate"][len("rollouts(") : -1] if ro else None
         ok = got == want and set(ro["per_task"]) <= evolve_ids
-        st.add(r, f"{idea}.{it} 01 rollouts + 02 map-reduce", "correct" if ok else "wrong",
-               f"rollouts of {got} (expected {want}: base, or the last gate-failed candidate after a route-back); "
-               f"{len(ro['per_task'])} tasks, all evolve")
+        st.add(
+            r,
+            f"{idea}.{it} 01 rollouts + 02 map-reduce",
+            "correct" if ok else "wrong",
+            f"rollouts of {got} (expected {want}: base, or the last gate-failed candidate after a route-back); "
+            f"{len(ro['per_task'])} tasks, all evolve",
+        )
         props = [e["data"] for e in rev if e["kind"] == "proposal"]
         crits = [e["data"] for e in rev if e["kind"] == "critic"]
         for pr in props:
-            tag = f"{pr['candidate']} " + ("04 re-implementation after review" if pr.get("review_repair") else
-                                           "03/04 proposal + Ralph loop")
+            tag = f"{pr['candidate']} " + (
+                "04 re-implementation after review" if pr.get("review_repair") else "03/04 proposal + Ralph loop"
+            )
             if pr.get("error"):
-                st.add(r, tag, "correct",
-                       f"no admissible candidate: {pr['error'][:160]} (Ralph repairs "
-                       f"{len(pr.get('ralph_errors', []))}); "
-                       + ("grid exhausted -> lineage ends" if pr.get("exhausted") else
-                          "the loop correctly refused to review/evaluate it (the defect is in the proposer's output)"))
+                st.add(
+                    r,
+                    tag,
+                    "correct",
+                    f"no admissible candidate: {pr['error'][:160]} (Ralph repairs "
+                    f"{len(pr.get('ralph_errors', []))}); "
+                    + (
+                        "grid exhausted -> lineage ends"
+                        if pr.get("exhausted")
+                        else "the loop correctly refused to review/evaluate it (the defect is in the proposer's output)"
+                    ),
+                )
             else:
                 add = _added(pr["diff"])
                 forbidden = [w for w in ("holdout", "heldout", "configfix", "datalookup", "ood/") if w in add.lower()]
                 ids = [t for t in evolve_ids if t in add]
-                v = ("correct" if pr["files_changed"] and not forbidden and not ids else
-                     "wrong" if not pr["files_changed"] else "questionable")
-                st.add(r, tag, v,
-                       f"change {pr['change'][:80]!r}, variant {pr.get('variant')}; actual diff touches "
-                       f"{pr['files_changed']}; Ralph repairs {pr.get('ralph_repairs')}; held-out references "
-                       f"{forbidden}, task ids {ids[:3]}")
+                v = (
+                    "correct"
+                    if pr["files_changed"] and not forbidden and not ids
+                    else "wrong"
+                    if not pr["files_changed"]
+                    else "questionable"
+                )
+                st.add(
+                    r,
+                    tag,
+                    v,
+                    f"change {pr['change'][:80]!r}, variant {pr.get('variant')}; actual diff touches "
+                    f"{pr['files_changed']}; Ralph repairs {pr.get('ralph_repairs')}; held-out references "
+                    f"{forbidden}, task ids {ids[:3]}",
+                )
         for cr in crits:
             key = (run, cr["candidate"])
             if key in REVIEW_CHECK:
@@ -485,8 +659,12 @@ def audit_sp(run: str) -> dict:
                 v, why = "correct", "pass"
             else:
                 v, why = "unverifiable", "rejection not independently checked"
-            st.add(r, f"{cr['candidate']} 05 review ({'pass' if cr['accept'] else 'REJECT'})", v,
-                   f"{why} | reviewer: {str(cr.get('note'))[:220]}")
+            st.add(
+                r,
+                f"{cr['candidate']} 05 review ({'pass' if cr['accept'] else 'REJECT'})",
+                v,
+                f"{why} | reviewer: {str(cr.get('note'))[:220]}",
+            )
         g = next((e["data"] for e in rev if e["kind"] == "gate"), None)
         sv = next((d for d in evals if not d["candidate"].startswith("rollouts(")), None)
         if g is not None:
@@ -494,13 +672,20 @@ def audit_sp(run: str) -> dict:
             s_raw = mean(x for v in sv["trials"].values() for x in v)
             acc, why = _gate(spec, bm, m)
             eff = {k: (bm[k] - m[k]) / bm[k] for k in spec["efficiency"]}
-            ok = acc == g["accept"] and why == g["reason"] and abs(s_raw - m["score"]) < 1e-9 and \
-                g["math"]["capability"]["score"]["base"] == bm["score"] and set(sv["per_task"]) == evolve_ids
+            ok = (
+                acc == g["accept"]
+                and why == g["reason"]
+                and abs(s_raw - m["score"]) < 1e-9
+                and g["math"]["capability"]["score"]["base"] == bm["score"]
+                and set(sv["per_task"]) == evolve_ids
+            )
             v = "correct" if ok else "wrong"
-            txt = (f"base S {bm['score']:.4f} vs cand S {m['score']:.4f} (raw trials {s_raw:.4f}, floor "
-                   f"{bm['score'] * (1 - spec['capability'][0][1]):.4f}); savings " +
-                   ", ".join(f"{k} {100 * s:+.1f}%" for k, s in eff.items()) +
-                   f" (need > {100 * spec['min_gain']:.0f}%) -> {why} (loop: {g['reason']})")
+            txt = (
+                f"base S {bm['score']:.4f} vs cand S {m['score']:.4f} (raw trials {s_raw:.4f}, floor "
+                f"{bm['score'] * (1 - spec['capability'][0][1]):.4f}); savings "
+                + ", ".join(f"{k} {100 * s:+.1f}%" for k, s in eff.items())
+                + f" (need > {100 * spec['min_gain']:.0f}%) -> {why} (loop: {g['reason']})"
+            )
             if ok and acc and any(s < 0 for s in eff.values()):
                 v = "questionable"
                 txt += "; PASSES while another efficiency metric gets WORSE (the exists-rule of the gate)"
@@ -512,10 +697,21 @@ def audit_sp(run: str) -> dict:
             if not acc:
                 last_gate_fail_art[idea] = sv["summary"]["artifact"]
         dec = next(e["data"] for e in rev if e["kind"] == "decision")
-        exp = ("frozen" if g is not None and g["accept"] else "gate_failed" if g is not None else
-               "rejected" if crits and not crits[-1]["accept"] else "abandoned")
-        st.add(r, f"{idea}.{it} decision", "correct" if dec["outcome"] == exp else "wrong",
-               f"{dec['outcome']} (expected {exp}); {dec['why'][:160]}")
+        exp = (
+            "frozen"
+            if g is not None and g["accept"]
+            else "gate_failed"
+            if g is not None
+            else "rejected"
+            if crits and not crits[-1]["accept"]
+            else "abandoned"
+        )
+        st.add(
+            r,
+            f"{idea}.{it} decision",
+            "correct" if dec["outcome"] == exp else "wrong",
+            f"{dec['outcome']} (expected {exp}); {dec['why'][:160]}",
+        )
         if dec["outcome"] == "frozen":
             frozen_names[idea] = props[-1] if props else {}
     # firewall + composition
@@ -528,6 +724,7 @@ def audit_sp(run: str) -> dict:
         from rsi.core import Evaluator
         from rsi.domains.agentworld import MockAgentLLM
         from rsi.solpi.gate import metrics_from_eval
+
         fw_ev = Evaluator(dom, MockAgentLLM("A"), workers=2, allow_sealed=True)
         hb = metrics_from_eval(fw_ev.evaluate(dom.seed_artifact(), "holdout", k=1)).agg
     for fg in fgates:
@@ -541,15 +738,17 @@ def audit_sp(run: str) -> dict:
             art = dom.seed_artifact().with_files({"harness.json": json.dumps(h, indent=1)})
             m2 = metrics_from_eval(fw_ev.evaluate(art, "holdout", k=1)).agg
             acc2, _ = _gate(spec, hb, m2)
-            ok = (acc2 == acc and abs(m2["tokens"] - hm["tokens"]) < 1e-6
-                  and abs(hb["tokens"] - hbm["tokens"]) < 1e-6)
+            ok = acc2 == acc and abs(m2["tokens"] - hm["tokens"]) < 1e-6 and abs(hb["tokens"] - hbm["tokens"]) < 1e-6
             extra = f"; independently re-evaluated on holdout: tokens {m2['tokens']:.0f} (sink {hm['tokens']:.0f})"
         kind = fg["math"].get("idea_kind_ground_truth")
-        st.add(fw_round, f"firewall {fg['candidate'][:40]}", "correct" if ok else "wrong",
-               f"held-out S {hm['score']:.4f} vs base {hbm['score']:.4f}; tokens "
-               f"{100 * (hbm['tokens'] - hm['tokens']) / hbm['tokens']:+.1f}%, cost "
-               f"{100 * (hbm['cost'] - hm['cost']) / hbm['cost']:+.1f}% saving -> {why}; sink agrees; kind={kind}"
-               + extra)
+        st.add(
+            fw_round,
+            f"firewall {fg['candidate'][:40]}",
+            "correct" if ok else "wrong",
+            f"held-out S {hm['score']:.4f} vs base {hbm['score']:.4f}; tokens "
+            f"{100 * (hbm['tokens'] - hm['tokens']) / hbm['tokens']:+.1f}%, cost "
+            f"{100 * (hbm['cost'] - hm['cost']) / hbm['cost']:+.1f}% saving -> {why}; sink agrees; kind={kind}" + extra,
+        )
     dec = next(e["data"] for e in fev if e["kind"] == "decision")
     kept_ideas = [fg["candidate"].split(":")[0] for fg in fgates if fg["accept"]]
     if kept_ideas:
@@ -559,39 +758,70 @@ def audit_sp(run: str) -> dict:
         comp = _apply_harness_diff(dec["diff"])
         ok = comp is not None and comp["extensions"] == union and dec["kept"] == ",".join(kept_ideas)
         cm, bs = dec["composed_screen"], dec["base_screen"]
-        best_single = min(((i, gates[f"{i}.{n}"][1]) for i in kept_ideas for n in range(8) if f"{i}.{n}" in gates
-                           and gates[f"{i}.{n}"][0]), key=lambda x: x[1]["cost"])
+        best_single = min(
+            (
+                (i, gates[f"{i}.{n}"][1])
+                for i in kept_ideas
+                for n in range(8)
+                if f"{i}.{n}" in gates and gates[f"{i}.{n}"][0]
+            ),
+            key=lambda x: x[1]["cost"],
+        )
         v = "correct" if ok else "wrong"
-        txt = (f"composed = union of {kept_ideas} (verified); screen S {cm['score']:.3f}, tokens "
-               f"{100 * (bs['tokens'] - cm['tokens']) / bs['tokens']:+.1f}%, cost "
-               f"{100 * (bs['cost'] - cm['cost']) / bs['cost']:+.1f}% saving")
+        txt = (
+            f"composed = union of {kept_ideas} (verified); screen S {cm['score']:.3f}, tokens "
+            f"{100 * (bs['tokens'] - cm['tokens']) / bs['tokens']:+.1f}%, cost "
+            f"{100 * (bs['cost'] - cm['cost']) / bs['cost']:+.1f}% saving"
+        )
         if ok and cm["cost"] > best_single[1]["cost"]:
             v = "questionable"
-            txt += (f"; the composed stack costs MORE than survivor {best_single[0]} alone "
-                    f"(cost {best_single[1]['cost']:.4f} vs {cm['cost']:.4f}) and is not re-gated")
+            txt += (
+                f"; the composed stack costs MORE than survivor {best_single[0]} alone "
+                f"(cost {best_single[1]['cost']:.4f} vs {cm['cost']:.4f}) and is not re-gated"
+            )
         st.add(fw_round, "composition", v, txt)
     else:
-        st.add(fw_round, "composition", "correct" if dec["kept"] is None else "wrong",
-               "no survivor: incumbent stays the base")
+        st.add(
+            fw_round,
+            "composition",
+            "correct" if dec["kept"] is None else "wrong",
+            "no survivor: incumbent stays the base",
+        )
     mons = [e for e in ev if e["kind"] == "monitor"]
     want = ["base_r1"] + (["composed_r1"] if kept_ideas else [])
-    ok = [m["data"]["version"] for m in mons] == want and all(set(m["data"]["sealed"]) <= {"holdout", "ood"}
-                                                               for m in mons)
-    st.add(None, "shadow monitor (base + composed only, sealed splits, trace only)", "correct" if ok else "wrong",
-           "; ".join(f"{m['data']['version']}: "
-                     + ", ".join(f"{s} S={v['S']:.3f}" for s, v in m["data"]["sealed"].items()) for m in mons))
+    ok = [m["data"]["version"] for m in mons] == want and all(
+        set(m["data"]["sealed"]) <= {"holdout", "ood"} for m in mons
+    )
+    st.add(
+        None,
+        "shadow monitor (base + composed only, sealed splits, trace only)",
+        "correct" if ok else "wrong",
+        "; ".join(
+            f"{m['data']['version']}: " + ", ".join(f"{s} S={v['S']:.3f}" for s, v in m["data"]["sealed"].items())
+            for m in mons
+        ),
+    )
     lin_tasks = {t for e in ev if e["kind"] == "eval" and e["round"] in rounds for t in e["data"]["per_task"]}
-    st.add(None, "no sealed evaluation inside lineages", "correct" if lin_tasks <= evolve_ids else "wrong",
-           f"{len(lin_tasks)} distinct tasks evaluated by lineages, all in evolve")
+    st.add(
+        None,
+        "no sealed evaluation inside lineages",
+        "correct" if lin_tasks <= evolve_ids else "wrong",
+        f"{len(lin_tasks)} distinct tasks evaluated by lineages, all in evolve",
+    )
     rep = json.loads((rd / "report.json").read_text())
     sp = rep.get("spend")
     if sp:
-        prop_usd = sum((e["data"].get("proposer_usage") or {}).get("cost_usd", 0.0)
-                       for e in ev if e["kind"] == "proposal")
+        prop_usd = sum(
+            (e["data"].get("proposer_usage") or {}).get("cost_usd", 0.0) for e in ev if e["kind"] == "proposal"
+        )
         loop, cache = sp["loop"]["usd"], sp["cache_ground_truth"]["usd"]
-        st.add(None, "cost accounting", "correct" if abs(loop - cache) < 0.002 else "questionable",
-               f"proposer+implementer (trace) ${prop_usd:.4f}; reviewer = loop - proposer = ${loop - prop_usd:.4f}; "
-               f"loop meter ${loop:.4f} = cache ground truth ${cache:.4f}")
+        st.add(
+            None,
+            "cost accounting",
+            "correct" if abs(loop - cache) < 0.002 else "questionable",
+            f"proposer+implementer (trace) ${prop_usd:.4f}; reviewer = loop - proposer = ${loop - prop_usd:.4f}; "
+            f"loop meter ${loop:.4f} = cache ground truth ${cache:.4f}",
+        )
     else:
         st.add(None, "cost accounting", "correct", "offline: $0 (MockAgentLLM, LibraryProposer)")
     return {"run": run, "method": "solpi", "counts": st.counts(), "steps": st.rows}

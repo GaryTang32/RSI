@@ -2,6 +2,7 @@
 
 Usage: python experiments/autoresearch/r2_live_nights.py design|eval|plateau|stuck|analyze [--arm v1|v2] [--seed N]
 """
+
 from _common import SCRATCH, setk, write  # noqa: I001
 
 import argparse
@@ -67,15 +68,29 @@ def live_llm(name: str) -> CachedLLM:
     return CachedLLM(ClaudeCLI("haiku", timeout_s=300), LIVE / f"cache_{name}")
 
 
-def night(name: str, *, program: str, seed: int, n: int, start: dict | None = None, reeval: int = 0,
-          max_usd: float = 1.0) -> dict:
+def night(
+    name: str, *, program: str, seed: int, n: int, start: dict | None = None, reeval: int = 0, max_usd: float = 1.0
+) -> dict:
     task = TinyLMTask(budget_s=2.0)
     seed_art = start_artifact(task, start) if start else None
-    cfg = Config(max_experiments=n, seed=seed, program=program, reeval_seeds=reeval, max_usd=max_usd, plot=False,
-                 overwrite=True, tag=f"r2-{name}")
+    cfg = Config(
+        max_experiments=n,
+        seed=seed,
+        program=program,
+        reeval_seeds=reeval,
+        max_usd=max_usd,
+        plot=False,
+        overwrite=True,
+        tag=f"r2-{name}",
+    )
     res = run(task, seed_art, llm_propose=live_llm(name), config=cfg, out_dir=LIVE / name)
-    return {"name": name, "results_tsv": (LIVE / name / "results.tsv").read_text(), "reeval": res.meta.get("reeval"),
-            "usage": (res.usage or {}).get("_total"), "stop_reason": res.meta.get("stop_reason")}
+    return {
+        "name": name,
+        "results_tsv": (LIVE / name / "results.tsv").read_text(),
+        "reeval": res.meta.get("reeval"),
+        "usage": (res.usage or {}).get("_total"),
+        "stop_reason": res.meta.get("stop_reason"),
+    }
 
 
 def tail_nonkeeps(results_tsv: str) -> int:
@@ -126,16 +141,31 @@ def stuck_night(name: str, *, seed: int, n_live: int, max_usd: float, cap: int =
     task = TinyLMTask(budget_s=2.0)
     seed_art = start_artifact(task, PLATEAU_START)
     llm = live_llm(name)
-    agent = StuckSwitchAgent(MockResearchAgent(task.mock_edit_pool(), seed=seed), make_agent(task, llm),
-                             n_live=n_live, stop_dir=LIVE / name)
-    cfg = Config(max_experiments=cap, seed=seed, program="upstream", max_usd=max_usd, plot=False, overwrite=True,
-                 tag=f"r2-{name}")
+    agent = StuckSwitchAgent(
+        MockResearchAgent(task.mock_edit_pool(), seed=seed), make_agent(task, llm), n_live=n_live, stop_dir=LIVE / name
+    )
+    cfg = Config(
+        max_experiments=cap,
+        seed=seed,
+        program="upstream",
+        max_usd=max_usd,
+        plot=False,
+        overwrite=True,
+        tag=f"r2-{name}",
+    )
     res = run(task, seed_art, llm_propose=llm, agent=agent, config=cfg, out_dir=LIVE / name)
-    meta = {"switched_at_experiment": agent.switched_at, "live_proposals": agent.live_proposals,
-            "stop_reason": res.meta.get("stop_reason")}
+    meta = {
+        "switched_at_experiment": agent.switched_at,
+        "live_proposals": agent.live_proposals,
+        "stop_reason": res.meta.get("stop_reason"),
+    }
     (LIVE / name / "x6b_switch.json").write_text(json.dumps(meta))
-    return {"name": name, "results_tsv": (LIVE / name / "results.tsv").read_text(), **meta,
-            "usage": (res.usage or {}).get("_total")}
+    return {
+        "name": name,
+        "results_tsv": (LIVE / name / "results.tsv").read_text(),
+        **meta,
+        "usage": (res.usage or {}).get("_total"),
+    }
 
 
 def constants(src: str) -> dict:
@@ -163,8 +193,12 @@ def _jsonl(path: Path) -> list[dict]:
 
 
 def _kscr(rows: list[dict]) -> dict:
-    return {"n": len(rows), "C": sum(s["combination"] for s in rows), "S": sum(s["structural"] for s in rows),
-            "R": sum(bool(s["repeat"]) for s in rows)}
+    return {
+        "n": len(rows),
+        "C": sum(s["combination"] for s in rows),
+        "S": sum(s["structural"] for s in rows),
+        "R": sum(bool(s["repeat"]) for s in rows),
+    }
 
 
 def classify(d: Path) -> dict:
@@ -176,8 +210,11 @@ def classify(d: Path) -> dict:
         if nd.get("kind") == "candidate":
             by_round.setdefault(nd["round"], []).append(nd)
     decisions = [{"round": e["round"], **e["data"]} for e in events if e.get("kind") == "decision"]
-    props = [e["data"] for e in events if e.get("kind") == "proposal"
-             and str(e["data"].get("stage", "")).startswith("propose")]
+    props = [
+        e["data"]
+        for e in events
+        if e.get("kind") == "proposal" and str(e["data"].get("stage", "")).startswith("propose")
+    ]
     parent_train = None
     for nd in ledger:
         if nd.get("kind") == "baseline":
@@ -203,10 +240,17 @@ def classify(d: Path) -> dict:
             reused = [k for k, v in changed.items() if any(prev.get(k) == v for prev in tried_nonkept)]
             desc = (row["description"] or "").lower()
             combo = (len(changed) >= 2 and len(reused) >= 2) or any(w in desc for w in COMBO_WORDS)
-            row.update({"changed_constants": changed, "parent_constants": {k: c0.get(k) for k in changed},
-                        "structural": s_changed, "combination": combo,
-                        "reused_nonkept_settings": reused, "repeat": cand in tried_versions,
-                        "kind": "S" if s_changed else "K"})
+            row.update(
+                {
+                    "changed_constants": changed,
+                    "parent_constants": {k: c0.get(k) for k in changed},
+                    "structural": s_changed,
+                    "combination": combo,
+                    "reused_nonkept_settings": reused,
+                    "repeat": cand in tried_versions,
+                    "kind": "S" if s_changed else "K",
+                }
+            )
             if status in NONKEEP:
                 tried_nonkept.append(changed)
                 tried_versions.add(cand)
@@ -224,8 +268,14 @@ def classify(d: Path) -> dict:
     ask = [i for i, p in enumerate(props) if ASKING.search(p.get("reply", "") or "")]
     after = [s for s in seq if stuck_at is not None and s["round"] > stuck_at]
     before = [s for s in seq if stuck_at is None or s["round"] <= stuck_at]
-    return {"proposals": seq, "stuck_at": stuck_at, "n_invalid": sum(s["status"] == "invalid" for s in seq),
-            "asking_turns": ask, "after_stuck": _kscr(after), "before_stuck": _kscr(before)}
+    return {
+        "proposals": seq,
+        "stuck_at": stuck_at,
+        "n_invalid": sum(s["status"] == "invalid" for s in seq),
+        "asking_turns": ask,
+        "after_stuck": _kscr(after),
+        "before_stuck": _kscr(before),
+    }
 
 
 def _num(v):
@@ -271,10 +321,18 @@ def x6_pool(nights: dict, pick) -> dict:
             run_ = 0 if r["status"] == "keep" else run_ + 1
             longest = max(longest, run_)
     cand = [r for r in rows if r.get("kind") in ("K", "S")]
-    return {"nights": names, "n_proposals": len(rows), "asking_turns": asks, "invalid_turns": invalid,
-            "longest_nonkeep_run": longest, "stuck_point_reached": longest >= 4,
-            "K": sum(r["kind"] == "K" for r in cand), "S": sum(bool(r["structural"]) for r in cand),
-            "C": sum(bool(r["combination"]) for r in cand), "R": sum(bool(r["repeat"]) for r in cand)}
+    return {
+        "nights": names,
+        "n_proposals": len(rows),
+        "asking_turns": asks,
+        "invalid_turns": invalid,
+        "longest_nonkeep_run": longest,
+        "stuck_point_reached": longest >= 4,
+        "K": sum(r["kind"] == "K" for r in cand),
+        "S": sum(bool(r["structural"]) for r in cand),
+        "C": sum(bool(r["combination"]) for r in cand),
+        "R": sum(bool(r["repeat"]) for r in cand),
+    }
 
 
 def x6b(d: Path, c: dict) -> dict:
@@ -285,11 +343,27 @@ def x6b(d: Path, c: dict) -> dict:
     C = sum(bool(r["combination"]) for r in live)
     S = sum(bool(r["structural"]) for r in live)
     stops = len(c["asking_turns"])
-    rule = ("NOT RUN" if sw is None else "REPRODUCED-rule" if (stops == 0 and C >= 1 and S >= 1)
-            else "PARTIAL-rule" if (C >= 1 or S >= 1) else "NOT REPRODUCED-rule")
-    return {**meta, "classifier_stuck_at": c["stuck_at"], "live_rows": live, "n_live": len(live), "C": C, "S": S,
-            "R": sum(bool(r["repeat"]) for r in live), "asking_turns": stops,
-            "invalid": sum(r["status"] == "invalid" for r in live), "rule_outcome": rule}
+    rule = (
+        "NOT RUN"
+        if sw is None
+        else "REPRODUCED-rule"
+        if (stops == 0 and C >= 1 and S >= 1)
+        else "PARTIAL-rule"
+        if (C >= 1 or S >= 1)
+        else "NOT REPRODUCED-rule"
+    )
+    return {
+        **meta,
+        "classifier_stuck_at": c["stuck_at"],
+        "live_rows": live,
+        "n_live": len(live),
+        "C": C,
+        "S": S,
+        "R": sum(bool(r["repeat"]) for r in live),
+        "asking_turns": stops,
+        "invalid": sum(r["status"] == "invalid" for r in live),
+        "rule_outcome": rule,
+    }
 
 
 def analyze() -> None:
@@ -306,35 +380,67 @@ def analyze() -> None:
             entry["honest"] = None
         out["nights"][d.name] = entry
     nights = out["nights"]
-    ev = {arm: [nights[k]["honest"]["improvement"] for k in nights
-                if k.startswith(f"eval_{arm}_") and nights[k]["honest"]] for arm in ("v1", "v2")}
+    ev = {
+        arm: [
+            nights[k]["honest"]["improvement"] for k in nights if k.startswith(f"eval_{arm}_") and nights[k]["honest"]
+        ]
+        for arm in ("v1", "v2")
+    }
     if all(len(v) >= 2 for v in ev.values()):
         t = stats.ttest_ind(ev["v2"], ev["v1"], equal_var=False, alternative="greater")
-        out["x5_primary"] = {"v1": ev["v1"], "v2": ev["v2"], "mean_v1": float(np.mean(ev["v1"])),
-                             "mean_v2": float(np.mean(ev["v2"])), "diff": float(np.mean(ev["v2"]) - np.mean(ev["v1"])),
-                             "welch_t": float(t.statistic), "p_one_sided": float(t.pvalue),
-                             "pass": bool(np.mean(ev["v2"]) > np.mean(ev["v1"]) and t.pvalue < 0.05)}
+        out["x5_primary"] = {
+            "v1": ev["v1"],
+            "v2": ev["v2"],
+            "mean_v1": float(np.mean(ev["v1"])),
+            "mean_v2": float(np.mean(ev["v2"])),
+            "diff": float(np.mean(ev["v2"]) - np.mean(ev["v1"])),
+            "welch_t": float(t.statistic),
+            "p_one_sided": float(t.pvalue),
+            "pass": bool(np.mean(ev["v2"]) > np.mean(ev["v1"]) and t.pvalue < 0.05),
+        }
     cnt = {}
     for arm in ("v1", "v2"):
-        rows = [r for k, v in nights.items() if k.startswith(f"eval_{arm}_")
-                for r in v["classification"]["proposals"] if discouraged(r) is not None]
-        cnt[arm] = {"discouraged": sum(discouraged(r) for r in rows), "n": len(rows),
-                    "which": [(r["round"], r["description"]) for r in rows if discouraged(r)]}
+        rows = [
+            r
+            for k, v in nights.items()
+            if k.startswith(f"eval_{arm}_")
+            for r in v["classification"]["proposals"]
+            if discouraged(r) is not None
+        ]
+        cnt[arm] = {
+            "discouraged": sum(discouraged(r) for r in rows),
+            "n": len(rows),
+            "which": [(r["round"], r["description"]) for r in rows if discouraged(r)],
+        }
     if cnt["v1"]["n"] and cnt["v2"]["n"]:
         tab = [[cnt[arm]["discouraged"], cnt[arm]["n"] - cnt[arm]["discouraged"]] for arm in ("v2", "v1")]
         p = float(stats.fisher_exact(tab, alternative="less").pvalue)
         out["x5b_behaviour"] = {**cnt, "fisher_p_one_sided_v2_lower": p, "pass": bool(p < 0.05)}
     out["x6_secondary"] = {
         "preregistered_v1_nights": x6_pool(nights, lambda k: k == "design_v1_s100" or k.startswith("eval_v1_")),
-        "extra_all_upstream_and_v2_nights": x6_pool(nights, lambda k: k.startswith(("design_", "eval_")))}
+        "extra_all_upstream_and_v2_nights": x6_pool(nights, lambda k: k.startswith(("design_", "eval_"))),
+    }
     if "stuck_v1_s200" in nights:
         out["x6b_stuck"] = x6b(LIVE / "stuck_v1_s200", nights["stuck_v1_s200"]["classification"])
     write("r2_live_nights", out)
     print(json.dumps({k: v for k, v in out.items() if k != "nights"}, indent=1, default=str))
     for k, v in nights.items():
         c = v["classification"]
-        print(k, "stuck_at", c["stuck_at"], "after", c["after_stuck"], "before", c["before_stuck"],
-              "invalid", c["n_invalid"], "ask", c["asking_turns"], "honest", v["honest"] and v["honest"]["improvement"])
+        print(
+            k,
+            "stuck_at",
+            c["stuck_at"],
+            "after",
+            c["after_stuck"],
+            "before",
+            c["before_stuck"],
+            "invalid",
+            c["n_invalid"],
+            "ask",
+            c["asking_turns"],
+            "honest",
+            v["honest"] and v["honest"]["improvement"],
+        )
 
 
 def main() -> None:

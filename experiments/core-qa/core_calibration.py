@@ -1,7 +1,8 @@
 """Core calibration: do rsi.core's noise band and gates behave as the specs claim?
 
-    python experiments/core-qa/core_calibration.py [--llm sim|claude:haiku] [--seeds N] [--quick] [--replot JSON]
+python experiments/core-qa/core_calibration.py [--llm sim|claude:haiku] [--seeds N] [--quick] [--replot JSON]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -18,15 +19,29 @@ sys.path.insert(0, str(ROOT))
 
 import numpy as np  # noqa: E402
 
-from rsi.core import (Artifact, CachedLLM, Evaluator, FunctionDomain, GateContext, MinGain,  # noqa: E402
-                      NoiseFloor, Scored, StrictImprovement, Task, TaskSuite, get_llm, noise_from_repeats,
-                      noise_from_trials, summarize_runs)
+from rsi.core import (  # noqa: E402
+    Artifact,
+    CachedLLM,
+    Evaluator,
+    FunctionDomain,
+    GateContext,
+    MinGain,
+    NoiseFloor,
+    Scored,
+    StrictImprovement,
+    Task,
+    TaskSuite,
+    get_llm,
+    noise_from_repeats,
+    noise_from_trials,
+    summarize_runs,
+)
 from rsi.core.stats import bootstrap_ci  # noqa: E402
 
 OUT = ROOT / "results" / "core-qa"
 CACHE = ROOT / ".rsi_cache" / "core-qa"
 Z = 2.0
-CLAIMED = 0.975   # RRSI calibrate.py: an unchanged artifact clears S* - z * sd "about 97.5% of the time"
+CLAIMED = 0.975  # RRSI calibrate.py: an unchanged artifact clears S* - z * sd "about 97.5% of the time"
 
 
 def _phi(x: float) -> float:
@@ -67,12 +82,13 @@ def _share(rows: list[dict], key: str) -> float:
 def run_job(job: dict) -> dict:
     """Evaluate one artifact R times with disjoint trial seeds and apply the gates to R/2 independent null pairs."""
     kind, seed, R, k, n_tasks = job["kind"], job["seed"], job["R"], job["k"], job["n_tasks"]
-    dom, art, llm = bernoulli_domain(seed, n_tasks) if kind == "bernoulli" else \
-        agentqa_domain(seed, n_tasks, job["llm"])
+    dom, art, llm = (
+        bernoulli_domain(seed, n_tasks) if kind == "bernoulli" else agentqa_domain(seed, n_tasks, job["llm"])
+    )
     ev = Evaluator(dom, llm, workers=job["workers"])
     evals = [ev.evaluate(art, "evolve", seeds=[10_000 * seed + 100 * r + j for j in range(k)]) for r in range(R)]
     S = np.array([e.score for e in evals])
-    sums = [sum(t.score for trs in e.trials.values() for t in trs) for e in evals]   # exact integer totals
+    sums = [sum(t.score for trs in e.trials.values() for t in trs) for e in evals]  # exact integer totals
     deltas = np.array([noise_from_trials(e.trial_matrix(), z=Z).delta for e in evals])
     corr = math.sqrt(k / (k - 1))
     delta_rep = noise_from_repeats(S, z=Z).delta
@@ -82,31 +98,46 @@ def run_job(job: dict) -> dict:
         ctx = GateContext(best_score=S[a], delta=float(deltas[a]))
         ctx_c = GateContext(best_score=S[a], delta=float(deltas[a] * corr))
         tie = abs(sums[a] - sums[b]) < 1e-9
-        rows.append({
-            "dS": float(S[b] - S[a]), "delta": float(deltas[a]),
-            "floor_clear": bool(NoiseFloor().check(cand, inc, ctx)),
-            "floor_clear_corrected": bool(NoiseFloor().check(cand, inc, ctx_c)),
-            "strict": bool(StrictImprovement().check(cand, inc, ctx)),
-            "strict_prefix": bool(S[b] - S[a] > 0),               # the strict rule before the TIE_EPS fix
-            "min_gain": bool(MinGain().check(cand, inc, ctx)),
-            "min_gain_corrected": bool(MinGain().check(cand, inc, ctx_c)),
-            "tie": bool(tie), "float_tie": bool(tie and S[a] != S[b]),
-        })
+        rows.append(
+            {
+                "dS": float(S[b] - S[a]),
+                "delta": float(deltas[a]),
+                "floor_clear": bool(NoiseFloor().check(cand, inc, ctx)),
+                "floor_clear_corrected": bool(NoiseFloor().check(cand, inc, ctx_c)),
+                "strict": bool(StrictImprovement().check(cand, inc, ctx)),
+                "strict_prefix": bool(S[b] - S[a] > 0),  # the strict rule before the TIE_EPS fix
+                "min_gain": bool(MinGain().check(cand, inc, ctx)),
+                "min_gain_corrected": bool(MinGain().check(cand, inc, ctx_c)),
+                "tie": bool(tie),
+                "float_tie": bool(tie and S[a] != S[b]),
+            }
+        )
     sd_true = float(np.std(S, ddof=1) * math.sqrt(2))
     return {
-        "kind": kind, "seed": seed, "R": R, "k": k, "n_tasks": len(dom.tasks.splits["evolve"]),
-        "S_mean": float(S.mean()), "sd_null_repeat": sd_true, "delta_boot_mean": float(deltas.mean()),
+        "kind": kind,
+        "seed": seed,
+        "R": R,
+        "k": k,
+        "n_tasks": len(dom.tasks.splits["evolve"]),
+        "S_mean": float(S.mean()),
+        "sd_null_repeat": sd_true,
+        "delta_boot_mean": float(deltas.mean()),
         "delta_repeat": float(delta_rep),
         "delta_ratio": float(deltas.mean() / delta_rep) if delta_rep else float("nan"),
-        "clearance": _share(rows, "floor_clear"), "clearance_corrected": _share(rows, "floor_clear_corrected"),
+        "clearance": _share(rows, "floor_clear"),
+        "clearance_corrected": _share(rows, "floor_clear_corrected"),
         "clearance_analytic": float(_phi(deltas.mean() / sd_true)) if sd_true else 1.0,
-        "strict_accept": _share(rows, "strict"), "strict_prefix_accept": _share(rows, "strict_prefix"),
-        "min_gain_accept": _share(rows, "min_gain"), "min_gain_corrected_accept": _share(rows, "min_gain_corrected"),
+        "strict_accept": _share(rows, "strict"),
+        "strict_prefix_accept": _share(rows, "strict_prefix"),
+        "min_gain_accept": _share(rows, "min_gain"),
+        "min_gain_corrected_accept": _share(rows, "min_gain_corrected"),
         "ties": int(sum(r["tie"] for r in rows)),
         "float_ties": int(sum(r["float_tie"] for r in rows)),
         "float_ties_accepted_prefix": int(sum(r["float_tie"] and r["strict_prefix"] for r in rows)),
         "float_ties_accepted_fixed": int(sum(r["float_tie"] and r["strict"] for r in rows)),
-        "pairs": rows, "usage": llm.meter.snapshot()["_total"] if llm is not None else {}, "rollouts": ev.n_rollouts,
+        "pairs": rows,
+        "usage": llm.meter.snapshot()["_total"] if llm is not None else {},
+        "rollouts": ev.n_rollouts,
     }
 
 
@@ -115,9 +146,19 @@ def _ci(values: list) -> dict:
 
 
 def summarize(rs: list[dict]) -> dict:
-    keys = ("clearance", "clearance_corrected", "clearance_analytic", "delta_ratio", "strict_accept",
-            "strict_prefix_accept", "min_gain_accept", "min_gain_corrected_accept", "S_mean", "delta_boot_mean",
-            "delta_repeat")
+    keys = (
+        "clearance",
+        "clearance_corrected",
+        "clearance_analytic",
+        "delta_ratio",
+        "strict_accept",
+        "strict_prefix_accept",
+        "min_gain_accept",
+        "min_gain_corrected_accept",
+        "S_mean",
+        "delta_boot_mean",
+        "delta_repeat",
+    )
     out = {k: summarize_runs([r[k] for r in rs]) for k in keys}
     for key in ("ties", "float_ties", "float_ties_accepted_prefix", "float_ties_accepted_fixed"):
         out[key] = sum(r[key] for r in rs)
@@ -152,36 +193,60 @@ def verdicts(summ: dict, per_job: list[dict]) -> dict:
         enough = s["n_pairs"] >= 100
         c, cc = s["floor_clear_pooled"], s["floor_clear_corrected_pooled"]
         tag = _two_way(c, CLAIMED, s["predicted_clearance"], enough=enough)
-        v[f"C1[{key}]"] = (f"{tag}: clearance {c['mean']:.3f} [{c['lo']:.3f}, {c['hi']:.3f}] vs {CLAIMED} claimed "
-                           f"and {s['predicted_clearance']:.3f} predicted by the small-k bias; with the "
-                           f"sqrt(k/(k-1)) correction {cc['mean']:.3f} [{cc['lo']:.3f}, {cc['hi']:.3f}] "
-                           f"({s['n_pairs']} pairs)")
+        v[f"C1[{key}]"] = (
+            f"{tag}: clearance {c['mean']:.3f} [{c['lo']:.3f}, {c['hi']:.3f}] vs {CLAIMED} claimed "
+            f"and {s['predicted_clearance']:.3f} predicted by the small-k bias; with the "
+            f"sqrt(k/(k-1)) correction {cc['mean']:.3f} [{cc['lo']:.3f}, {cc['hi']:.3f}] "
+            f"({s['n_pairs']} pairs)"
+        )
         r = s["delta_ratio"]
         tag = _two_way(r, 1.0, s["predicted_ratio"], enough=enough)
-        v[f"C2[{key}]"] = (f"{tag}: delta_boot / delta_repeat = {r['mean']:.3f} [{r['lo']:.3f}, {r['hi']:.3f}] "
-                           f"(claim 1.0, sqrt((k-1)/k) = {s['predicted_ratio']:.3f}; per-seed ratios)")
+        v[f"C2[{key}]"] = (
+            f"{tag}: delta_boot / delta_repeat = {r['mean']:.3f} [{r['lo']:.3f}, {r['hi']:.3f}] "
+            f"(claim 1.0, sqrt((k-1)/k) = {s['predicted_ratio']:.3f}; per-seed ratios)"
+        )
         st, mg, mgc = s["strict_pooled"], s["min_gain_pooled"], s["min_gain_corrected_pooled"]
-        tag = "inconclusive (too few pairs)" if not enough else \
-            ("reproduced" if st["lo"] >= 0.3 and mg["hi"] <= 0.08 else
-             "partly: strict chases noise, but MinGain(delta) keeps more than a few % (delta biased low)"
-             if st["lo"] >= 0.3 and mgc["hi"] <= 0.08 else "NOT reproduced")
-        v[f"C3[{key}]"] = (f"{tag}: strict keeps {st['mean']:.1%} [{st['lo']:.1%}, {st['hi']:.1%}] of null "
-                           f"re-evaluations, MinGain(delta) {mg['mean']:.1%} [{mg['lo']:.1%}, {mg['hi']:.1%}], "
-                           f"MinGain(corrected delta) {mgc['mean']:.1%} (one-sided z=2 target: 2.3%)")
-        v[f"C4[{key}]"] = (f"{s['float_ties']} of {s['ties']} exact ties differed in float; the pre-fix strict rule "
-                           f"accepted {s['float_ties_accepted_prefix']}, "
-                           f"the fixed rule {s['float_ties_accepted_fixed']}")
+        tag = (
+            "inconclusive (too few pairs)"
+            if not enough
+            else (
+                "reproduced"
+                if st["lo"] >= 0.3 and mg["hi"] <= 0.08
+                else "partly: strict chases noise, but MinGain(delta) keeps more than a few % (delta biased low)"
+                if st["lo"] >= 0.3 and mgc["hi"] <= 0.08
+                else "NOT reproduced"
+            )
+        )
+        v[f"C3[{key}]"] = (
+            f"{tag}: strict keeps {st['mean']:.1%} [{st['lo']:.1%}, {st['hi']:.1%}] of null "
+            f"re-evaluations, MinGain(delta) {mg['mean']:.1%} [{mg['lo']:.1%}, {mg['hi']:.1%}], "
+            f"MinGain(corrected delta) {mgc['mean']:.1%} (one-sided z=2 target: 2.3%)"
+        )
+        v[f"C4[{key}]"] = (
+            f"{s['float_ties']} of {s['ties']} exact ties differed in float; the pre-fix strict rule "
+            f"accepted {s['float_ties_accepted_prefix']}, "
+            f"the fixed rule {s['float_ties_accepted_fixed']}"
+        )
     for k in sorted({r["k"] for r in per_job}):
         pairs = [p for r in per_job if r["k"] == k for p in r["pairs"]]
         for key, claim_name in (("floor_clear", "C1"), ("floor_clear_corrected", "C1-corrected")):
             ci = _ci([p[key] for p in pairs])
-            tag = _two_way(ci, CLAIMED, predicted_clearance(k), enough=len(pairs) >= 200) \
-                if key == "floor_clear" else \
-                ("inconclusive (too few pairs)" if len(pairs) < 200 else
-                 "consistent with the claim" if ci["lo"] <= CLAIMED <= ci["hi"] else "differs from the claim")
-            v[f"{claim_name}[pooled/k{k}]"] = (f"{tag}: {ci['mean']:.3f} [{ci['lo']:.3f}, {ci['hi']:.3f}] "
-                                               f"over {len(pairs)} pairs of both domains (claim {CLAIMED}, "
-                                               f"small-k prediction {predicted_clearance(k):.3f})")
+            tag = (
+                _two_way(ci, CLAIMED, predicted_clearance(k), enough=len(pairs) >= 200)
+                if key == "floor_clear"
+                else (
+                    "inconclusive (too few pairs)"
+                    if len(pairs) < 200
+                    else "consistent with the claim"
+                    if ci["lo"] <= CLAIMED <= ci["hi"]
+                    else "differs from the claim"
+                )
+            )
+            v[f"{claim_name}[pooled/k{k}]"] = (
+                f"{tag}: {ci['mean']:.3f} [{ci['lo']:.3f}, {ci['hi']:.3f}] "
+                f"over {len(pairs)} pairs of both domains (claim {CLAIMED}, "
+                f"small-k prediction {predicted_clearance(k):.3f})"
+            )
     return v
 
 
@@ -198,8 +263,13 @@ def figure(per_job: list[dict], summ: dict, ks: list[int], path: Path) -> None:
     fig, axes = plt.subplots(2, 2, figsize=(10, 7.2), facecolor=surf)
     axes = axes.ravel()
     for ax, kind in zip(axes[:2], kinds):
-        z = [p["dS"] / p["delta"] for r in per_job if r["kind"] == kind and r["k"] == k_hist
-             for p in r["pairs"] if p["delta"] > 0]
+        z = [
+            p["dS"] / p["delta"]
+            for r in per_job
+            if r["kind"] == kind and r["k"] == k_hist
+            for p in r["pairs"]
+            if p["delta"] > 0
+        ]
         ax.hist(z, bins=np.linspace(-3, 3, 31), color=col[kind], edgecolor=surf, linewidth=2)
         top = ax.get_ylim()[1]
         ax.axvline(-1, color=ink, linestyle="--", linewidth=1.5)
@@ -207,30 +277,56 @@ def figure(per_job: list[dict], summ: dict, ks: list[int], path: Path) -> None:
         ax.text(-1.08, top * 0.92, "floor S* - δ", ha="right", color=ink, fontsize=8)
         ax.text(1.08, top * 0.92, "MinGain: ΔS > δ", ha="left", color=muted, fontsize=8)
         c = summ[f"{kind}/k{k_hist}"]["floor_clear_pooled"]["mean"]
-        ax.set_title(f"{kind}, k={k_hist}: null ΔS in units of bootstrap δ (clears floor {c:.1%})", fontsize=9,
-                     color=ink)
+        ax.set_title(
+            f"{kind}, k={k_hist}: null ΔS in units of bootstrap δ (clears floor {c:.1%})", fontsize=9, color=ink
+        )
         ax.set_xlabel("ΔS between two evaluations of the same artifact / δ", fontsize=8, color=muted)
         ax.set_ylabel("pairs", fontsize=8, color=muted)
     ax = axes[2]
     xs = np.array(ks)
     ax.plot(xs, [CLAIMED] * len(xs), color=muted, linestyle=":", linewidth=1.5)
-    ax.text(xs[-2] + 0.5 * (xs[-1] - xs[-2]) if len(xs) > 1 else xs[0], CLAIMED - 0.002, "claimed 97.5%",
-            ha="center", va="top", fontsize=8, color=muted)
-    ax.plot(xs, [predicted_clearance(k) for k in ks], color=grid, linewidth=6, solid_capstyle="round",
-            label="predicted Φ(z·√((k-1)/k))")
+    ax.text(
+        xs[-2] + 0.5 * (xs[-1] - xs[-2]) if len(xs) > 1 else xs[0],
+        CLAIMED - 0.002,
+        "claimed 97.5%",
+        ha="center",
+        va="top",
+        fontsize=8,
+        color=muted,
+    )
+    ax.plot(
+        xs,
+        [predicted_clearance(k) for k in ks],
+        color=grid,
+        linewidth=6,
+        solid_capstyle="round",
+        label="predicted Φ(z·√((k-1)/k))",
+    )
     for kind in kinds:
         raw = [summ[f"{kind}/k{k}"]["floor_clear_pooled"]["mean"] for k in ks]
         cor = [summ[f"{kind}/k{k}"]["floor_clear_corrected_pooled"]["mean"] for k in ks]
         ax.plot(xs, raw, color=col[kind], linewidth=2, marker="o", markersize=8, label=f"{kind}: bootstrap δ")
-        ax.plot(xs, cor, color=col[kind], linewidth=2, linestyle="--", marker="s", markersize=8,
-                label=f"{kind}: δ·√(k/(k-1))")
+        ax.plot(
+            xs,
+            cor,
+            color=col[kind],
+            linewidth=2,
+            linestyle="--",
+            marker="s",
+            markersize=8,
+            label=f"{kind}: δ·√(k/(k-1))",
+        )
     ax.set_xticks(xs, [f"k={k}" for k in ks])
     ax.set_ylim(0.85, 1.0)
     ax.set_title("floor clearance of an unchanged artifact vs trials per task", fontsize=9, color=ink)
     ax.legend(frameon=False, fontsize=7, loc="lower right")
     ax = axes[3]
-    rules = [("strict_prefix_accept", "strict (pre-fix)"), ("strict_accept", "strict"),
-             ("min_gain_accept", "MinGain δ"), ("min_gain_corrected_accept", "MinGain δ·√(k/(k-1))")]
+    rules = [
+        ("strict_prefix_accept", "strict (pre-fix)"),
+        ("strict_accept", "strict"),
+        ("min_gain_accept", "MinGain δ"),
+        ("min_gain_corrected_accept", "MinGain δ·√(k/(k-1))"),
+    ]
     x = np.arange(len(rules))
     w = 0.38
     for j, kind in enumerate(kinds):
@@ -275,26 +371,52 @@ def main() -> None:
     else:
         seeds, R, ks, n_tasks = args.seeds or 30, args.replicates or 80, [2, 3, 5], 20
     kinds = ("agentqa", "bernoulli")
-    jobs = [{"kind": kind, "seed": s, "R": R, "k": k, "n_tasks": n_tasks if kind == "agentqa" else 3 * n_tasks,
-             "llm": args.llm, "workers": 4 if live else 1}
-            for kind in kinds for k in ks for s in range(seeds)]
+    jobs = [
+        {
+            "kind": kind,
+            "seed": s,
+            "R": R,
+            "k": k,
+            "n_tasks": n_tasks if kind == "agentqa" else 3 * n_tasks,
+            "llm": args.llm,
+            "workers": 4 if live else 1,
+        }
+        for kind in kinds
+        for k in ks
+        for s in range(seeds)
+    ]
     t0 = time.time()
     if live:
-        per_job = [run_job(j) for j in jobs]           # one process: the CLI calls are the bottleneck
+        per_job = [run_job(j) for j in jobs]  # one process: the CLI calls are the bottleneck
     else:
         with ProcessPoolExecutor(max_workers=args.workers) as ex:
             per_job = list(ex.map(run_job, jobs))
-    summ = {f"{kind}/k{k}": summarize([r for r in per_job if r["kind"] == kind and r["k"] == k])
-            for kind in kinds for k in ks}
+    summ = {
+        f"{kind}/k{k}": summarize([r for r in per_job if r["kind"] == kind and r["k"] == k])
+        for kind in kinds
+        for k in ks
+    }
     v = verdicts(summ, per_job)
     OUT.mkdir(parents=True, exist_ok=True)
     name = "core_calibration" + ("_quick" if args.quick else "") + ("_" + args.llm.replace(":", "-") if live else "")
     figure(per_job, summ, ks, OUT / f"{name}.png")
-    res = {"config": {"llm": args.llm, "seeds": seeds, "replicates": R, "ks": ks, "n_tasks_agentqa": n_tasks,
-                      "n_tasks_bernoulli": 3 * n_tasks, "z": Z, "quick": args.quick},
-           "summary": summ, "verdicts": v, "wall_s": round(time.time() - t0, 1),
-           "per_seed": [{k2: v2 for k2, v2 in r.items() if k2 != "pairs"} for r in per_job],
-           "pairs": {f"{r['kind']}-k{r['k']}-{r['seed']}": r["pairs"] for r in per_job}}
+    res = {
+        "config": {
+            "llm": args.llm,
+            "seeds": seeds,
+            "replicates": R,
+            "ks": ks,
+            "n_tasks_agentqa": n_tasks,
+            "n_tasks_bernoulli": 3 * n_tasks,
+            "z": Z,
+            "quick": args.quick,
+        },
+        "summary": summ,
+        "verdicts": v,
+        "wall_s": round(time.time() - t0, 1),
+        "per_seed": [{k2: v2 for k2, v2 in r.items() if k2 != "pairs"} for r in per_job],
+        "pairs": {f"{r['kind']}-k{r['k']}-{r['seed']}": r["pairs"] for r in per_job},
+    }
     (OUT / f"{name}.json").write_text(json.dumps(res, indent=1, default=float))
     print(json.dumps(v, indent=1))
     print(f"wrote {OUT / name}.json/.png in {res['wall_s']} s")

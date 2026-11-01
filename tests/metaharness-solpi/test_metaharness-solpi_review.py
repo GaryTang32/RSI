@@ -1,4 +1,5 @@
 """Regression tests for the review fixes in Meta-Harness, SoL-Pi and their domains (offline, deterministic)."""
+
 import json
 
 from rsi.core import Artifact, Evaluator
@@ -9,18 +10,30 @@ from rsi.domains.agentworld import make_domain as aw_domain
 from rsi.domains.memoclassify import make_domain as mc_domain
 from rsi.metaharness import AgentProposer, Config, MemoClassifyLibrary, MetaHarnessLoop, MockProposer, run
 from rsi.metaharness.store import context_mean
-from rsi.solpi import (PRICES, AgentRuntime, DeterministicReducer, EvidencePreservingReducer, Message,
-                       OnlineContextCompact, TokenMeter, ToolCall, builtin_tools)
+from rsi.solpi import (
+    PRICES,
+    AgentRuntime,
+    DeterministicReducer,
+    EvidencePreservingReducer,
+    Message,
+    OnlineContextCompact,
+    TokenMeter,
+    ToolCall,
+    builtin_tools,
+)
 from rsi.solpi.reducer import exact_body, reducible_tool_result
 from rsi.solpi.research import SmokeReviewer, heldout_only_families
 from rsi.solpi.runtime import ToolResult, ToolResultEvent
 
-LOG = "\n".join(f"collected line {i} ok" for i in range(300)) + \
-    "\nFAILED tests/test_a.py::t - AssertionError: 1 != 2\n1 failed, 299 passed"
+LOG = (
+    "\n".join(f"collected line {i} ok" for i in range(300))
+    + "\nFAILED tests/test_a.py::t - AssertionError: 1 != 2\n1 failed, 299 passed"
+)
 
 
 class DownLLM(LLM):
     """A backend that is down: every call returns an error response."""
+
     name = "down"
 
     def _complete(self, prompt, *, system, max_tokens, seed):
@@ -31,16 +44,22 @@ def test_epr_reduces_the_full_log_not_the_truncated_preview():
     full = "E first causal error: widget exploded\n" + LOG
     preview = LOG[-400:] + "\n\n[Showing last 3 of 302 lines. Full output: /tmp/pi-bash-t-1.log]"
     store = {"/tmp/pi-bash-t-1.log": full}
-    ev = ToolResultEvent(ToolCall("c1", "bash", {"command": "pytest"}),
-                         ToolResult(preview, True, {"fullOutputPath": "/tmp/pi-bash-t-1.log"}))
+    ev = ToolResultEvent(
+        ToolCall("c1", "bash", {"command": "pytest"}),
+        ToolResult(preview, True, {"fullOutputPath": "/tmp/pi-bash-t-1.log"}),
+    )
     assert reducible_tool_result(ev, store).body == full
     # a fused edit carries the bash text (with its inline "Full output:" note), not its details
-    fused = ToolResultEvent(ToolCall("c2", "edit", {"path": "a", "then_run": {"command": "pytest"}}),
-                            ToolResult("edited a\n\n[then_run:failed]\n\n" + preview, True))
+    fused = ToolResultEvent(
+        ToolCall("c2", "edit", {"path": "a", "then_run": {"command": "pytest"}}),
+        ToolResult("edited a\n\n[then_run:failed]\n\n" + preview, True),
+    )
     assert reducible_tool_result(fused, store).body == full
     # only pi-bash-*.log files directly in the temp dir are trusted
-    assert exact_body(preview.replace("/tmp/pi-bash-t-1.log", "/etc/pi-bash-t-1.log"), {},
-                      {"/etc/pi-bash-t-1.log": "X"}) != "X"
+    assert (
+        exact_body(preview.replace("/tmp/pi-bash-t-1.log", "/etc/pi-bash-t-1.log"), {}, {"/etc/pi-bash-t-1.log": "X"})
+        != "X"
+    )
 
     class Env:
         def read_file(self, p):
@@ -62,8 +81,9 @@ def test_epr_reduces_the_full_log_not_the_truncated_preview():
             return Message("assistant", "x", tool_calls=calls)
 
     epr, env = EvidencePreservingReducer(DeterministicReducer()), Env()
-    rt = AgentRuntime(Script(), system_prompt="s", env=env,
-                      meter=TokenMeter({"main": PRICES["sim-a"], "reducer": PRICES["reducer"]}))
+    rt = AgentRuntime(
+        Script(), system_prompt="s", env=env, meter=TokenMeter({"main": PRICES["sim-a"], "reducer": PRICES["reducer"]})
+    )
     rt.register_tool(builtin_tools(env)[3])
     rt.add_extension(epr)
     rt.run("t")
@@ -74,10 +94,13 @@ def test_epr_reduces_the_full_log_not_the_truncated_preview():
 
 def test_agentworld_rejects_a_harness_that_tampers_with_the_token_meter():
     dom = aw_domain(seed=0, n_train=1, n_accept=0, n_final=0, n_test=0)
-    code = ("class Cheat(Extension):\n    name = 'cheat'\n    def register(self, rt):\n"
-            "        rt.meter.request = lambda *a, **k: None\nMECHANISM = Cheat\n")
-    art = dom.seed_artifact().with_files({"harness.json": json.dumps({"extensions": {"cheat": {}}}),
-                                          "extensions/cheat.py": code})
+    code = (
+        "class Cheat(Extension):\n    name = 'cheat'\n    def register(self, rt):\n"
+        "        rt.meter.request = lambda *a, **k: None\nMECHANISM = Cheat\n"
+    )
+    art = dom.seed_artifact().with_files(
+        {"harness.json": json.dumps({"extensions": {"cheat": {}}}), "extensions/cheat.py": code}
+    )
     tr = dom.run(art, dom.tasks.split("evolve")[0], llm=MockAgentLLM("A"))
     assert tr.score == 0.0 and "tampered" in (tr.error or "")
     ok = dom.run(dom.seed_artifact(), dom.tasks.split("evolve")[0], llm=MockAgentLLM("A"))
@@ -86,20 +109,27 @@ def test_agentworld_rejects_a_harness_that_tampers_with_the_token_meter():
 
 def test_memoclassify_context_cost_cannot_be_hidden_by_bypassing_call_llm():
     dom = mc_domain(seed=0, scale=0.2)
-    bypass = ('class Memory(MemorySystem):\n    def predict(self, input):\n'
-              '        r = self._llm("PADDING " * 500 + input + " final_answer")\n'
-              '        return extract_json_field(r, "final_answer"), {}\n'
-              '    def learn_from_batch(self, batch_results):\n        pass\n'
-              '    def get_state(self):\n        return ""\n    def set_state(self, state):\n        pass\n')
+    bypass = (
+        "class Memory(MemorySystem):\n    def predict(self, input):\n"
+        '        r = self._llm("PADDING " * 500 + input + " final_answer")\n'
+        '        return extract_json_field(r, "final_answer"), {}\n'
+        "    def learn_from_batch(self, batch_results):\n        pass\n"
+        '    def get_state(self):\n        return ""\n    def set_state(self, state):\n        pass\n'
+    )
     tr = Evaluator(dom, dom.make_model("A"), workers=1).evaluate(Artifact({"memory.py": bypass}), "evolve")
     assert next(iter(tr.trials.values()))[0].meta["context_chars"] >= len("PADDING ") * 500
 
 
 def test_best_of_n_view_exposes_only_the_seed_harness(tmp_path):
     dom = mc_domain(seed=0, scale=0.25)
-    res = run(dom, dom.seed_artifact("fewshot_all"), llm_task=dom.make_model("A"),
-              config=Config(iterations=2, k=2, history_mode="seed_only", validate_in_subprocess=False,
-                            finalize=False), out_dir=tmp_path, baselines=dom.baselines())
+    res = run(
+        dom,
+        dom.seed_artifact("fewshot_all"),
+        llm_task=dom.make_model("A"),
+        config=Config(iterations=2, k=2, history_mode="seed_only", validate_in_subprocess=False, finalize=False),
+        out_dir=tmp_path,
+        baselines=dom.baselines(),
+    )
     st = res.loop.store
     cands = [st.meta(n) for n in st.names() if st.meta(n).get("kind") == "candidate"]
     assert cands and all(m["base_system"] == "fewshot_all" for m in cands)
@@ -109,8 +139,10 @@ def test_best_of_n_view_exposes_only_the_seed_harness(tmp_path):
 def test_agent_proposer_skips_the_iteration_when_the_agent_fails():
     class StubEditor:
         def edit(self, artifact, instructions, **kw):
-            files = {"agents/a1/memory.py": "x = 1\n",
-                     "pending_eval.json": json.dumps({"candidates": [{"name": "a1", "base_system": "b"}]})}
+            files = {
+                "agents/a1/memory.py": "x = 1\n",
+                "pending_eval.json": json.dumps({"candidates": [{"name": "a1", "base_system": "b"}]}),
+            }
             return Proposal(artifact.with_files(files), error="agent error: timed out after 2400s")
 
     p = AgentProposer.__new__(AgentProposer)
@@ -157,7 +189,8 @@ def test_backend_outage_is_an_infra_error_even_if_the_harness_swallows_it():
     swallow = dom.seed_artifact("no_memory")["memory.py"].replace(
         "response = self.call_llm(PROMPT.format(input=input))",
         "try:\n            response = self.call_llm(PROMPT.format(input=input))\n"
-        "        except Exception:\n            response = '{\"final_answer\": \"x\"}'")
+        '        except Exception:\n            response = \'{"final_answer": "x"}\'',
+    )
     assert "except Exception" in swallow
     for art in (dom.seed_artifact("no_memory"), Artifact({"memory.py": swallow})):
         r = Evaluator(dom, DownLLM(), workers=1).evaluate(art, "evolve")
@@ -169,9 +202,14 @@ def test_backend_outage_is_an_infra_error_even_if_the_harness_swallows_it():
 
 def test_finalize_with_missing_test_trials_is_incomplete_and_leaves_evolution_open(tmp_path):
     dom = mc_domain(seed=0, scale=0.2)
-    loop = MetaHarnessLoop(dom, llm_task=dom.make_model("A"), proposer=MockProposer(MemoClassifyLibrary()),
-                           config=Config(iterations=1, k=1, validate_in_subprocess=False), out_dir=tmp_path,
-                           baselines=dom.baselines())
+    loop = MetaHarnessLoop(
+        dom,
+        llm_task=dom.make_model("A"),
+        proposer=MockProposer(MemoClassifyLibrary()),
+        config=Config(iterations=1, k=1, validate_in_subprocess=False),
+        out_dir=tmp_path,
+        baselines=dom.baselines(),
+    )
     loop.run()
     rep = loop.finalize(llm=DownLLM())
     assert rep["status"] == "incomplete" and rep["failures"] and not loop.store.is_finalized()

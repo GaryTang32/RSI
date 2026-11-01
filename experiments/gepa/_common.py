@@ -1,4 +1,5 @@
 """Shared plumbing for the GEPA experiments: CLI, reflection LM, worker pool, CI summaries, JSON and plots."""
+
 from __future__ import annotations
 
 import argparse
@@ -6,9 +7,9 @@ import json
 import math
 import sys
 import time
+from collections.abc import Callable, Sequence
 from multiprocessing import get_context
 from pathlib import Path
-from typing import Callable, Optional, Sequence
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -22,7 +23,7 @@ RESULTS = ROOT / "results" / "gepa"
 CACHE = ROOT / ".rsi_cache" / "gepa"
 
 
-def parse_args(desc: str, default_seeds: int = 30, extra: Optional[Callable] = None) -> argparse.Namespace:
+def parse_args(desc: str, default_seeds: int = 30, extra: Callable | None = None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(description=desc)
     ap.add_argument("--llm", default="sim", help="reflection LM: sim (offline mock) | claude:<model> (live, cached)")
     ap.add_argument("--seeds", type=int, default=None, help=f"number of seeds (default {default_seeds}; quick: 4)")
@@ -46,8 +47,10 @@ def reflection_llm(spec: str, world=None, kind: str = "ruleworld", profile=None)
     if spec == "sim":
         if kind == "ruleworld":
             from rsi.domains.ruleworld import RuleWorldReflectionLM
+
             return RuleWorldReflectionLM(world, profile)
         from rsi.gepa import AgentQAReflectionLM, GenericReflectionLM
+
         return AgentQAReflectionLM() if kind == "agentqa" else GenericReflectionLM()
     k, _, model = spec.partition(":")
     if k != "claude":
@@ -127,7 +130,7 @@ def fmt_diff(p: dict) -> str:
     return f"{p['mean_diff']:+.3f} [{p['lo']:+.3f}, {p['hi']:+.3f}]"
 
 
-def save(name: str, payload: dict, out: Optional[str] = None) -> Path:
+def save(name: str, payload: dict, out: str | None = None) -> Path:
     RESULTS.mkdir(parents=True, exist_ok=True)
     p = Path(out) if out else RESULTS / f"{name}.json"
     payload.setdefault("generated_at", time.strftime("%Y-%m-%d %H:%M:%S"))
@@ -148,8 +151,10 @@ def _default(x):
 
 def pyplot():
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+
     return plt
 
 
@@ -165,9 +170,15 @@ def save_fig(fig, path: Path, **layout) -> None:
     print(f"[saved] {path}")
 
 
-def plot_curves(path: Path, budgets: Sequence[int], arms: dict[str, list[list[float]]], title: str,
-                ylabel: str = "true test score of returned candidate", hline: Optional[float] = None,
-                logx: bool = True) -> None:
+def plot_curves(
+    path: Path,
+    budgets: Sequence[int],
+    arms: dict[str, list[list[float]]],
+    title: str,
+    ylabel: str = "true test score of returned candidate",
+    hline: float | None = None,
+    logx: bool = True,
+) -> None:
     """Mean and 95% bootstrap CI band of per-seed curves (seeds x budgets)."""
     fig, ax = pyplot().subplots(figsize=(7, 4.2))
     for name, curves in arms.items():

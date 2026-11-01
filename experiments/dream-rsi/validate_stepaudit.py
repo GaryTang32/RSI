@@ -1,7 +1,8 @@
 """Independent step audit of a Dream-RSI validation run, re-derived from its files on disk with code of its own.
 
-    python experiments/dream-rsi/validate_stepaudit.py <run> [<run> ...]   # writes <run>/stepaudit.json
+python experiments/dream-rsi/validate_stepaudit.py <run> [<run> ...]   # writes <run>/stepaudit.json
 """
+
 from __future__ import annotations
 
 import ast
@@ -79,6 +80,7 @@ program files are yours to write; proposal.md, eval/ and error.txt are written b
 
 def legacy_instructions(ctx) -> str:
     """The pre-fix EditorAgent.build_instructions (30 records per section, compact records)."""
+
     def recs(rs, empty="(none)"):
         if not rs:
             return empty
@@ -87,9 +89,13 @@ def legacy_instructions(ctx) -> str:
         return (f"({omitted} older attempts omitted)\n" if omitted else "") + "\n".join(r.render() for r in rs[-30:])
 
     return LEGACY_EXPLORATION_PROMPT.format(
-        direction_guidance=ctx.direction_guidance or "", problem=ctx.problem,
-        lineage=recs(ctx.lineage, "(this branch starts from the initial workspace)"), siblings=recs(ctx.siblings),
-        history=recs(ctx.history), baseline=f"{ctx.baseline_score:.6g}" if ctx.baseline_score is not None else "n/a")
+        direction_guidance=ctx.direction_guidance or "",
+        problem=ctx.problem,
+        lineage=recs(ctx.lineage, "(this branch starts from the initial workspace)"),
+        siblings=recs(ctx.siblings),
+        history=recs(ctx.history),
+        baseline=f"{ctx.baseline_score:.6g}" if ctx.baseline_score is not None else "n/a",
+    )
 
 
 MECHS = ("hill", "anneal", "window", "fringe", "grow")
@@ -112,8 +118,11 @@ def my_diff(old: dict, new: dict) -> list[str]:
     for name in sorted(set(old) | set(new)):
         a, b = old.get(name, ""), new.get(name, "")
         if a != b:
-            out += [l for l in difflib.unified_diff(a.splitlines(), b.splitlines(), lineterm="", n=0)
-                    if not l.startswith(("---", "+++", "@@"))]
+            out += [
+                l
+                for l in difflib.unified_diff(a.splitlines(), b.splitlines(), lineterm="", n=0)
+                if not l.startswith(("---", "+++", "@@"))
+            ]
     return out
 
 
@@ -143,8 +152,9 @@ def regrade_sumdiff(code: str) -> tuple[str, float | None]:
     with tempfile.TemporaryDirectory() as d:
         Path(d, "construct.py").write_text(code)
         try:
-            p = subprocess.run([sys.executable, "-c", RUN_CONSTRUCT], cwd=d, capture_output=True, text=True,
-                               timeout=120)
+            p = subprocess.run(
+                [sys.executable, "-c", RUN_CONSTRUCT], cwd=d, capture_output=True, text=True, timeout=120
+            )
         except subprocess.TimeoutExpired:
             return "timeout", None
         if p.returncode != 0:
@@ -192,9 +202,15 @@ def default_beta(code: str) -> float:
         return float(p["default_beta"])
     try:  # a literal config.get("beta", <default>)
         for node in ast.walk(ast.parse(code)):
-            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "get"
-                    and len(node.args) == 2 and isinstance(node.args[0], ast.Constant) and node.args[0].value == "beta"
-                    and isinstance(node.args[1], ast.Constant)):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "get"
+                and len(node.args) == 2
+                and isinstance(node.args[0], ast.Constant)
+                and node.args[0].value == "beta"
+                and isinstance(node.args[1], ast.Constant)
+            ):
                 return float(node.args[1].value)
     except SyntaxError:
         pass
@@ -244,8 +260,11 @@ class IndepReplay:
         return [] if self.done else [f"b{b}.a0" for b in self.slots if b not in self.last and b not in self.exh]
 
     def legal_frontiers(self):
-        return [] if self.done else [f"b{b}.a{a + 1}" for b, a in sorted(self.last.items())
-                                     if b not in self.exh and a < self.er]
+        return (
+            []
+            if self.done
+            else [f"b{b}.a{a + 1}" for b, a in sorted(self.last.items()) if b not in self.exh and a < self.er]
+        )
 
     def legal_actions(self):
         return self.legal_roots() + self.legal_frontiers()
@@ -271,9 +290,21 @@ class IndepReplay:
         sc = n["score"]
         dp = sc - par["score"] if (sc is not None and par and par.get("score") is not None) else None
         db = sc - self.root["score"] if (sc is not None and self.root.get("score") is not None) else None
-        return policy_api.Observation(n["id"], n["branch"], n["attempt"], sc, n["evaluated"], n["valid"],
-                                      n["fail_class"], n["error"], db, dp, n.get("n_valid"), n.get("n_total"),
-                                      n["parent_id"])
+        return policy_api.Observation(
+            n["id"],
+            n["branch"],
+            n["attempt"],
+            sc,
+            n["evaluated"],
+            n["valid"],
+            n["fail_class"],
+            n["error"],
+            db,
+            dp,
+            n.get("n_valid"),
+            n.get("n_total"),
+            n["parent_id"],
+        )
 
     def probe_batch(self, cells, on_reveal=None):
         cells = [str(c) for c in cells]
@@ -281,8 +312,13 @@ class IndepReplay:
             return []
         legal = set(self.legal_actions())
         brs = [int(c.split(".")[0][1:]) for c in cells]
-        if not cells or len(cells) > self.W or len(set(cells)) != len(cells) or any(c not in legal for c in cells) \
-                or len(set(brs)) != len(brs):
+        if (
+            not cells
+            or len(cells) > self.W
+            or len(set(cells)) != len(cells)
+            or any(c not in legal for c in cells)
+            or len(set(brs)) != len(brs)
+        ):
             raise policy_api.BatchError(f"illegal batch {cells}")
         pending = [b for b in self.slots if b not in self.last and b not in self.exh and f"b{b}.a0" in self.nodes]
         used, out, row = set(), [], {"batch": cells, "revealed": [], "empty": []}
@@ -330,8 +366,14 @@ def load_policy(code: str):
 
 
 def ceiling_of(tree: dict) -> float:
-    return max([tree["root"]["score"]] + [n["score"] for n in tree["nodes"] if n["score"] is not None
-                                          and n["evaluated"] and n["error"] is None and n["fail_class"] == "ok"])
+    return max(
+        [tree["root"]["score"]]
+        + [
+            n["score"]
+            for n in tree["nodes"]
+            if n["score"] is not None and n["evaluated"] and n["error"] is None and n["fail_class"] == "ok"
+        ]
+    )
 
 
 def eq1(best, root, ceil, N, k, b1=0.01, b2=0.005, normalize=True, no_reward=False):
@@ -346,10 +388,15 @@ def eq1(best, root, ceil, N, k, b1=0.01, b2=0.005, normalize=True, no_reward=Fal
 
 
 def _grid_context(cfg: dict, history: list, W: int, **kw):
-    return policy_api.GridPlanningContext(history=history, fallback_branch_count=cfg["branch_count"],
-                                          fallback_refine_count=cfg["refine_count"],
-                                          hard_max_branch_count=cfg["hard_max_branch"],
-                                          hard_max_refine_count=cfg["hard_max_refine"], worker_cap=W, **kw)
+    return policy_api.GridPlanningContext(
+        history=history,
+        fallback_branch_count=cfg["branch_count"],
+        fallback_refine_count=cfg["refine_count"],
+        hard_max_branch_count=cfg["hard_max_branch"],
+        hard_max_refine_count=cfg["hard_max_refine"],
+        worker_cap=W,
+        **kw,
+    )
 
 
 def indep_replay(code: str, tree: dict, W: int, manifests: list, cfg: dict, beta=None, plan_mode="replay"):
@@ -357,8 +404,14 @@ def indep_replay(code: str, tree: dict, W: int, manifests: list, cfg: dict, beta
     rnd = int((tree.get("meta") or {}).get("round", 0))
     trb = max([n["branch"] + 1 for n in tree["nodes"]] + [int(tree["meta"]["plan"]["branch_count"])])
     trr = max([n["attempt"] for n in tree["nodes"]] + [int(tree["meta"]["plan"]["refine_count"])])
-    ctx = _grid_context(cfg, [m for m in manifests if int(m["iteration"]) < rnd], W, trace_branch_count=trb,
-                        trace_refine_count=trr, mode=plan_mode)
+    ctx = _grid_context(
+        cfg,
+        [m for m in manifests if int(m["iteration"]) < rnd],
+        W,
+        trace_branch_count=trb,
+        trace_refine_count=trr,
+        mode=plan_mode,
+    )
     conf = {} if beta is None else {"beta": beta}
     try:
         plan = cls(dict(conf)).plan_grid(ctx)
@@ -376,8 +429,14 @@ def indep_replay(code: str, tree: dict, W: int, manifests: list, cfg: dict, beta
     except Exception as e:  # noqa: BLE001
         err = f"{type(e).__name__}: {e}"
     st = q.stats()
-    st.update(plan=(pb, pr), error=err, ceiling=ceiling_of(tree), root=tree["root"]["score"], size=len(tree["nodes"]),
-              out_of_support=pb > trb or pr > trr)
+    st.update(
+        plan=(pb, pr),
+        error=err,
+        ceiling=ceiling_of(tree),
+        root=tree["root"]["score"],
+        size=len(tree["nodes"]),
+        out_of_support=pb > trb or pr > trr,
+    )
     return st
 
 
@@ -393,12 +452,16 @@ class Audit:
         self.steps: list[dict] = []
         self.cfg = next(e for e in self.ev if e["kind"] == "run_start")["data"]["config"]
         self.kind = "agentqa" if "agentqa" in run else "sumdiff"
-        self.trees = {int(p.parent.name[4:]): json.loads(p.read_text())
-                      for p in sorted(self.d.glob("trace_pool/iter*/tree.json"))}
-        self.mans = [json.loads(p.read_text())
-                     for p in sorted(self.d.glob("trace_pool/iter*/live_cycle_manifest.json"))]
-        self.hist = {p.parent.name.split("_")[0]: {"dir": p.parent.name, "code": p.read_text()}
-                     for p in sorted(self.d.glob("history/r*/method.py"))}
+        self.trees = {
+            int(p.parent.name[4:]): json.loads(p.read_text()) for p in sorted(self.d.glob("trace_pool/iter*/tree.json"))
+        }
+        self.mans = [
+            json.loads(p.read_text()) for p in sorted(self.d.glob("trace_pool/iter*/live_cycle_manifest.json"))
+        ]
+        self.hist = {
+            p.parent.name.split("_")[0]: {"dir": p.parent.name, "code": p.read_text()}
+            for p in sorted(self.d.glob("history/r*/method.py"))
+        }
         self._aq = None
 
     def step(self, rnd, kind, name, verdict, evidence):
@@ -411,6 +474,7 @@ class Audit:
             from rsi.core.artifact import Artifact
             from rsi.core.evaluate import Evaluator
             from rsi.domains.agentqa import AgentQADomain, SimModel, make_suite
+
             suite = make_suite(n_evolve=8, n_val=4, n_holdout=8, n_ood_per_family=2, seed=0)
             self._aq = (Artifact, Evaluator(AgentQADomain(suite), SimModel(suite), workers=1), suite)
         Artifact, ev, _ = self._aq
@@ -424,19 +488,29 @@ class Audit:
         ok = abs(g - b["summary"]["S"]) < TOL and abs(t1["root"]["score"] - b["summary"]["S"]) < TOL
         if self.kind == "agentqa":
             from rsi.domains.agentqa import AgentQADomain, make_suite
+
             dom = AgentQADomain(make_suite(n_evolve=8, n_val=4, n_holdout=8, n_ood_per_family=2, seed=0))
-            untouched = dom.seed_artifact().files == seed_prog if hasattr(dom.seed_artifact(), "files") else \
-                {k: dom.seed_artifact()[k] for k in dom.seed_artifact()} == seed_prog
+            untouched = (
+                dom.seed_artifact().files == seed_prog
+                if hasattr(dom.seed_artifact(), "files")
+                else {k: dom.seed_artifact()[k] for k in dom.seed_artifact()} == seed_prog
+            )
         else:
             from rsi.domains.discovery import SumDiffDomain
+
             sa = SumDiffDomain().seed_artifact()
             untouched = {k: sa[k] for k in sa} == seed_prog
         per = b.get("trials") or {}
         mean_trials = sum(v[0] for v in per.values()) / max(1, len(per)) if per else None
         ok2 = mean_trials is None or abs(mean_trials - b["summary"]["S"]) < TOL
-        self.step(0, "baseline", "seed evaluation", "correct" if (ok and ok2 and untouched) else "wrong",
-                  f"trace S={b['summary']['S']:.6f}, own re-grade={g:.6f} ({fc}), mean of raw trials={mean_trials}, "
-                  f"seed program == untouched domain seed: {untouched}")
+        self.step(
+            0,
+            "baseline",
+            "seed evaluation",
+            "correct" if (ok and ok2 and untouched) else "wrong",
+            f"trace S={b['summary']['S']:.6f}, own re-grade={g:.6f} ({fc}), mean of raw trials={mean_trials}, "
+            f"seed program == untouched domain seed: {untouched}",
+        )
 
     def audit_cycle(self, t: int):
         tr = self.trees[t]
@@ -448,30 +522,57 @@ class Audit:
         # plan requested = the deployed policy's plan_grid on the manifests of cycles < t
         dep = rs["deployed_policy"]["rev"]
         code = self.hist[dep]["code"]
-        p = load_policy(code)({}).plan_grid(_grid_context(self.cfg, [m for m in self.mans if m["iteration"] < t], W,
-                                                          mode="live"))
+        p = load_policy(code)({}).plan_grid(
+            _grid_context(self.cfg, [m for m in self.mans if m["iteration"] < t], W, mode="live")
+        )
         req = rs["plan_requested"]
         own = None if p is None else (p.branch_count, p.refine_count)
-        okp = p is not None and (p.branch_count, p.refine_count) == (req["branch_count"], req["refine_count"]) and \
-            (plan["branch_count"], plan["refine_count"]) == (min(max(1, p.branch_count), self.cfg["hard_max_branch"]),
-                                                             min(max(0, p.refine_count), self.cfg["hard_max_refine"]))
-        self.step(t, "plan", f"cycle {t} plan_grid ({dep})", "correct" if okp else "wrong",
-                  f"own plan_grid on manifests of cycles < {t}: {own}"
-                  f" ('{'' if p is None else p.reason}'); trace requested {(req['branch_count'], req['refine_count'])},"
-                  f" used {(plan['branch_count'], plan['refine_count'])}")
+        okp = (
+            p is not None
+            and (p.branch_count, p.refine_count) == (req["branch_count"], req["refine_count"])
+            and (plan["branch_count"], plan["refine_count"])
+            == (
+                min(max(1, p.branch_count), self.cfg["hard_max_branch"]),
+                min(max(0, p.refine_count), self.cfg["hard_max_refine"]),
+            )
+        )
+        self.step(
+            t,
+            "plan",
+            f"cycle {t} plan_grid ({dep})",
+            "correct" if okp else "wrong",
+            f"own plan_grid on manifests of cycles < {t}: {own}"
+            f" ('{'' if p is None else p.reason}'); trace requested {(req['branch_count'], req['refine_count'])},"
+            f" used {(plan['branch_count'], plan['refine_count'])}",
+        )
         best_before = rs["best_so_far"]
         okr = abs(tr["root"]["score"] - best_before) < 1e-5
-        self.step(t, "root", f"cycle {t} live root", "correct" if okr else "wrong",
-                  f"tree root score {tr['root']['score']:.6f} vs best so far {best_before}")
+        self.step(
+            t,
+            "root",
+            f"cycle {t} live root",
+            "correct" if okr else "wrong",
+            f"tree root score {tr['root']['score']:.6f} vs best so far {best_before}",
+        )
         onl = [e["data"] for e in evs if e["kind"] == "note" and e["data"].get("what") == "online_round"]
         revealed = self._audit_online(t, onl, nodes, plan, W)
-        self.step(t, "online_round", f"cycle {t} online batches cover the recorded tree",
-                  "correct" if set(revealed) == set(nodes) else "wrong",
-                  f"{len(revealed)} probed cells vs {len(nodes)} tree nodes")
-        P = {e["data"]["candidate"]: e["data"] for e in evs
-             if e["kind"] == "proposal" and e["data"]["candidate"].startswith("t")}
-        E = {e["data"]["candidate"]: e["data"] for e in evs
-             if e["kind"] == "eval" and e["data"]["candidate"].startswith("t")}
+        self.step(
+            t,
+            "online_round",
+            f"cycle {t} online batches cover the recorded tree",
+            "correct" if set(revealed) == set(nodes) else "wrong",
+            f"{len(revealed)} probed cells vs {len(nodes)} tree nodes",
+        )
+        P = {
+            e["data"]["candidate"]: e["data"]
+            for e in evs
+            if e["kind"] == "proposal" and e["data"]["candidate"].startswith("t")
+        }
+        E = {
+            e["data"]["candidate"]: e["data"]
+            for e in evs
+            if e["kind"] == "eval" and e["data"]["candidate"].startswith("t")
+        }
         prev_worlds = [self.trees[i] for i in range(1, t)]
         if self.run in LEGACY_PROMPT_RUNS or "agent_history_cycles" not in self.cfg:
             hist_n = min(200, sum(len(w["nodes"]) for w in prev_worlds[-8:]))  # pre-fix: the last 8 searches
@@ -489,57 +590,88 @@ class Audit:
             self._audit_attempt(t, tr, nodes, n, P, E, hist_n, seen_recipes)
         # object gate + decision
         gate = next(e["data"] for e in evs if e["kind"] == "gate" and e["data"].get("level") == "object (best program)")
-        dec = next(e["data"] for e in evs if e["kind"] == "decision"
-                   and e["data"].get("level") == "object (best program)")
+        dec = next(
+            e["data"] for e in evs if e["kind"] == "decision" and e["data"].get("level") == "object (best program)"
+        )
         succ = [n for n in tr["nodes"] if _ok(n) and n["score"] is not None]
         top = max(succ, key=lambda n: (n["score"], -n["seq"])) if succ else None
         acc = top is not None and top["score"] > best_before + 0.0
         exp_after = top["score"] if acc else best_before
-        okg = (gate["accept"] == acc) and abs(dec["best_after"] - exp_after) < 1e-5 and \
-            (not acc or dec["kept"] == f"t{t}/{top['id']}")
-        self.step(t, "gate", f"cycle {t} best-program gate", "correct" if okg else "wrong",
-                  f"own: round best {None if top is None else round(top['score'], 6)} at "
-                  f"{None if top is None else top['id']} vs best before {best_before} -> accept={acc}; "
-                  f"trace accept={gate['accept']}, best_after={dec['best_after']}, kept={dec['kept']}")
+        okg = (
+            (gate["accept"] == acc)
+            and abs(dec["best_after"] - exp_after) < 1e-5
+            and (not acc or dec["kept"] == f"t{t}/{top['id']}")
+        )
+        self.step(
+            t,
+            "gate",
+            f"cycle {t} best-program gate",
+            "correct" if okg else "wrong",
+            f"own: round best {None if top is None else round(top['score'], 6)} at "
+            f"{None if top is None else top['id']} vs best before {best_before} -> accept={acc}; "
+            f"trace accept={gate['accept']}, best_after={dec['best_after']}, kept={dec['kept']}",
+        )
         # per-round budget ("identical per-round budgets"): runs recorded with a round_budget
         rb = self.cfg.get("round_budget", None if "round_budget" not in self.cfg else "fallback")
         if "round_budget" in self.cfg and rb is not None:
             cap = self.cfg["branch_count"] * (self.cfg["refine_count"] + 1) if rb == "fallback" else int(rb)
-            self.step(t, "budget", f"cycle {t} per-round call budget",
-                      "correct" if len(tr["nodes"]) <= cap else "wrong",
-                      f"{len(tr['nodes'])} agent calls <= Fixed's per-round budget {cap} (plan used "
-                      f"{plan['branch_count']} x {plan['refine_count'] + 1} cells)")
-        man = next(e["data"]["manifest"] for e in evs if e["kind"] == "note"
-                   and e["data"].get("what") == "live_cycle_manifest")
+            self.step(
+                t,
+                "budget",
+                f"cycle {t} per-round call budget",
+                "correct" if len(tr["nodes"]) <= cap else "wrong",
+                f"{len(tr['nodes'])} agent calls <= Fixed's per-round budget {cap} (plan used "
+                f"{plan['branch_count']} x {plan['refine_count'] + 1} cells)",
+            )
+        man = next(
+            e["data"]["manifest"] for e in evs if e["kind"] == "note" and e["data"].get("what") == "live_cycle_manifest"
+        )
         root_s = tr["root"]["score"]
         rb = max([n["score"] for n in succ] + [root_s])
         gain = rb - root_s
         early = max([n["score"] for n in succ if n["attempt"] <= 1] + [root_s]) - root_s
         fails = [n for n in tr["nodes"] if not (_ok(n) and n["evaluated"])]
-        exp = {"probe_work": len(tr["nodes"]), "decision_rounds": len(onl), "round_best": rb,
-               "gain_early": early / gain if gain > 0 else 0.0, "fail_frac": len(fails) / max(1, len(tr["nodes"])),
-               "beta": default_beta(code), "opened_width": len({n["branch"] for n in tr["nodes"]}),
-               "max_depth": max((n["attempt"] for n in tr["nodes"]), default=-1), "final_best": exp_after,
-               "agent_calls": len(tr["nodes"])}
-        diffs = {k: (man.get(k), v) for k, v in exp.items()
-                 if not (isinstance(v, float) and abs((man.get(k) or 0) - v) < 1e-6) and man.get(k) != v}
-        self.step(t, "manifest", f"cycle {t} live_cycle_manifest", "wrong" if diffs else "correct",
-                  f"mismatches {diffs}" if diffs else f"all fields re-derived from tree.json: {exp}")
+        exp = {
+            "probe_work": len(tr["nodes"]),
+            "decision_rounds": len(onl),
+            "round_best": rb,
+            "gain_early": early / gain if gain > 0 else 0.0,
+            "fail_frac": len(fails) / max(1, len(tr["nodes"])),
+            "beta": default_beta(code),
+            "opened_width": len({n["branch"] for n in tr["nodes"]}),
+            "max_depth": max((n["attempt"] for n in tr["nodes"]), default=-1),
+            "final_best": exp_after,
+            "agent_calls": len(tr["nodes"]),
+        }
+        diffs = {
+            k: (man.get(k), v)
+            for k, v in exp.items()
+            if not (isinstance(v, float) and abs((man.get(k) or 0) - v) < 1e-6) and man.get(k) != v
+        }
+        self.step(
+            t,
+            "manifest",
+            f"cycle {t} live_cycle_manifest",
+            "wrong" if diffs else "correct",
+            f"mismatches {diffs}" if diffs else f"all fields re-derived from tree.json: {exp}",
+        )
         self.audit_dream(t, evs)
 
     def _audit_online(self, t, onl, nodes, plan, W) -> dict:
         """Own grid simulation of every online round: legality, prefix_seen and reveals; returns the revealed cells."""
         last, revealed = {}, {}
         for r in onl:
-            legal = {f"b{b}.a0" for b in range(plan["branch_count"]) if b not in last} | \
-                {f"b{b}.a{a + 1}" for b, a in last.items() if a < plan["refine_count"]}
+            legal = {f"b{b}.a0" for b in range(plan["branch_count"]) if b not in last} | {
+                f"b{b}.a{a + 1}" for b, a in last.items() if a < plan["refine_count"]
+            }
             batch = r["batch"]
             brs = [int(c.split(".")[0][1:]) for c in batch]
             prefix = {}
-            for cid, sc in sorted(revealed.items(), key=lambda kv: (nodes[kv[0]]["branch"], nodes[kv[0]]["attempt"])):
+            for cid, _sc in sorted(revealed.items(), key=lambda kv: (nodes[kv[0]]["branch"], nodes[kv[0]]["attempt"])):
                 n = nodes[cid]
                 prefix.setdefault(str(n["branch"]), []).append(
-                    round(n["score"], 6) if _ok(n) and n["score"] is not None else n["fail_class"])
+                    round(n["score"], 6) if _ok(n) and n["score"] is not None else n["fail_class"]
+                )
             prefix = {k: v[-4:] for k, v in prefix.items()}
             probs = []
             if len(batch) > W:
@@ -554,17 +686,26 @@ class Audit:
                 probs.append("prefix_seen differs from own reconstruction")
             for x in r["revealed"]:
                 n = nodes.get(x["cell"])
-                if n is None or n["round"] != r["online_round"] or \
-                        (x["score"] is not None and abs(x["score"] - n["score"]) > 1e-5):
+                if (
+                    n is None
+                    or n["round"] != r["online_round"]
+                    or (x["score"] is not None and abs(x["score"] - n["score"]) > 1e-5)
+                ):
                     probs.append(f"revealed {x['cell']} != tree")
             for c in batch:
                 b, a = (int(x[1:]) for x in c.split("."))
                 last[b] = a
                 revealed[c] = nodes[c]["score"]
-            self.step(t, "online_round", f"cycle {t} online round {r['online_round']} batch {batch}",
-                      "wrong" if probs else "correct",
-                      "; ".join(probs) if probs else f"<= W={W}, one cell per branch, legal before the call "
-                      f"({len(legal)} legal), prefix_seen = own reconstruction, reveals = tree.json")
+            self.step(
+                t,
+                "online_round",
+                f"cycle {t} online round {r['online_round']} batch {batch}",
+                "wrong" if probs else "correct",
+                "; ".join(probs)
+                if probs
+                else f"<= W={W}, one cell per branch, legal before the call "
+                f"({len(legal)} legal), prefix_seen = own reconstruction, reveals = tree.json",
+            )
         return revealed
 
     def _audit_attempt(self, t, tr, nodes, n, P, E, hist_n, seen_recipes):
@@ -600,8 +741,9 @@ class Audit:
                 notes.append("mean of raw trials != S")
             ps = parent["score"] if (parent is tr["root"] or _ok(parent)) else None
             exp_d = None if ps is None else n["score"] - ps
-            if (exp_d is None) != (ev.get("delta_vs_parent") is None) or \
-                    (exp_d is not None and abs(exp_d - ev["delta_vs_parent"]) > 1e-5):
+            if (exp_d is None) != (ev.get("delta_vs_parent") is None) or (
+                exp_d is not None and abs(exp_d - ev["delta_vs_parent"]) > 1e-5
+            ):
                 verdict = "wrong"
                 notes.append(f"delta_vs_parent {ev.get('delta_vs_parent')} != {exp_d}")
         elif fc == "ok":
@@ -612,12 +754,15 @@ class Audit:
             if self.kind == "sumdiff" and "SyntaxError" in str(n["error"]):
                 from rsi.core.artifact import Artifact
                 from rsi.dream.agent import strip_reply_terminators
+
                 fixed, cl = strip_reply_terminators(Artifact(prog), ["construct.py"])
                 if cl:
                     fc2, g2 = regrade_sumdiff(fixed["construct.py"])
                     verdict = "wrong"
-                    notes.append(f"HARNESS: SyntaxError is a reply-parser leftover (trailing fence/===); "
-                                 f"without it the program scores {g2:.6f} ({fc2})")
+                    notes.append(
+                        f"HARNESS: SyntaxError is a reply-parser leftover (trailing fence/===); "
+                        f"without it the program scores {g2:.6f} ({fc2})"
+                    )
         ctx = (pr or {}).get("context") or {}
         sib_exp = sum(1 for m in tr["nodes"] if m["branch"] != n["branch"] and m["round"] < n["round"])
         lin_exp = n["attempt"]
@@ -632,8 +777,14 @@ class Audit:
             if ch.startswith("# apply "):
                 m = re.match(r"# apply (\w+) (\{.*\})", ch)
                 exp = [m.group(1), ast.literal_eval(m.group(2))] if m else None
-                okc = st0 is not None and st1 is not None and st1[: len(st0)] == st0 and len(st1) == len(st0) + 1 \
-                    and exp is not None and st1[-1][:2] == exp
+                okc = (
+                    st0 is not None
+                    and st1 is not None
+                    and st1[: len(st0)] == st0
+                    and len(st1) == len(st0) + 1
+                    and exp is not None
+                    and st1[-1][:2] == exp
+                )
                 if not okc:
                     verdict = "wrong"
                 notes.append(f"claim '{ch}' {'=' if okc else '!='} appended stage")
@@ -641,8 +792,10 @@ class Audit:
                 mechs_new = [s[0] for s in st1]
                 txt = (ch + " " + (pr or {}).get("hypothesis", "")).lower()
                 missing = [m for m in dict.fromkeys(mechs_new) if m not in txt]
-                notes.append(f"STAGES {[s[0] for s in (st0 or [])]} -> {mechs_new}; claim names "
-                             f"{[m for m in MECHS if m in txt]}" + (f"; claim omits {missing}" if missing else ""))
+                notes.append(
+                    f"STAGES {[s[0] for s in (st0 or [])]} -> {mechs_new}; claim names "
+                    f"{[m for m in MECHS if m in txt]}" + (f"; claim omits {missing}" if missing else "")
+                )
                 key = _norm(prog)
                 if key in seen_recipes:
                     notes.append(f"REPEAT: identical program already evaluated successfully at {seen_recipes[key]}")
@@ -662,11 +815,13 @@ class Audit:
             k0, k1 = _knobs(par_prog), _knobs(prog)
             mech = ch.lstrip("# ").strip()
             if mech == "simplify":
-                okc = sum(1 for k in set(k0) | set(k1) if bool(k0.get(k)) and not bool(k1.get(k))) <= 1 and \
-                    not any(bool(k1.get(k)) and not bool(k0.get(k)) for k in k1)
+                okc = sum(1 for k in set(k0) | set(k1) if bool(k0.get(k)) and not bool(k1.get(k))) <= 1 and not any(
+                    bool(k1.get(k)) and not bool(k0.get(k)) for k in k1
+                )
             else:
-                okc = bool(k1.get(mech)) and all(bool(k1.get(k)) == bool(k0.get(k))
-                                                 for k in set(k0) | set(k1) if k != mech)
+                okc = bool(k1.get(mech)) and all(
+                    bool(k1.get(k)) == bool(k0.get(k)) for k in set(k0) | set(k1) if k != mech
+                )
             if not okc:
                 verdict = "wrong"
             notes.append(f"claim '{mech}': knobs {k0} -> {k1} ({'consistent' if okc else 'INCONSISTENT'})")
@@ -687,8 +842,11 @@ class Audit:
         for sp in ("evolve", "val", "holdout", "ood"):
             for tid in suite.splits.get(sp, []):
                 task = suite.get(tid)
-                hits += [f"{sp}:{tid}:{s[:30]}" for s in (tid, task.input[:40], str(task.target))
-                         if len(s) >= 4 and s in text]
+                hits += [
+                    f"{sp}:{tid}:{s[:30]}"
+                    for s in (tid, task.input[:40], str(task.target))
+                    if len(s) >= 4 and s in text
+                ]
         return hits
 
     def audit_dream(self, t: int, evs: list[dict]):
@@ -723,15 +881,20 @@ class Audit:
                 # process's string-hash seed
                 batches = [b["batch"] for b in w["reveal_batches"]]
                 rev_cells = [[x.split("=")[0].split(":")[0] for x in b["revealed"]] for b in w["reveal_batches"]]
-                same = [sorted(r["batch"]) for r in ir["batches"]] == [sorted(b) for b in batches] and \
-                    [sorted(r["revealed"]) for r in ir["batches"]] == [sorted(c) for c in rev_cells]
+                same = [sorted(r["batch"]) for r in ir["batches"]] == [sorted(b) for b in batches] and [
+                    sorted(r["revealed"]) for r in ir["batches"]
+                ] == [sorted(c) for c in rev_cells]
                 if same and [r["batch"] for r in ir["batches"]] != batches:
-                    notes.append(f"{w['world']}: same cells per round, different order inside a batch (the policy "
-                                 "iterates a set: hash-seed dependent order)")
+                    notes.append(
+                        f"{w['world']}: same cells per round, different order inside a batch (the policy "
+                        "iterates a set: hash-seed dependent order)"
+                    )
                 if ir["error"] or not same or abs(iv - w["V_i"]) > 1e-5:
                     verdict = "wrong"
-                    notes.append(f"{w['world']}: OWN replay differs (err={ir['error']}, V={iv:.6f}, batches "
-                                 f"{[r['batch'] for r in ir['batches']][:3]}...)")
+                    notes.append(
+                        f"{w['world']}: OWN replay differs (err={ir['error']}, V={iv:.6f}, batches "
+                        f"{[r['batch'] for r in ir['batches']][:3]}...)"
+                    )
                 Vs.append(v)
             V = sum(Vs) / len(Vs)
             if abs(V - rp["summary"]["S"]) > 1e-5:
@@ -739,12 +902,16 @@ class Audit:
                 notes.append(f"mean V {V:.6f} != trace {rp['summary']['S']}")
             vals.append(V)
             per_world = [round(x, 4) for x in Vs]
-            notes.insert(0, f"V = {V:.6f} over {len(Vs)} world(s) re-derived (own Eq.1 on tree.json scores) and "
-                            f"re-replayed by an independent replay implementation: per world {per_world}")
+            notes.insert(
+                0,
+                f"V = {V:.6f} over {len(Vs)} world(s) re-derived (own Eq.1 on tree.json scores) and "
+                f"re-replayed by an independent replay implementation: per world {per_world}",
+            )
             self.step(t, "replay_eval", rp["candidate"], verdict, "; ".join(notes))
         self._audit_revisions(t, evs, reps, vals)
-        dec = next(e["data"] for e in evs if e["kind"] == "decision"
-                   and e["data"].get("level") == "policy (replay selection)")
+        dec = next(
+            e["data"] for e in evs if e["kind"] == "decision" and e["data"].get("level") == "policy (replay selection)"
+        )
         best = max(vals)
         winners = [i for i, v in enumerate(vals) if v >= best - 1e-12]
         idx = 0 if 0 in winners else winners[0]
@@ -753,10 +920,15 @@ class Audit:
         dep_ok = nxt is None or nxt["deployed_policy"]["rev"] == chosen.split("_")[0]
         ok = dec["incumbent_after"] == chosen and dep_ok and vals[idx] >= vals[0] - 1e-12
         nxt_rev = None if nxt is None else nxt["deployed_policy"]["rev"]
-        self.step(t, "selection", f"cycle {t} policy selection", "correct" if ok else "wrong",
-                  f"own V {[round(v, 6) for v in vals]} -> argmax (incumbent kept on ties) {chosen}; trace "
-                  f"{dec['incumbent_after']}; next cycle deploys {nxt_rev}; "
-                  f"V(m*) - V(0) = {vals[idx] - vals[0]:+.6f} >= 0")
+        self.step(
+            t,
+            "selection",
+            f"cycle {t} policy selection",
+            "correct" if ok else "wrong",
+            f"own V {[round(v, 6) for v in vals]} -> argmax (incumbent kept on ties) {chosen}; trace "
+            f"{dec['incumbent_after']}; next cycle deploys {nxt_rev}; "
+            f"V(m*) - V(0) = {vals[idx] - vals[0]:+.6f} >= 0",
+        )
         sw = next((e["data"] for e in evs if e["kind"] == "note" and e["data"].get("what") == "beta_sweep"), None)
         if sw:  # recompute the Pareto numbers from the traced points
             pts = sorted(sw["points"], key=lambda p: (p["probes_frac"], -p["attainment"]))
@@ -771,10 +943,15 @@ class Audit:
             wk = [p["probes_frac"] for p in sw["points"]]
             deg = max(att) - min(att) < 1e-9 and max(wk) - min(wk) < 1e-9
             okb = abs(auc - sw["auc"]) < 2e-3 and abs(pen - sw["parallel_penalty"]) < 2e-3 and deg == sw["degenerate"]
-            self.step(t, "beta_sweep", f"cycle {t} beta sweep of {sw['policy']}", "correct" if okb else "wrong",
-                      f"own AUC {auc:.4f} / penalty {pen:.4f} / degenerate {deg} vs trace {sw['auc']} / "
-                      f"{sw['parallel_penalty']} / {sw['degenerate']} "
-                      "(feedback only; not a selection input under Eq.1)")
+            self.step(
+                t,
+                "beta_sweep",
+                f"cycle {t} beta sweep of {sw['policy']}",
+                "correct" if okb else "wrong",
+                f"own AUC {auc:.4f} / penalty {pen:.4f} / degenerate {deg} vs trace {sw['auc']} / "
+                f"{sw['parallel_penalty']} / {sw['degenerate']} "
+                "(feedback only; not a selection input under Eq.1)",
+            )
 
     def _audit_revisions(self, t, evs, reps, vals):
         """Each revision: diff of the history code, base = strongest so far, mutator claims, leaks / forbidden API."""
@@ -809,8 +986,11 @@ class Audit:
                 bad = []
                 for mv in pr["moves"]:
                     m = re.match(r"perturb (\w+) -> ([\d.\-]+)$", mv)
-                    if m and (m.group(1) not in p1 or abs(float(p1[m.group(1)]) - float(m.group(2))) > 1e-9
-                              or p0.get(m.group(1)) == p1.get(m.group(1))):
+                    if m and (
+                        m.group(1) not in p1
+                        or abs(float(p1[m.group(1)]) - float(m.group(2))) > 1e-9
+                        or p0.get(m.group(1)) == p1.get(m.group(1))
+                    ):
                         bad.append(mv)
                 if bad:
                     verdict = "wrong"
@@ -822,8 +1002,11 @@ class Audit:
                 if pr.get("repairs"):
                     notes.append(f"{pr['repairs']} repair round(s)")
             hits = [f for f in self._forbidden(t) if f in new]
-            api = [a for a in ("best_so_far", "budget_spent", "open(", "import os", "__import__", "eval(", "exec(")
-                   if a in new]
+            api = [
+                a
+                for a in ("best_so_far", "budget_spent", "open(", "import os", "__import__", "eval(", "exec(")
+                if a in new
+            ]
             if hits or api:
                 verdict = "wrong" if api else "questionable"
                 notes.append(f"leak/forbidden terms in code: {hits} {api}")
@@ -868,8 +1051,11 @@ class Audit:
 
         def old_render(r, max_chars: int = 600) -> str:
             head = f"[round {r.round} {r.cell}{' dir=' + r.direction if r.direction else ''}] "
-            res = f"score={r.score:.6g}" if r.score is not None and r.fail_class == "ok" else \
-                f"FAILED ({r.fail_class}): {str(r.error)[:200]}"
+            res = (
+                f"score={r.score:.6g}"
+                if r.score is not None and r.fail_class == "ok"
+                else f"FAILED ({r.fail_class}): {str(r.error)[:200]}"
+            )
             prop = (r.proposal or "").strip().replace("\n", " ")[:max_chars]
             return f"{head}{res}\n  proposal: {prop}"
 
@@ -884,9 +1070,14 @@ class Audit:
             else:
                 shown = earlier if n_hist is None else (earlier[-n_hist:] if n_hist > 0 else [])
             hist = history_records(shown)
-            note = "" if legacy_prompt or len(shown) == len(earlier) else \
-                (f"NOTE: `history/` shows only the last {len(shown)} of the {len(earlier)} earlier live searches "
-                 "(the calling system's history cap).")
+            note = (
+                ""
+                if legacy_prompt or len(shown) == len(earlier)
+                else (
+                    f"NOTE: `history/` shows only the last {len(shown)} of the {len(earlier)} earlier live searches "
+                    "(the calling system's history cap)."
+                )
+            )
             for n in tr.non_root():
                 parent = tr.node(n.parent_id)
                 snap = self.d / "snapshots" / parent.artifact_id[:2] / f"{parent.artifact_id}.json"
@@ -894,10 +1085,26 @@ class Audit:
                 lineage = [record_of(m) for m in tr.nodes() if m.branch == n.branch and m.attempt < n.attempt]
                 sibs = [record_of(m) for m in tr.non_root() if m.branch != n.branch and m.round < n.round]
                 dirn = dict(tr.branch_tags.get(n.branch, {}))
-                ctx = AttemptContext(dom.describe(), parent.id, ws, parent.score, n.branch, n.attempt, t, lineage, sibs,
-                                     hist, seed_score, dirn,
-                                     f"Direction assigned to this branch: {dirn['direction']}." if dirn.get("direction")
-                                     else "", ["construct.py"], None, "ok", None, note)
+                ctx = AttemptContext(
+                    dom.describe(),
+                    parent.id,
+                    ws,
+                    parent.score,
+                    n.branch,
+                    n.attempt,
+                    t,
+                    lineage,
+                    sibs,
+                    hist,
+                    seed_score,
+                    dirn,
+                    f"Direction assigned to this branch: {dirn['direction']}." if dirn.get("direction") else "",
+                    ["construct.py"],
+                    None,
+                    "ok",
+                    None,
+                    note,
+                )
                 instr = legacy_instructions(ctx) if legacy_prompt else agent.build_instructions(ctx)
                 prompt = agent.editor.build_prompt(ws, instr, None, ["construct.py"])
                 seed = _seed_of(self.cfg["seed"], t, n.branch, n.attempt)
@@ -908,15 +1115,22 @@ class Audit:
                     bad += 1
                     misses.append(f"t{t}/{n.id}")
         agent_mod.AttemptRecord.render = cur_render
-        self.step(None, "prompts", "every Listing-1 agent prompt rebuilt from disk state",
-                  "correct" if not bad else "wrong",
-                  f"{ok}/{ok + bad} prompts rebuilt from tree.json + snapshots (problem, parent workspace, lineage, "
-                  f"siblings of earlier rounds, H_(t-1), seed baseline, direction) hash to an entry of the fresh LLM "
-                  f"cache: the agent saw exactly that and nothing else (no sealed data exists for this domain)"
-                  + (" [rebuilt with the pre-fix head-only error rendering the run used]" if legacy else "")
-                  + (" [pre-fix condensed Listing-1 prompt]" if legacy_prompt else
-                     " [verbatim Listing-1 prompt: every earlier search, full proposal.md, baseline/, pkill line]")
-                  + (f"; not reproduced: {misses[:6]}" if misses else ""))
+        self.step(
+            None,
+            "prompts",
+            "every Listing-1 agent prompt rebuilt from disk state",
+            "correct" if not bad else "wrong",
+            f"{ok}/{ok + bad} prompts rebuilt from tree.json + snapshots (problem, parent workspace, lineage, "
+            f"siblings of earlier rounds, H_(t-1), seed baseline, direction) hash to an entry of the fresh LLM "
+            f"cache: the agent saw exactly that and nothing else (no sealed data exists for this domain)"
+            + (" [rebuilt with the pre-fix head-only error rendering the run used]" if legacy else "")
+            + (
+                " [pre-fix condensed Listing-1 prompt]"
+                if legacy_prompt
+                else " [verbatim Listing-1 prompt: every earlier search, full proposal.md, baseline/, pkill line]"
+            )
+            + (f"; not reproduced: {misses[:6]}" if misses else ""),
+        )
 
     def audit_developer_prompts(self):
         cache = OUT / f".cache_{self.run}"
@@ -941,39 +1155,61 @@ class Audit:
             # the developer may see trace data (between-round feedback) but never data of a LATER world
             if any(f"trace_pool/iter{i:02d}" in prompt for i in self.trees if i > t):
                 leak.append(f.name)
-        self.step(None, "prompts", "every Listing-2 developer prompt (dream_prompts/) is the prompt the model got",
-                  "correct" if not bad and not leak else "wrong",
-                  f"{ok}/{ok + len(bad)} saved developer prompts hash to an entry of the fresh LLM cache"
-                  + (f"; unmatched {bad}" if bad else "") + (f"; later-world data in {leak}" if leak else
-                                                             "; no manifest of a later live cycle in any prompt"))
+        self.step(
+            None,
+            "prompts",
+            "every Listing-2 developer prompt (dream_prompts/) is the prompt the model got",
+            "correct" if not bad and not leak else "wrong",
+            f"{ok}/{ok + len(bad)} saved developer prompts hash to an entry of the fresh LLM cache"
+            + (f"; unmatched {bad}" if bad else "")
+            + (f"; later-world data in {leak}" if leak else "; no manifest of a later live cycle in any prompt"),
+        )
 
     def audit_costs(self):
         end = next(e["data"] for e in self.ev if e["kind"] == "run_end")
         sizes = [len(self.trees[t]["nodes"]) for t in sorted(self.trees)]
         props = [e["data"] for e in self.ev if e["kind"] == "proposal" and e["data"]["candidate"].startswith("t")]
         usd = sum((p.get("usage") or {}).get("usd", 0.0) for p in props)
-        ok = sizes == end["calls_per_cycle"] and sum(sizes) == end["cost"]["agent_calls"] and \
-            abs(usd - end["cost"]["agent_usd"]) < 1e-6
-        ev = f"calls per cycle own {sizes} vs trace {end['calls_per_cycle']}; meter {end['cost']['agent_calls']}; " \
-             f"sum of per-attempt usd {usd:.4f} vs meter {end['cost']['agent_usd']:.4f}; developer usd " \
-             f"{end['cost']['developer_usd']:.4f} ({end['cost']['developer_calls']} calls)"
+        ok = (
+            sizes == end["calls_per_cycle"]
+            and sum(sizes) == end["cost"]["agent_calls"]
+            and abs(usd - end["cost"]["agent_usd"]) < 1e-6
+        )
+        ev = (
+            f"calls per cycle own {sizes} vs trace {end['calls_per_cycle']}; meter {end['cost']['agent_calls']}; "
+            f"sum of per-attempt usd {usd:.4f} vs meter {end['cost']['agent_usd']:.4f}; developer usd "
+            f"{end['cost']['developer_usd']:.4f} ({end['cost']['developer_calls']} calls)"
+        )
         cache = OUT / f".cache_{self.run}"
         if cache.exists():
             files = glob.glob(str(cache / "*" / "*.json"))
             tot = sum(float((json.loads(Path(f).read_text()).get("usage") or {}).get("cost_usd", 0.0)) for f in files)
             loop = end["cost"]["agent_usd"] + end["cost"]["developer_usd"]
-            ok = ok and abs(tot - loop) < 1e-3 and \
-                len(files) == end["cost"]["agent_calls"] + end["cost"]["developer_calls"]
+            ok = (
+                ok
+                and abs(tot - loop) < 1e-3
+                and len(files) == end["cost"]["agent_calls"] + end["cost"]["developer_calls"]
+            )
             ev += f"; fresh cache: {len(files)} entries, ${tot:.4f} (= loop ${loop:.4f})"
         self.step(None, "cost", "cost accounting", "correct" if ok else "wrong", ev)
         mons = [e for e in self.ev if e["kind"] == "monitor"]
         if mons:
-            kept = [e["data"]["kept"] for e in self.ev if e["kind"] == "decision"
-                    and e["data"].get("level") == "object (best program)" and e["data"].get("kept")]
+            kept = [
+                e["data"]["kept"]
+                for e in self.ev
+                if e["kind"] == "decision"
+                and e["data"].get("level") == "object (best program)"
+                and e["data"].get("kept")
+            ]
             names = [m["data"]["version"] for m in mons]
-            self.step(None, "monitor", "shadow monitor events", "correct" if names == ["seed"] + kept else "wrong",
-                      f"monitored {names} = seed + every new best {kept}; sealed numbers never read by the loop "
-                      f"(static check in AUDIT.md); shadow usage {end.get('shadow_usage')}")
+            self.step(
+                None,
+                "monitor",
+                "shadow monitor events",
+                "correct" if names == ["seed"] + kept else "wrong",
+                f"monitored {names} = seed + every new best {kept}; sealed numbers never read by the loop "
+                f"(static check in AUDIT.md); shadow usage {end.get('shadow_usage')}",
+            )
 
     def run_all(self):
         self.audit_baseline()
@@ -994,34 +1230,52 @@ class Audit:
         return res
 
 
-_MISLED = ("the parent's SyntaxError was a reply-parser leftover, but the agent only saw the HEAD of the "
-           "traceback (fixed after the run) and blamed the idea/ordering: ")
-_REPAIR = ("developer first attempt rejected on a reply-parser leftover (trailing fence) reported only as "
-           "'invalid syntax, line N'; the repair round invented a cause (")
+_MISLED = (
+    "the parent's SyntaxError was a reply-parser leftover, but the agent only saw the HEAD of the "
+    "traceback (fixed after the run) and blamed the idea/ordering: "
+)
+_REPAIR = (
+    "developer first attempt rejected on a reply-parser leftover (trailing fence) reported only as "
+    "'invalid syntax, line N'; the repair round invented a cause ("
+)
 JUDGEMENT = {
     ("sumdiff_offline", "selection", "cycle 1 policy selection"): (
-        "questionable", "rule-correct argmax (V 0.910 vs 0.865 on ONE world), but a replay artefact: on 40 fresh "
+        "questionable",
+        "rule-correct argmax (V 0.910 vs 0.865 on ONE world), but a replay artefact: on 40 fresh "
         "one-cycle online searches from the cycle-2 root (stage-A's 8 seeds + 32 new ones, re-run by stage B) r0001 "
         "never found more than pi_1 and found less on 18/40: mean gain -0.0028 (95% bootstrap CI [-0.0046, -0.0012]) "
         "at 8.2 vs 15 calls (stage A's 8 seeds alone: -0.0060). Re-measured on the run re-recorded after the claims-"
         "audit fixes (same decision, V 0.910 vs 0.865): 40 fresh searches (seeds 10097-10136), never more, less on "
         "19/40, -0.0037 [-0.0058, -0.0018] at 8.0 vs 15 calls. Frugality bias of the replay ceiling - spec "
-        "§8.2/§8.4 (paper-level: the argmax rule is the paper's)"),
+        "§8.2/§8.4 (paper-level: the argmax rule is the paper's)",
+    ),
     ("sumdiff_live_b", "selection", "cycle 1 policy selection"): (
-        "unverifiable", "rule-correct and prefix-justified (r0001 closes branch b2 after two flat results "
+        "unverifiable",
+        "rule-correct and prefix-justified (r0001 closes branch b2 after two flat results "
         "1.0, 1.0; the unrevealed b2.a2 = 1.016 was not the ceiling), V 0.9333 vs 0.925 on ONE world; whether "
-        "r0001 is better ONLINE is not measured (a live ground truth would cost as much as the run)"),
+        "r0001 is better ONLINE is not measured (a live ground truth would cost as much as the run)",
+    ),
     ("sumdiff_live", "attempt", "t1/b0.a2"): ("wrong", _MISLED + "'avoids the fringe-related compilation issue'"),
     ("sumdiff_live", "attempt", "t1/b0.a3"): (
-        "questionable", _MISLED + "'reversed ... order, causing compilation failure'"),
+        "questionable",
+        _MISLED + "'reversed ... order, causing compilation failure'",
+    ),
     ("sumdiff_live", "attempt", "t1/b2.a3"): (
-        "questionable", _MISLED + "'the reversed grow->anneal order is suboptimal'"),
+        "questionable",
+        _MISLED + "'the reversed grow->anneal order is suboptimal'",
+    ),
     ("sumdiff_live", "revision", "r0002_t1m2"): (
-        "wrong", _REPAIR + "'indentation error on line 170'); change text = repair only"),
+        "wrong",
+        _REPAIR + "'indentation error on line 170'); change text = repair only",
+    ),
     ("sumdiff_live", "revision", "r0005_t2m2"): (
-        "wrong", _REPAIR + "'indentation ... line 230'); change text = repair only"),
+        "wrong",
+        _REPAIR + "'indentation ... line 230'); change text = repair only",
+    ),
     ("sumdiff_live", "revision", "r0006_t2m3"): (
-        "wrong", _REPAIR + "'recovery_candidates sorting'); change text = repair only"),
+        "wrong",
+        _REPAIR + "'recovery_candidates sorting'); change text = repair only",
+    ),
 }
 
 

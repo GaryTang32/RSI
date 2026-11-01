@@ -1,4 +1,5 @@
 """Artifact: an immutable, content-addressed bundle of named text files that a loop edits."""
+
 from __future__ import annotations
 
 import difflib
@@ -7,8 +8,8 @@ import hashlib
 import json
 import re
 import shutil
+from collections.abc import Iterable, Mapping
 from pathlib import Path, PurePosixPath
-from typing import Iterable, Mapping, Optional
 
 from .llm import estimate_tokens
 
@@ -16,9 +17,9 @@ from .llm import estimate_tokens
 class Artifact(Mapping[str, str]):
     __slots__ = ("_files", "_id", "meta")
 
-    def __init__(self, files: Mapping[str, str], meta: Optional[dict] = None) -> None:
+    def __init__(self, files: Mapping[str, str], meta: dict | None = None) -> None:
         self._files = dict(sorted((str(k), str(v)) for k, v in files.items()))
-        self._id: Optional[str] = None
+        self._id: str | None = None
         self.meta = dict(meta or {})
 
     def __getitem__(self, key: str) -> str:
@@ -59,7 +60,7 @@ class Artifact(Mapping[str, str]):
     def size_tokens(self) -> int:
         return sum(map(estimate_tokens, self._files.values()))
 
-    def with_files(self, updates: Mapping[str, Optional[str]], **meta) -> "Artifact":
+    def with_files(self, updates: Mapping[str, str | None], **meta) -> Artifact:
         """New artifact with ``updates`` applied; a ``None`` value deletes a file."""
         files = dict(self._files)
         for k, v in updates.items():
@@ -69,34 +70,38 @@ class Artifact(Mapping[str, str]):
                 files[k] = v
         return Artifact(files, {**self.meta, **meta})
 
-    def changed_files(self, other: "Artifact") -> list[str]:
+    def changed_files(self, other: Artifact) -> list[str]:
         return sorted(n for n in set(self._files) | set(other._files) if self._files.get(n) != other._files.get(n))
 
-    def _diff_lines(self, other: "Artifact", name: str, context: int):
+    def _diff_lines(self, other: Artifact, name: str, context: int):
         old, new = self._files.get(name, ""), other._files.get(name, "")
-        for line in difflib.unified_diff(old.splitlines(keepends=True), new.splitlines(keepends=True),
-                                         f"a/{name}", f"b/{name}", n=context):
+        for line in difflib.unified_diff(
+            old.splitlines(keepends=True), new.splitlines(keepends=True), f"a/{name}", f"b/{name}", n=context
+        ):
             yield line if line.endswith("\n") else line + "\n\\ No newline at end of file\n"
 
-    def diff(self, other: "Artifact", context: int = 3) -> str:
+    def diff(self, other: Artifact, context: int = 3) -> str:
         """Unified diff from ``self`` (old) to ``other`` (new), with git's no-newline-at-end markers."""
         return "".join(line for name in self.changed_files(other) for line in self._diff_lines(other, name, context))
 
-    def diff_size(self, other: "Artifact") -> int:
+    def diff_size(self, other: Artifact) -> int:
         """Number of added+removed lines between two versions."""
         # [2:] skips the file headers, so a body line starting with "--" or "++" still counts
-        return sum(sum(line[:1] in "+-" for line in list(self._diff_lines(other, name, 0))[2:])
-                   for name in self.changed_files(other))
+        return sum(
+            sum(line[:1] in "+-" for line in list(self._diff_lines(other, name, 0))[2:])
+            for name in self.changed_files(other)
+        )
 
     @classmethod
-    def from_dir(cls, path: str | Path, patterns: Iterable[str] = ("**/*",), exclude: Iterable[str] = ()) -> "Artifact":
+    def from_dir(cls, path: str | Path, patterns: Iterable[str] = ("**/*",), exclude: Iterable[str] = ()) -> Artifact:
         """Read text files under ``path``; ``exclude`` globs match any path part or the relative path."""
         root = Path(path)
         excl = tuple(exclude) + ("__pycache__", ".git", ".pytest_cache")
 
         def excluded(rel: Path) -> bool:
-            return any(part == pat or fnmatch.fnmatchcase(part, pat) for part in rel.parts for pat in excl) or \
-                any(fnmatch.fnmatchcase(rel.as_posix(), pat) for pat in excl)
+            return any(part == pat or fnmatch.fnmatchcase(part, pat) for part in rel.parts for pat in excl) or any(
+                fnmatch.fnmatchcase(rel.as_posix(), pat) for pat in excl
+            )
 
         files = {}
         for pat in patterns:
@@ -126,7 +131,7 @@ class Artifact(Mapping[str, str]):
         return {"id": self.id, "files": self._files, "meta": self.meta}
 
     @classmethod
-    def from_json(cls, d: dict) -> "Artifact":
+    def from_json(cls, d: dict) -> Artifact:
         return cls(d["files"], d.get("meta"))
 
     def render(self, max_chars_per_file: int = 20000) -> str:
@@ -162,7 +167,9 @@ def _strip_debris(lines: list[str]) -> str:
         close = next((j for j in range(1, len(lines)) if lines[j].strip() == "```"), None)
         lines = lines[1:close] if close is not None else lines[1:]  # fenced code followed by prose: keep the code
     # a trailing bare fence is debris only when unmatched (balanced fences are content, e.g. markdown samples)
-    while lines and (re.fullmatch(r"\s*===+(\s*END\b.*?===+)?\s*", lines[-1] or " ")
-                     or (lines[-1].strip() == "```" and sum(ln.strip().startswith("```") for ln in lines) % 2 == 1)):
+    while lines and (
+        re.fullmatch(r"\s*===+(\s*END\b.*?===+)?\s*", lines[-1] or " ")
+        or (lines[-1].strip() == "```" and sum(ln.strip().startswith("```") for ln in lines) % 2 == 1)
+    ):
         lines.pop()
     return "\n".join(lines)

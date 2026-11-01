@@ -1,10 +1,11 @@
 """AgentWorld domain: Pi-like harness configs scored on training families and held-out configfix / datalookup."""
+
 from __future__ import annotations
 
 import hashlib
 import json
 import random
-from typing import Any, Optional
+from typing import Any
 
 from ...core.artifact import Artifact
 from ...core.domain import Domain, Execution
@@ -18,10 +19,12 @@ from ...solpi.runtime import AgentRuntime, builtin_tools
 from .envs import FAMILIES
 from .policy import LLMAgent, MockAgentLLM
 
-BASE_SYSTEM_PROMPT = ("You are an expert coding agent working in a sandboxed repository. Use the tools to inspect "
-                      "files, run commands and edit code. (Be thorough: verify every change by re-running the relevant "
-                      "check before you finish.) When the task is complete, reply with a short summary and no tool "
-                      "call.")
+BASE_SYSTEM_PROMPT = (
+    "You are an expert coding agent working in a sandboxed repository. Use the tools to inspect "
+    "files, run commands and edit code. (Be thorough: verify every change by re-running the relevant "
+    "check before you finish.) When the task is complete, reply with a short summary and no tool "
+    "call."
+)
 TRAIN_FAMILIES = ("repofix", "buildfix", "logtriage")
 HELDOUT_FAMILIES = ("configfix", "datalookup")
 
@@ -33,10 +36,21 @@ class AgentWorldDomain(Domain):
     components = {"mechanism": ["harness.json", "extensions/*"], "prompt": ["system_prompt.md"]}
     structural_components = ("mechanism",)
 
-    def __init__(self, *, n_train: int = 8, n_accept: int = 4, n_final: int = 8, n_test: int = 4,
-                 train_families: tuple[str, ...] = TRAIN_FAMILIES, heldout_families: tuple[str, ...] = HELDOUT_FAMILIES,
-                 subtasks: tuple[int, int] = (4, 8), seed: int = 0, context_window: int = 200_000,
-                 max_turns: int = 80, reducer_llm: Optional[LLM] = None) -> None:
+    def __init__(
+        self,
+        *,
+        n_train: int = 8,
+        n_accept: int = 4,
+        n_final: int = 8,
+        n_test: int = 4,
+        train_families: tuple[str, ...] = TRAIN_FAMILIES,
+        heldout_families: tuple[str, ...] = HELDOUT_FAMILIES,
+        subtasks: tuple[int, int] = (4, 8),
+        seed: int = 0,
+        context_window: int = 200_000,
+        max_turns: int = 80,
+        reducer_llm: LLM | None = None,
+    ) -> None:
         self.seed = seed
         self.context_window = context_window
         self.max_turns = max_turns
@@ -47,11 +61,11 @@ class AgentWorldDomain(Domain):
         def add(split: str, fam: str, i: int) -> None:
             if fam != "buildfix":
                 n = rng.randint(*subtasks)
-            else:                           # 3..5 files; small configs cap it (>= 1)
+            else:  # 3..5 files; small configs cap it (>= 1)
                 hi = min(5, subtasks[1])
                 n = rng.randint(3, hi) if hi >= 3 else max(1, hi)
             tid = f"{split}-{fam}-{i:02d}"
-            tasks.append(Task(tid, {"family": fam, "n_subtasks": n, "env_seed": rng.randint(0, 10 ** 6)}, None, fam))
+            tasks.append(Task(tid, {"family": fam, "n_subtasks": n, "env_seed": rng.randint(0, 10**6)}, None, fam))
             splits[split].append(tid)
 
         for fam in train_families:
@@ -68,9 +82,14 @@ class AgentWorldDomain(Domain):
         super().__init__(TaskSuite(tasks, splits, name=f"agentworld-s{seed}"))
 
     @staticmethod
-    def seed_artifact(extensions: Optional[dict] = None) -> Artifact:
-        return Artifact({"harness.json": json.dumps({"extensions": extensions or {}}, indent=1, sort_keys=True),
-                         "system_prompt.md": BASE_SYSTEM_PROMPT}, meta={"name": "pi-base"})
+    def seed_artifact(extensions: dict | None = None) -> Artifact:
+        return Artifact(
+            {
+                "harness.json": json.dumps({"extensions": extensions or {}}, indent=1, sort_keys=True),
+                "system_prompt.md": BASE_SYSTEM_PROMPT,
+            },
+            meta={"name": "pi-base"},
+        )
 
     @staticmethod
     def harness(*names: str, **params: dict) -> Artifact:
@@ -78,15 +97,17 @@ class AgentWorldDomain(Domain):
         return AgentWorldDomain.seed_artifact({n: params.get(n, {}) for n in names})
 
     def describe(self) -> str:
-        return ("The artifact configures a Pi-like coding-agent harness: harness.json lists opt-in mechanisms "
-                "(extensions) and their parameters; extensions/<name>.py may define new mechanisms against the "
-                "runtime hook API (register tools, context projection, before_provider_request, tool_result, "
-                "turn_end, agent_settled, session_compact; compact(), abort(), send_hidden()). Tasks are multi-step "
-                "agent environments with large tool outputs (test runs, builds, logs, data dumps); the verifier "
-                "scores the final state. Objective: lower token traffic and API cost (prefix-cached; cache writes "
-                "12.5x reads) at unchanged task success, on unseen environment families and other backends.")
+        return (
+            "The artifact configures a Pi-like coding-agent harness: harness.json lists opt-in mechanisms "
+            "(extensions) and their parameters; extensions/<name>.py may define new mechanisms against the "
+            "runtime hook API (register tools, context projection, before_provider_request, tool_result, "
+            "turn_end, agent_settled, session_compact; compact(), abort(), send_hidden()). Tasks are multi-step "
+            "agent environments with large tool outputs (test runs, builds, logs, data dumps); the verifier "
+            "scores the final state. Objective: lower token traffic and API cost (prefix-cached; cache writes "
+            "12.5x reads) at unchanged task success, on unseen environment families and other backends."
+        )
 
-    def make_backend(self, llm: Optional[LLM], seed: int, task: Task):
+    def make_backend(self, llm: LLM | None, seed: int, task: Task):
         if llm is None:
             llm = MockAgentLLM("A")
         if hasattr(llm, "new_agent"):
@@ -94,15 +115,21 @@ class AgentWorldDomain(Domain):
             return llm.new_agent(h), PRICES[getattr(llm, "prices", "sim-a")]
         return LLMAgent(llm), PRICES["haiku"]
 
-    def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: Optional[LLM]) -> Execution:
+    def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: LLM | None) -> Execution:
         fam = task.input["family"]
         env = FAMILIES[fam](task.id, seed=task.input["env_seed"] + 7919 * seed, n_subtasks=task.input["n_subtasks"])
         backend, price = self.make_backend(llm, seed, task)
         meter = TokenMeter({"main": price, "compaction": price, "reducer": PRICES["reducer"]})
         cfg = harness_config(artifact.files)
-        rt = AgentRuntime(backend, system_prompt=artifact.get("system_prompt.md", BASE_SYSTEM_PROMPT), meter=meter,
-                          max_turns=self.max_turns, context_window=self.context_window,
-                          auto_compact=bool(cfg.get("auto_compact", True)), env=env)
+        rt = AgentRuntime(
+            backend,
+            system_prompt=artifact.get("system_prompt.md", BASE_SYSTEM_PROMPT),
+            meter=meter,
+            max_turns=self.max_turns,
+            context_window=self.context_window,
+            auto_compact=bool(cfg.get("auto_compact", True)),
+            env=env,
+        )
         for spec in builtin_tools(env):
             rt.register_tool(spec)
         for ext in build_extensions(artifact.files, {"reducer_llm": self.reducer_llm, "seed": seed}):
@@ -111,8 +138,12 @@ class AgentWorldDomain(Domain):
         if res.status == "error" and "infra:" in (res.error or ""):
             # a backend outage is a missing trial (retried), never a graded failure of the harness
             tot = meter.total()
-            return Execution(error="infra:" + res.error.split("infra:", 1)[1], steps=rt.provider_requests,
-                             tokens=tot.total_tokens, cost_usd=tot.cost)
+            return Execution(
+                error="infra:" + res.error.split("infra:", 1)[1],
+                steps=rt.provider_requests,
+                tokens=tot.total_tokens,
+                cost_usd=tot.cost,
+            )
         tamper = meter_tampering(rt, meter)
         if tamper:
             return Execution(error=f"harness tampered with the token meter: {tamper}", steps=rt.provider_requests)
@@ -120,18 +151,35 @@ class AgentWorldDomain(Domain):
         tot = meter.total()
         main = meter.by_role.get("main")
         meta: dict[str, Any] = {
-            "family": fam, "status": res.status, "turns": res.turns, "requests": rt.provider_requests,
-            "compactions": rt.compactions, "auto_compactions": rt.auto_compactions, "overflow": res.overflow,
-            "cache_read": tot.cache_read, "cache_write": tot.cache_write, "output": tot.output, "input": tot.input,
+            "family": fam,
+            "status": res.status,
+            "turns": res.turns,
+            "requests": rt.provider_requests,
+            "compactions": rt.compactions,
+            "auto_compactions": rt.auto_compactions,
+            "overflow": res.overflow,
+            "cache_read": tot.cache_read,
+            "cache_write": tot.cache_write,
+            "output": tot.output,
+            "input": tot.input,
             "main_cost": main.cost if main else 0.0,
             "reducer_cost": meter.by_role["reducer"].cost if "reducer" in meter.by_role else 0.0,
             "triggers": {e.name: dict(e.stats) for e in rt.extensions},
-            "subtasks_ok": [env.subtask_ok(s) for s in env.subtasks], "n_subtasks": len(env.subtasks),
+            "subtasks_ok": [env.subtask_ok(s) for s in env.subtasks],
+            "n_subtasks": len(env.subtasks),
             "tool_calls": sum(len(m.tool_calls) for m in rt.history if m.role == "assistant"),
             "max_context": max((u.input for u in meter.requests if u.role == "main"), default=0),
-            "oracle": oracle_stats(rt, meter), "audit": mechanism_audit(rt)}
-        return Execution(output={"score": score, "status": res.status}, trace=render_trace(rt, meter),
-                         tokens=tot.total_tokens, cost_usd=tot.cost, steps=rt.provider_requests, meta=meta)
+            "oracle": oracle_stats(rt, meter),
+            "audit": mechanism_audit(rt),
+        }
+        return Execution(
+            output={"score": score, "status": res.status},
+            trace=render_trace(rt, meter),
+            tokens=tot.total_tokens,
+            cost_usd=tot.cost,
+            steps=rt.provider_requests,
+            meta=meta,
+        )
 
     def grade(self, task: Task, execution: Execution) -> tuple[float, str]:
         out = execution.output or {}
@@ -164,10 +212,15 @@ def mechanism_audit(rt: AgentRuntime) -> dict:
                 if rec["is_error"] and FAILURE_SIGNAL.search(body):
                     fail += 1
                     fail_ev += any(ev["kind"] in ("fatal", "failure") for ev in rec["evidence"])
-            out["epr"] = {"receipts": len(e.receipts), "nonverbatim": nonverb, "failure_logs": fail,
-                          "failure_with_evidence": fail_ev,
-                          "fallbacks": {k.split(":", 1)[1]: v for k, v in e.stats.items() if k.startswith("fallback:")},
-                          "eligible": e.stats.get("eligible", 0), "bytes_saved": e.stats.get("bytes_saved", 0)}
+            out["epr"] = {
+                "receipts": len(e.receipts),
+                "nonverbatim": nonverb,
+                "failure_logs": fail,
+                "failure_with_evidence": fail_ev,
+                "fallbacks": {k.split(":", 1)[1]: v for k, v in e.stats.items() if k.startswith("fallback:")},
+                "eligible": e.stats.get("eligible", 0),
+                "bytes_saved": e.stats.get("bytes_saved", 0),
+            }
         if isinstance(e, OnlineContextCompact):
             out["occ"] = [(d["archiveTokens"] - d["memoTokens"], d["compact"], d["reason"]) for d in e.decisions]
     return out
@@ -181,9 +234,12 @@ def oracle_stats(rt: AgentRuntime, meter: TokenMeter, keep_recent: int = 20_000)
     hist = rt.history
     acts = [m for m in hist if m.role == "assistant"]
     calls = {c.id: c for m in acts for c in m.tool_calls}
-    adj = sum(1 for a, b in zip(acts, acts[1:]) if any(c.name in ("edit", "write") for c in a.tool_calls)
-              and any(c.name == "bash" for c in b.tool_calls))
-    later, n = [0] * len(hist), 0          # later[i] = assistant replies after message i
+    adj = sum(
+        1
+        for a, b in zip(acts, acts[1:])
+        if any(c.name in ("edit", "write") for c in a.tool_calls) and any(c.name == "bash" for c in b.tool_calls)
+    )
+    later, n = [0] * len(hist), 0  # later[i] = assistant replies after message i
     for i in range(len(hist) - 1, -1, -1):
         later[i] = n
         n += hist[i].role == "assistant"
@@ -209,13 +265,20 @@ def oracle_stats(rt: AgentRuntime, meter: TokenMeter, keep_recent: int = 20_000)
             tail += max(0, tok - kept) * later[i]
     sys_tok = (len(rt.system_prompt) + 3) // 4
     main = [u for u in meter.requests if u.role == "main"]
-    return {"transitions": max(0, len(acts) - 1), "adjacent_edit_command": adj, "replayed_large_outputs": replay,
-            "diagnostic_log_tokens": diag, "tail_of_outputs": tail,
-            "archivable_context": sum(max(0, u.input - sys_tok - keep_recent) for u in main),
-            "prompt_tokens": sys_tok * len(main), "input_tokens": sum(u.input for u in main),
-            "late_turn_tokens": sum(u.input for u in main[LATE_TURN_ORACLE:]),   # what the tightest turn cap avoids
-            "repeated_commands": sum(v - 1 for v in cmds.values() if v > 1), "n_large_outputs": n_large,
-            "n_diag_outputs": n_diag}
+    return {
+        "transitions": max(0, len(acts) - 1),
+        "adjacent_edit_command": adj,
+        "replayed_large_outputs": replay,
+        "diagnostic_log_tokens": diag,
+        "tail_of_outputs": tail,
+        "archivable_context": sum(max(0, u.input - sys_tok - keep_recent) for u in main),
+        "prompt_tokens": sys_tok * len(main),
+        "input_tokens": sum(u.input for u in main),
+        "late_turn_tokens": sum(u.input for u in main[LATE_TURN_ORACLE:]),  # what the tightest turn cap avoids
+        "repeated_commands": sum(v - 1 for v in cmds.values() if v > 1),
+        "n_large_outputs": n_large,
+        "n_diag_outputs": n_diag,
+    }
 
 
 def render_trace(rt: AgentRuntime, meter: TokenMeter, max_chars: int = 400) -> str:
@@ -231,8 +294,10 @@ def render_trace(rt: AgentRuntime, meter: TokenMeter, max_chars: int = 400) -> s
             inp, read, write, out = (u.input, u.cache_read, u.cache_write, u.output) if u else ("?",) * 4
             lines.append(f"[turn {k}] in={inp} read={read} write={write} out={out} :: {m.content[:200]!r} -> {calls}")
         elif m.role == "tool":
-            lines.append(f"    <- {m.tool_name}{' ERROR' if m.is_error else ''} {len(m.content)} chars: "
-                         f"{m.content[:max_chars]!r}")
+            lines.append(
+                f"    <- {m.tool_name}{' ERROR' if m.is_error else ''} {len(m.content)} chars: "
+                f"{m.content[:max_chars]!r}"
+            )
         elif m.details.get("compaction"):
             lines.append(f"[compaction] summary {len(m.content)} chars")
     return "\n".join(lines)

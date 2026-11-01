@@ -1,29 +1,58 @@
 """The overview's replay demo on the real machinery: three strategies scored with Eq. 1, plus a beta1/beta2 sweep.
 
-    python experiments/dream-rsi/demo_replay.py [--llm sim|claude:haiku] [--quick]
+python experiments/dream-rsi/demo_replay.py [--llm sim|claude:haiku] [--quick]
 """
+
 import numpy as np
 from _common import figure, llm_policies, parse_args, save, save_figure
 
-from rsi.dream import (DEMO_EXPECTED, Eq1Objective, ReplayEvaluator, code_of, demo_tree, parallel_refine, render_demo,
-                       run_demo)
+from rsi.dream import (
+    DEMO_EXPECTED,
+    Eq1Objective,
+    ReplayEvaluator,
+    code_of,
+    demo_tree,
+    parallel_refine,
+    render_demo,
+    run_demo,
+)
 
 
 def llm_rows(spec: str) -> list:
     """One dreaming step of the LLM developer on the demo world, replayed in the subprocess sandbox."""
     obj = Eq1Objective(beta1=0.010, beta2=0.005, normalize=False)
-    pols = llm_policies(spec, [demo_tree()], n=2, W=3, fallback=(3, 4), base_code=code_of(parallel_refine()),
-                        objective=obj, root_mode="addressable")
+    pols = llm_policies(
+        spec,
+        [demo_tree()],
+        n=2,
+        W=3,
+        fallback=(3, 4),
+        base_code=code_of(parallel_refine()),
+        objective=obj,
+        root_mode="addressable",
+    )
     ev = ReplayEvaluator(obj, W=3, fallback=(3, 4), runner="subprocess", root_mode="addressable")
     out = []
     for name, code in pols.items():
         rep = ev.evaluate(code, [demo_tree()], label=name)
         e = rep.episodes[0]
-        out.append({"strategy": f"LLM-written ({name})", "key": name, "best": e.best, "attempts": e.N,
-                    "rounds": e.k, "score": rep.value, "disqualified": e.disqualified,
-                    "reveal_round": e.reveal_round, "code": code})
-        print(f"{'LLM-written ' + name:<22}{e.best:>6.2f}{e.N:>10d}{e.k:>8d}{rep.value:>8.3f}"
-              f"{'  (disqualified)' if e.disqualified else ''}")
+        out.append(
+            {
+                "strategy": f"LLM-written ({name})",
+                "key": name,
+                "best": e.best,
+                "attempts": e.N,
+                "rounds": e.k,
+                "score": rep.value,
+                "disqualified": e.disqualified,
+                "reveal_round": e.reveal_round,
+                "code": code,
+            }
+        )
+        print(
+            f"{'LLM-written ' + name:<22}{e.best:>6.2f}{e.N:>10d}{e.k:>8d}{rep.value:>8.3f}"
+            f"{'  (disqualified)' if e.disqualified else ''}"
+        )
         print(demo_tree().render_grid(e.reveal_round, labels={0: "A", 1: "B", 2: "C"}))
     return out
 
@@ -50,23 +79,55 @@ def main():
     fig, ax = plt.subplots(figsize=(5.2, 3.6))
     code = {"all": 0, "focus": 1, "stop": 2}
     winner = {(g["beta1"], g["beta2"]): g["winner"] for g in grid}
-    ax.imshow(np.array([[code[winner[b1, b2]] for b1 in b1s] for b2 in b2s]), origin="lower", aspect="auto",
-              cmap=ListedColormap(["#4C72B0", "#55A868", "#C44E52"]), vmin=0, vmax=2,
-              extent=[b1s[0], b1s[-1], b2s[0], b2s[-1]])
+    ax.imshow(
+        np.array([[code[winner[b1, b2]] for b1 in b1s] for b2 in b2s]),
+        origin="lower",
+        aspect="auto",
+        cmap=ListedColormap(["#4C72B0", "#55A868", "#C44E52"]),
+        vmin=0,
+        vmax=2,
+        extent=[b1s[0], b1s[-1], b2s[0], b2s[-1]],
+    )
     ax.scatter([0.010], [0.005], c="k", marker="x", label="demo default")
     ax.set(xlabel="beta1 (cost per attempt)", ylabel="beta2 (parallelism bonus)")
     ax.set_title("Winning strategy: blue=refine all, green=drop flat, red=stop early", fontsize=8)
     ax.legend(fontsize=7, loc="upper right")
     save_figure(fig, png)
-    save("demo_replay", {"config": {"W": 3, "beta1": 0.010, "beta2": 0.005, "runner": "subprocess",
-                                    "llm": a.llm if a.llm != "sim" else "not used"},
-                         "llm_rows": llm_rows(a.llm) if a.llm != "sim" else [],
-                         "rows": [{"strategy": r.label, "key": r.key, "best": r.best, "attempts": r.attempts,
-                                   "rounds": r.rounds, "score": r.score, "reveal_round": r.reveal_round} for r in rows],
-                         "expected": DEMO_EXPECTED, "matches_overview": ok, "slider_grid_winners": wins,
-                         "slider_grid": grid, "figure": str(png),
-                         "verdict": "REPRODUCED: identical Best/Attempts/Rounds/Score and reveal maps; 'Drop the flat "
-                                    "branch' wins at the default settings" if ok else "NOT reproduced"}, a.out)
+    save(
+        "demo_replay",
+        {
+            "config": {
+                "W": 3,
+                "beta1": 0.010,
+                "beta2": 0.005,
+                "runner": "subprocess",
+                "llm": a.llm if a.llm != "sim" else "not used",
+            },
+            "llm_rows": llm_rows(a.llm) if a.llm != "sim" else [],
+            "rows": [
+                {
+                    "strategy": r.label,
+                    "key": r.key,
+                    "best": r.best,
+                    "attempts": r.attempts,
+                    "rounds": r.rounds,
+                    "score": r.score,
+                    "reveal_round": r.reveal_round,
+                }
+                for r in rows
+            ],
+            "expected": DEMO_EXPECTED,
+            "matches_overview": ok,
+            "slider_grid_winners": wins,
+            "slider_grid": grid,
+            "figure": str(png),
+            "verdict": "REPRODUCED: identical Best/Attempts/Rounds/Score and reveal maps; 'Drop the flat "
+            "branch' wins at the default settings"
+            if ok
+            else "NOT reproduced",
+        },
+        a.out,
+    )
 
 
 if __name__ == "__main__":

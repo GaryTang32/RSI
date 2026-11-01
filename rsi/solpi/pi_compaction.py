@@ -1,4 +1,5 @@
 """Pi 0.85.1 native-compaction request (prompts verbatim, MIT): its text and size; the split-turn path is not ported."""
+
 from __future__ import annotations
 
 import json
@@ -16,7 +17,8 @@ SUMMARIZATION_SYSTEM_PROMPT = (
     "You are a context summarization assistant. Your task is to read a conversation between a user and an AI "
     "assistant, then produce a structured summary following the exact format specified.\n\n"
     "Do NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the "
-    "structured summary.")
+    "structured summary."
+)
 
 SUMMARIZATION_PROMPT = """The messages above are a conversation to summarize. Create a structured context checkpoint summary that another LLM will use to continue the work.
 
@@ -88,8 +90,10 @@ Use this EXACT format:
 
 Keep each section concise. Preserve exact file paths, function names, and error messages."""
 
-UPDATE_SUMMARIZATION_PROMPT = ("The messages above are NEW conversation messages to incorporate into the existing "
-                               "summary provided in <previous-summary> tags.\n\n" + UPDATE_SUMMARIZATION_INSTRUCTIONS)
+UPDATE_SUMMARIZATION_PROMPT = (
+    "The messages above are NEW conversation messages to incorporate into the existing "
+    "summary provided in <previous-summary> tags.\n\n" + UPDATE_SUMMARIZATION_INSTRUCTIONS
+)
 
 
 def truncate_for_summary(text: str, max_chars: int = TOOL_RESULT_MAX_CHARS) -> str:
@@ -107,7 +111,7 @@ def _js_json(v) -> str:
     return json.dumps(v, ensure_ascii=False, separators=(",", ":"), default=str)
 
 
-def serialize_conversation(messages: "list[Message]") -> tuple[str, int]:
+def serialize_conversation(messages: list[Message]) -> tuple[str, int]:
     """``utils.js:serializeConversation``: the text and the unmaterialised ``[Assistant thinking]`` tokens."""
     parts: list[str] = []
     thinking = 0
@@ -121,21 +125,23 @@ def serialize_conversation(messages: "list[Message]") -> tuple[str, int]:
             if m.content:
                 parts.append(f"[Assistant]: {m.content}")
             if m.tool_calls:
-                calls = "; ".join(f"{c.name}(" + ", ".join(f"{k}={_js_json(v)}" for k, v in c.args.items()) + ")"
-                                  for c in m.tool_calls)
+                calls = "; ".join(
+                    f"{c.name}(" + ", ".join(f"{k}={_js_json(v)}" for k, v in c.args.items()) + ")"
+                    for c in m.tool_calls
+                )
                 parts.append(f"[Assistant tool calls]: {calls}")
         elif m.role == "tool" and m.content:
             parts.append(f"[Tool result]: {truncate_for_summary(m.content)}")
     return "\n\n".join(parts), thinking
 
 
-def summarization_prompt(archived: "list[Message]", custom_instructions: str = "") -> tuple[str, int]:
+def summarization_prompt(archived: list[Message], custom_instructions: str = "") -> tuple[str, int]:
     """The user message of ``generateSummaryWithUsage``; a leading compaction summary is ``previousSummary``."""
     previous = None
     msgs = list(archived)
     if msgs and msgs[0].details.get("compaction"):
         c = msgs[0].content
-        previous = c[len(SUMMARY_PREFIX):] if c.startswith(SUMMARY_PREFIX) else c
+        previous = c[len(SUMMARY_PREFIX) :] if c.startswith(SUMMARY_PREFIX) else c
         msgs = msgs[1:]
     base = UPDATE_SUMMARIZATION_PROMPT if previous is not None else SUMMARIZATION_PROMPT
     if custom_instructions:
@@ -147,8 +153,9 @@ def summarization_prompt(archived: "list[Message]", custom_instructions: str = "
     return text + base, thinking
 
 
-def summarization_request_tokens(archived: "list[Message]", custom_instructions: str = "",
-                                 overhead: int = 4) -> tuple[int, int]:
+def summarization_request_tokens(
+    archived: list[Message], custom_instructions: str = "", overhead: int = 4
+) -> tuple[int, int]:
     """(system tokens, user-message tokens) of the summarisation request, with the runtime's per-message overhead."""
     prompt, thinking = summarization_prompt(archived, custom_instructions)
     return estimate_tokens(SUMMARIZATION_SYSTEM_PROMPT) + overhead, estimate_tokens(prompt) + thinking + overhead

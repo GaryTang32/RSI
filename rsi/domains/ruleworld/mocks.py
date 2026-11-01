@@ -1,9 +1,9 @@
 """Deterministic mock reflection LM for RuleWorld: sees only its prompt and the world lexicon."""
+
 from __future__ import annotations
 
 import re
 from dataclasses import asdict, dataclass
-from typing import Optional
 
 from ...core.llm import MockLLM
 from ...gepa.reflection import parse_side_info
@@ -18,15 +18,15 @@ GROUNDED_MARKER = "correct outputs for several example inputs"
 
 @dataclass
 class ReflectionProfile:
-    max_new: int = 2           # new rule lines per call
-    q_copy: float = 0.15       # P(write a hint as a ticket-specific fact: the overfitting lure)
-    r_drop: float = 0.05       # P(drop one existing rule line)
-    p_insight: float = 0.4     # P(condition a contradicting rule on the ticket's family)
-    p_replace: float = 0.6     # else P(replace the contradicted general rule)
+    max_new: int = 2  # new rule lines per call
+    q_copy: float = 0.15  # P(write a hint as a ticket-specific fact: the overfitting lure)
+    r_drop: float = 0.05  # P(drop one existing rule line)
+    p_insight: float = 0.4  # P(condition a contradicting rule on the ticket's family)
+    p_replace: float = 0.6  # else P(replace the contradicted general rule)
     max_lines: int = 40
-    p_infer: float = 0.6       # grounded proposals: P(infer a rule from a shown pair)
-    p_scope: float = 0.1       # P(scope a brand-new rule to the ticket's family)
-    p_diagnose: float = 0.25   # P(restrict another rule whose protocol leaked into this property)
+    p_infer: float = 0.6  # grounded proposals: P(infer a rule from a shown pair)
+    p_scope: float = 0.1  # P(scope a brand-new rule to the ticket's family)
+    p_diagnose: float = 0.25  # P(restrict another rule whose protocol leaked into this property)
 
     def to_json(self) -> dict:
         return asdict(self)
@@ -43,7 +43,7 @@ def split_fenced(prompt: str) -> tuple[str, str]:
 class RuleWorldReflectionLM(MockLLM):
     """Mock reflection LM for :class:`~rsi.domains.ruleworld.RuleWorld`."""
 
-    def __init__(self, world: RuleWorld, profile: Optional[ReflectionProfile] = None, name: str = "ruleworld-reflect"):
+    def __init__(self, world: RuleWorld, profile: ReflectionProfile | None = None, name: str = "ruleworld-reflect"):
         self.world = world
         self.profile = profile or ReflectionProfile()
         super().__init__(self._respond, name=name)
@@ -55,7 +55,7 @@ class RuleWorldReflectionLM(MockLLM):
         cur, side = split_fenced(prompt)
         return "```\n" + self.reflect(cur, parse_side_info(side), rng) + "\n```"
 
-    def _family(self, text: str) -> Optional[str]:
+    def _family(self, text: str) -> str | None:
         m = re.search(r"\((\w+) customer\)", text)
         return m.group(1).lower() if m and m.group(1).lower() in self.world.families else None
 
@@ -70,14 +70,18 @@ class RuleWorldReflectionLM(MockLLM):
             inputs, gen = r.get("Inputs", ""), r.get("Generated Outputs", "")
             fam, tk = self._family(inputs), (TICKET_RE.findall(inputs) or [None])[0]
             outs = {a.lower(): c.lower() for a, c in PAIR_RE.findall(gen.split("\nTrace:")[0]) if a.lower() in aspects}
-            named = [(a.lower(), c.lower()) for a, c in RULE_RE.findall(fb)
-                     if a.lower() in aspects and c.lower() in self.world.code_owner]
+            named = [
+                (a.lower(), c.lower())
+                for a, c in RULE_RE.findall(fb)
+                if a.lower() in aspects and c.lower() in self.world.code_owner
+            ]
             if named:
                 pairs = named
             else:
                 # garbled outputs are visibly noise: nothing to learn from them
-                sym = [a.lower() for a in SYMPTOM_RE.findall(fb) if a.lower() in aspects
-                       and outs.get(a.lower()) != GARBLED]
+                sym = [
+                    a.lower() for a in SYMPTOM_RE.findall(fb) if a.lower() in aspects and outs.get(a.lower()) != GARBLED
+                ]
                 if sym:
                     pairs = [(a, None) for a in sym]
                 else:  # score only: guess the aspect, preferring outputs with the standard protocol
@@ -86,8 +90,10 @@ class RuleWorldReflectionLM(MockLLM):
                     if not cands or SYMPTOM_RE.search(fb):
                         continue
                     pairs = [(rng.choice(sorted(cands)), None)]
-            hints += [{"aspect": a, "code": c, "family": fam, "ticket": tk, "outs": outs, "named": dict(named)}
-                      for a, c in pairs]
+            hints += [
+                {"aspect": a, "code": c, "family": fam, "ticket": tk, "outs": outs, "named": dict(named)}
+                for a, c in pairs
+            ]
         return hints
 
     def reflect(self, cur: str, recs: list[dict], rng) -> str:
@@ -97,10 +103,10 @@ class RuleWorldReflectionLM(MockLLM):
         counts: dict[str, int] = {}
         for h in hints:
             counts[h["aspect"]] = counts.get(h["aspect"], 0) + 1
-        for a in sorted(counts, key=lambda a: -counts[a])[: p.max_new]:      # most frequent first, ties by first seen
+        for a in sorted(counts, key=lambda a: -counts[a])[: p.max_new]:  # most frequent first, ties by first seen
             h = next(x for x in hints if x["aspect"] == a)
             got = h["outs"].get(a)
-            code = h["code"] or rng.choice([c for c in w.aspects[a].codes if c != got])   # never the failing one
+            code = h["code"] or rng.choice([c for c in w.aspects[a].codes if c != got])  # never the failing one
             if h["ticket"] and rng.random() < p.q_copy:
                 known = {**h["outs"], **h["named"], a: code}
                 lines.append(f"Ticket {h['ticket']}: " + "; ".join(f"{k}: {v}" for k, v in known.items()))
@@ -123,8 +129,7 @@ class RuleWorldReflectionLM(MockLLM):
     def _rules_in(self, line: str, aspect: str) -> list[tuple[str, frozenset]]:
         return self.world.parse_module(line).rules.get(aspect, [])
 
-    def _add_rule(self, lines: list[str], a: str, code: str, fam: Optional[str], rng,
-                  got: Optional[str] = None) -> None:
+    def _add_rule(self, lines: list[str], a: str, code: str, fam: str | None, rng, got: str | None = None) -> None:
         p, w = self.profile, self.world
         general_same, general_other, scoped, covered = [], [], 0, False
         for j, l in enumerate(lines):

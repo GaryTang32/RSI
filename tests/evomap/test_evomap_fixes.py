@@ -1,16 +1,27 @@
 """Claim-audit fixes: hashing edge cases, JS rounding, hub-first reference reuse, metrics and the A1 retry sample."""
+
 from __future__ import annotations
 
 import random
 from types import SimpleNamespace
 
 from evomap_helpers import HINT, ShallowWriter, distill_store, honest_bundle, kilo_model, safe_hub, units_domain
+
 from rsi.core import Artifact, Task
 from rsi.domains.geneworld import GeneWorldModel
 from rsi.domains.geneworld.forge import GeneWorldForge
 from rsi.domains.katas import KataMockProposer, KatasDomain, KataSimSolver, seed_harness
-from rsi.evomap import (AgentNode, AgentSpec, Capsule, Config, Gene, LocalStore, NaiveEvoMapHub, PopulationSimulator,
-                        ReuseMetrics)
+from rsi.evomap import (
+    AgentNode,
+    AgentSpec,
+    Capsule,
+    Config,
+    Gene,
+    LocalStore,
+    NaiveEvoMapHub,
+    PopulationSimulator,
+    ReuseMetrics,
+)
 from rsi.evomap.distill import Distiller
 from rsi.evomap.hashing import asset_id, canonicalize
 from rsi.evomap.hub import Bundle
@@ -21,35 +32,59 @@ from rsi.evomap.validation import ValidationReport, ValidationResult
 
 def test_asset_id_matches_gep_sdk_on_edge_cases():
     # ids from @evomap/gep-sdk@1.14.0 computeAssetId in node 22; JSON.parse turns big integers into doubles first
-    keys = {"！": 1, "\U0001F600": 2, "a": 3}
-    assert canonicalize(keys) == '{"a":3,"\U0001F600":2,"！":1}'  # UTF-16 order: surrogates < U+FF01
+    keys = {"！": 1, "\U0001f600": 2, "a": 3}
+    assert canonicalize(keys) == '{"a":3,"\U0001f600":2,"！":1}'  # UTF-16 order: surrogates < U+FF01
     assert asset_id(keys) == "sha256:8b720842e3e0b138369301fb28d74fa4ee3ef131494632cec3e680d1447b430a"
-    nums = {"n": 10 ** 21, "m": 2 ** 53 + 1, "k": 123456789012345678901234}
+    nums = {"n": 10**21, "m": 2**53 + 1, "k": 123456789012345678901234}
     assert canonicalize(nums) == '{"k":1.2345678901234569e+23,"m":9007199254740992,"n":1e+21}'
     assert asset_id(nums) == "sha256:3bde82888de0027129ad73fa298e35265761312b90517c6d0016a2333d7a04f4"
-    assert canonicalize({"x": 2 ** 53 - 1, "y": -(10 ** 20)}) == '{"x":9007199254740991,"y":-100000000000000000000}'
+    assert canonicalize({"x": 2**53 - 1, "y": -(10**20)}) == '{"x":9007199254740991,"y":-100000000000000000000}'
 
 
 def _val() -> ValidationResult:
-    return ValidationResult(True, ValidationReport(id="vr", gene_id="g", commands=[{"ok": True}], overall_ok=True),
-                            1, 1, 0, [])
+    return ValidationResult(
+        True, ValidationReport(id="vr", gene_id="g", commands=[{"ok": True}], overall_ok=True), 1, 1, 0, []
+    )
 
 
 def test_composite_rounds_like_javascript():
     assert js_round2(0.955) == 0.96 and round(0.955, 2) == 0.95
     assert js_round2(0.9450000000000001) == 0.95 and js_round2(0.94) == 0.94
-    mut = Mutation(id="m", category="repair", trigger_signals=[], target="t", expected_effect="e",
-                   risk_level="medium", rationale="")
-    s = composite_score(n_signals=4, gene=Gene(id="gene_x", signals_match=["a"], strategy=["s"]), mutation=mut,
-                        blast={"files": 1, "lines": 3}, max_files=12, estimate=None, n_violations=0,
-                        validation=_val(), n_protocol=0)
+    mut = Mutation(
+        id="m",
+        category="repair",
+        trigger_signals=[],
+        target="t",
+        expected_effect="e",
+        risk_level="medium",
+        rationale="",
+    )
+    s = composite_score(
+        n_signals=4,
+        gene=Gene(id="gene_x", signals_match=["a"], strategy=["s"]),
+        mutation=mut,
+        blast={"files": 1, "lines": 3},
+        max_files=12,
+        estimate=None,
+        n_violations=0,
+        validation=_val(),
+        n_protocol=0,
+    )
     assert s == 0.96  # Math.round(95.5) / 100
 
 
 def test_estimate_drift_penalty_is_dead_as_in_evolver_unless_enabled():
-    kw = dict(n_signals=4, gene=Gene(id="gene_x", signals_match=["a"], strategy=["s"]), mutation=None,
-              blast={"files": 5, "lines": 10}, max_files=12, estimate={"files": 1, "lines": 80}, n_violations=0,
-              validation=_val(), n_protocol=0)
+    kw = dict(
+        n_signals=4,
+        gene=Gene(id="gene_x", signals_match=["a"], strategy=["s"]),
+        mutation=None,
+        blast={"files": 5, "lines": 10},
+        max_files=12,
+        estimate={"files": 1, "lines": 80},
+        n_violations=0,
+        validation=_val(),
+        n_protocol=0,
+    )
     faithful = composite_score(**kw)  # reads estimate["files_changed"], which is absent
     penalised = composite_score(**kw, estimate_key="files")  # ratio 5 > 3 halves the blast component
     # .05*.8 + .1*.9 + .05*.3 + .15*1.0 + .25 + .25 + .1 + .05 = 0.945 -> 0.95 (JS); blast .5 -> 0.87
@@ -70,12 +105,24 @@ def _units():
 
 def _hub_with_kilo_gene():
     hub = NaiveEvoMapHub()
-    g = Gene(id="gene_kilo", signals_match=["task:length"], summary="Convert kilo-units to base units.",
-             strategy=["Read the value.", "Multiply by 1000 for kilo prefixes.", "Return a number."],
-             validation=["python --version"]).stamp()
-    cap = Capsule(id="capsule_kilo", gene=g.id, trigger=["task:length"], summary="converted km to m with the gene",
-                  confidence=0.9, blast_radius={"files": 1, "lines": 2}, outcome={"status": "success", "score": 0.9},
-                  success_streak=3, content="\n".join(g.strategy) * 3).stamp()
+    g = Gene(
+        id="gene_kilo",
+        signals_match=["task:length"],
+        summary="Convert kilo-units to base units.",
+        strategy=["Read the value.", "Multiply by 1000 for kilo prefixes.", "Return a number."],
+        validation=["python --version"],
+    ).stamp()
+    cap = Capsule(
+        id="capsule_kilo",
+        gene=g.id,
+        trigger=["task:length"],
+        summary="converted km to m with the gene",
+        confidence=0.9,
+        blast_radius={"files": 1, "lines": 2},
+        outcome={"status": "success", "score": 0.9},
+        success_streak=3,
+        content="\n".join(g.strategy) * 3,
+    ).stamp()
     d = hub.publish(Bundle(gene=g.to_dict(), capsule=cap.to_dict(), report={"overall_ok": True}), "alice")
     assert d.status == "promoted"
     return hub
@@ -88,13 +135,22 @@ def _local_store(**gene_kw):
 
 
 def _careful_store():
-    return _local_store(summary="Be careful with units.",
-                        strategy=["Read the task.", "Answer with a number.", "Double-check."])
+    return _local_store(
+        summary="Be careful with units.", strategy=["Read the task.", "Answer with a number.", "Double-check."]
+    )
 
 
 def _agent(hub, store, extractor=None, **cfg):
-    return AgentNode("bob", _units(), Artifact({"agent.md": "Convert.\n"}), llm_task=kilo_model("m"), store=store,
-                     hub=hub, extractor=extractor, config=Config(mode="faithful", trace=False, **cfg))
+    return AgentNode(
+        "bob",
+        _units(),
+        Artifact({"agent.md": "Convert.\n"}),
+        llm_task=kilo_model("m"),
+        store=store,
+        hub=hub,
+        extractor=extractor,
+        config=Config(mode="faithful", trace=False, **cfg),
+    )
 
 
 def test_faithful_reference_mode_injects_the_hub_hit_next_to_the_local_gene():
@@ -137,8 +193,13 @@ def test_legacy_replace_mode_is_the_old_naive_reference_path_not_quarantine():
 
 def test_config_estimate_drift_penalty_reaches_the_solidifier():
     def make(**kw):
-        return AgentNode("a", _units(), Artifact({"agent.md": "x"}), llm_task=kilo_model("m"),
-                         config=Config(mode="faithful", trace=False, **kw))
+        return AgentNode(
+            "a",
+            _units(),
+            Artifact({"agent.md": "x"}),
+            llm_task=kilo_model("m"),
+            config=Config(mode="faithful", trace=False, **kw),
+        )
 
     assert make().solidifier.estimate_drift_penalty is False
     assert make(estimate_drift_penalty=True).solidifier.estimate_drift_penalty is True
@@ -158,8 +219,9 @@ def test_naive_hub_surfaces_assets_by_semantic_similarity():
 
 
 def _bundle(dom, validation, extra):
-    return honest_bundle(dom, validation=validation, extra=extra,
-                         gene_id=f"gene_c03_{abs(hash(tuple(validation))) % 10 ** 6}")
+    return honest_bundle(
+        dom, validation=validation, extra=extra, gene_id=f"gene_c03_{abs(hash(tuple(validation))) % 10**6}"
+    )
 
 
 def test_trivial_command_share_is_reported_next_to_discriminative_vacuity(gw):
@@ -183,8 +245,14 @@ def test_n_promoted_counts_promoted_status_only(gw):
 
 def _dates_agent(writer, **kw):
     dom = KatasDomain(scheme="audit")
-    ag = AgentNode("a", dom, seed_harness(), llm_task=KataSimSolver(0.0, name="s"), llm_propose=writer,
-                   config=Config(mode="safe", seed=0, validation_hint=HINT, trace=False, **kw))
+    ag = AgentNode(
+        "a",
+        dom,
+        seed_harness(),
+        llm_task=KataSimSolver(0.0, name="s"),
+        llm_propose=writer,
+        config=Config(mode="safe", seed=0, validation_hint=HINT, trace=False, **kw),
+    )
     return ag, next(t for t in dom.tasks.split("evolve") if t.family == "dates")
 
 
@@ -214,13 +282,26 @@ def test_poisoned_in_stores_is_split_by_origin(gw):
     w = gw.world
     hub = NaiveEvoMapHub()
     specs = [AgentSpec("a0_honest", "honest"), AgentSpec("a1_poisoner", "poisoner", farm_rate=2)]
-    sim = PopulationSimulator(gw, gw.seed_artifact(), hub, specs,
-                              config=Config(mode="faithful", reuse_mode="replace"),
-                              model_factory=lambda sp: GeneWorldModel(0.0, sp.name), forge=GeneWorldForge(w), seed=0)
+    sim = PopulationSimulator(
+        gw,
+        gw.seed_artifact(),
+        hub,
+        specs,
+        config=Config(mode="faithful", reuse_mode="replace"),
+        model_factory=lambda sp: GeneWorldModel(0.0, sp.name),
+        forge=GeneWorldForge(w),
+        seed=0,
+    )
     ag = sim.agents["a0_honest"]
     bad = w.class_keys("c01", "harmful")[0]
-    ag.store.upsert_gene(Gene(id="gene_own_bad", signals_match=["x"], strategy=[w.strategy_step(bad), "b", "c"],
-                              provenance={"kind": "evolved", "author": "a0_honest"}))
+    ag.store.upsert_gene(
+        Gene(
+            id="gene_own_bad",
+            signals_match=["x"],
+            strategy=[w.strategy_step(bad), "b", "c"],
+            provenance={"kind": "evolved", "author": "a0_honest"},
+        )
+    )
     b = GeneWorldForge(w).poison_bundle("a1_poisoner", random.Random(0), 0)
     rec = hub.publish(b, "a1_poisoner")
     took = Gene.from_dict(b.gene)

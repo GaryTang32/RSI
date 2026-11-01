@@ -1,4 +1,5 @@
 """Content addressing, schemas, assets, LocalStore audit and archives."""
+
 import io
 import json
 import shutil
@@ -7,8 +8,17 @@ import tarfile
 
 import pytest
 
-from rsi.evomap import (Capsule, EvolutionEvent, Gene, JsonSchemaValidator, LocalStore, SCHEMA_VERSION, asset_id,
-                        canonicalize, verify_asset_id)
+from rsi.evomap import (
+    SCHEMA_VERSION,
+    Capsule,
+    EvolutionEvent,
+    Gene,
+    JsonSchemaValidator,
+    LocalStore,
+    asset_id,
+    canonicalize,
+    verify_asset_id,
+)
 from rsi.evomap.hashing import _js_number, hub_capsule_asset_id
 
 # Reference canonicalize() from @evomap/gep-sdk src/contentHash.js (Apache-2.0).
@@ -35,17 +45,38 @@ process.stdout.write(JSON.stringify(input.map(computeAssetId)));
 """
 
 SAMPLES = [
-    {"type": "Gene", "id": "g1", "n": 1.0, "f": 0.1, "big": 1e21, "small": 1e-7, "tiny": 0.000001, "neg": -2.5,
-     "s": "café \"q\" \n\t\u0001", "l": [True, False, None, 3, [1, {"b": 2, "a": 1}]], "asset_id": "x"},
+    {
+        "type": "Gene",
+        "id": "g1",
+        "n": 1.0,
+        "f": 0.1,
+        "big": 1e21,
+        "small": 1e-7,
+        "tiny": 0.000001,
+        "neg": -2.5,
+        "s": 'café "q" \n\t\u0001',
+        "l": [True, False, None, 3, [1, {"b": 2, "a": 1}]],
+        "asset_id": "x",
+    },
     {"z": 123456789012, "a": {"y": 1e16, "x": 12345.678}, "u": "üß中"},
-    Gene(id="gene_x", signals_match=["a", "b"], strategy=["s1", "s2"], summary="sum",
-         validation=["python t.py"]).to_dict(),
+    Gene(
+        id="gene_x", signals_match=["a", "b"], strategy=["s1", "s2"], summary="sum", validation=["python t.py"]
+    ).to_dict(),
 ]
 
 
 def test_js_number_formatting():
-    cases = {1.0: "1", 0.1: "0.1", 100.0: "100", 1e21: "1e+21", 1e-7: "1e-7", 0.000001: "0.000001",
-             1e16: "10000000000000000", -2.5: "-2.5", float("inf"): "null"}
+    cases = {
+        1.0: "1",
+        0.1: "0.1",
+        100.0: "100",
+        1e21: "1e+21",
+        1e-7: "1e-7",
+        0.000001: "0.000001",
+        1e16: "10000000000000000",
+        -2.5: "-2.5",
+        float("inf"): "null",
+    }
     assert {x: _js_number(x) for x in cases} == cases
     assert canonicalize({"b": 1, "a": [None, True]}) == '{"a":[null,true],"b":1}'
 
@@ -88,9 +119,16 @@ def _filled_store(root=None) -> LocalStore:
     st = LocalStore(root, node_id="n1")
     st.upsert_gene(Gene(id="gene_a", signals_match=["x"], strategy=["s"], validation=["python c.py"]))
     for i in range(4):
-        st.append_event(EvolutionEvent(id=st.new_id("evt"), signals=["x"], genes_used=["gene_a"], mutation_id=f"m{i}",
-                                       outcome={"status": "success", "score": 0.8},
-                                       capsule_id="cap1" if i % 2 else None))
+        st.append_event(
+            EvolutionEvent(
+                id=st.new_id("evt"),
+                signals=["x"],
+                genes_used=["gene_a"],
+                mutation_id=f"m{i}",
+                outcome={"status": "success", "score": 0.8},
+                capsule_id="cap1" if i % 2 else None,
+            )
+        )
         if i % 2:
             st.upsert_capsule(Capsule(id="cap1", gene="gene_a", trigger=["x"], summary="ok", confidence=0.8))
     st.memory.record_outcome(signals=["x"], gene_id="gene_a", status="success", score=0.8)

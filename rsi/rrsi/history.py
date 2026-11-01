@@ -1,20 +1,33 @@
 """Edit history L_t (one JSONL record per edit) and its summaries T_t, g_t, U_t, sigma_t, B_t."""
+
 from __future__ import annotations
 
 import json
 import math
 import threading
 import time
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Callable, Optional, Sequence
 
 from .components import K as K_DEFAULT
 
-RENDER_KEYS = ("t", "variant", "edit_id", "component", "hypothesis", "targets_mode", "delta_S", "delta_C",
-               "accepted", "outcome", "bundle", "detail")
+RENDER_KEYS = (
+    "t",
+    "variant",
+    "edit_id",
+    "component",
+    "hypothesis",
+    "targets_mode",
+    "delta_S",
+    "delta_C",
+    "accepted",
+    "outcome",
+    "bundle",
+    "detail",
+)
 
 
-def _r(x: Optional[float], nd: int) -> Optional[float]:
+def _r(x: float | None, nd: int) -> float | None:
     return None if x is None else round(float(x), nd)
 
 
@@ -44,17 +57,44 @@ class History:
         with self._lock:
             append_lines(self.path, lines)
 
-    def append_candidate(self, t: int, variant: str, edits: list[dict], outcome: str, delta_S: Optional[float],
-                         delta_C: Optional[float], accepted: bool, S: Optional[float], C: Optional[float],
-                         diff: Optional[str], detail: str = "") -> None:
+    def append_candidate(
+        self,
+        t: int,
+        variant: str,
+        edits: list[dict],
+        outcome: str,
+        delta_S: float | None,
+        delta_C: float | None,
+        accepted: bool,
+        S: float | None,
+        C: float | None,
+        diff: str | None,
+        detail: str = "",
+    ) -> None:
         """The per-edit records of one candidate H' (one write)."""
-        self.append_many([{
-            "t": t, "variant": variant, "edit_id": e.get("id"), "component": e.get("component"),
-            "hypothesis": e.get("hypothesis") or e.get("mechanism"), "targets_mode": e.get("targets_mode"),
-            "predicted_affected": e.get("predicted_affected"), "diff": diff,
-            "delta_S": _r(delta_S, 6), "delta_C": _r(delta_C, 6), "accepted": bool(accepted), "outcome": outcome,
-            "S": _r(S, 6), "C": _r(C, 1), "bundle": len(edits or []), "detail": detail[:600] if detail else "",
-        } for e in edits or [{"id": "C1", "component": None, "hypothesis": None}]])
+        self.append_many(
+            [
+                {
+                    "t": t,
+                    "variant": variant,
+                    "edit_id": e.get("id"),
+                    "component": e.get("component"),
+                    "hypothesis": e.get("hypothesis") or e.get("mechanism"),
+                    "targets_mode": e.get("targets_mode"),
+                    "predicted_affected": e.get("predicted_affected"),
+                    "diff": diff,
+                    "delta_S": _r(delta_S, 6),
+                    "delta_C": _r(delta_C, 6),
+                    "accepted": bool(accepted),
+                    "outcome": outcome,
+                    "S": _r(S, 6),
+                    "C": _r(C, 1),
+                    "bundle": len(edits or []),
+                    "detail": detail[:600] if detail else "",
+                }
+                for e in edits or [{"id": "C1", "component": None, "hypothesis": None}]
+            ]
+        )
 
     def _rewrite(self, drop: Callable[[dict], bool]) -> None:
         recs = [r for r in self.records() if not drop(r)]
@@ -79,18 +119,24 @@ class History:
         """T_t: components with at least one measured edit."""
         return {r["component"] for r in self.measured()}
 
-    def accepted_edits(self, before_t: Optional[int] = None) -> dict[str, list[dict]]:
+    def accepted_edits(self, before_t: int | None = None) -> dict[str, list[dict]]:
         """Accepted edits per component (the machinery in the incumbent)."""
         out: dict[str, list[dict]] = {c: [] for c in self.K}
         for r in self.records():
             if r.get("accepted") and r.get("component") in out and r.get("edit_id"):
-                if before_t is not None and int(r.get("t", 10 ** 9)) >= before_t:
+                if before_t is not None and int(r.get("t", 10**9)) >= before_t:
                     continue
-                out[r["component"]].append({"t": r["t"], "edit_id": r.get("edit_id"),
-                                            "hypothesis": r.get("hypothesis"), "delta_S": r.get("delta_S")})
+                out[r["component"]].append(
+                    {
+                        "t": r["t"],
+                        "edit_id": r.get("edit_id"),
+                        "hypothesis": r.get("hypothesis"),
+                        "delta_S": r.get("delta_S"),
+                    }
+                )
         return out
 
-    def incumbent_component_counts(self, before_t: Optional[int] = None) -> dict[str, int]:
+    def incumbent_component_counts(self, before_t: int | None = None) -> dict[str, int]:
         return {c: len(v) for c, v in self.accepted_edits(before_t).items()}
 
     def yield_g(self, t: int, n_prune: int) -> dict[str, float]:
@@ -106,8 +152,15 @@ class History:
         """B_t = {l : g_t(l) <= 0} with each component's accepted machinery. Eq. (prune)"""
         g = self.yield_g(t, n_prune)
         acc = self.accepted_edits()
-        return [{"component": c, "recent_best_gain": None if g[c] == -math.inf else round(g[c], 5),
-                 "accepted_edits_in_incumbent": acc.get(c, [])} for c in sorted(g) if g[c] <= 0]
+        return [
+            {
+                "component": c,
+                "recent_best_gain": None if g[c] == -math.inf else round(g[c], 5),
+                "accepted_edits_in_incumbent": acc.get(c, []),
+            }
+            for c in sorted(g)
+            if g[c] <= 0
+        ]
 
     def render(self, n: int = 40, mode: str = "full") -> list[dict]:
         """The ``n`` latest records for the proposer, at most 4 unmeasured (mode: full | accepted_only | none)."""
@@ -139,13 +192,17 @@ def exploration(t: int, stall: int, tried: set, m_draft: int, K: Sequence[str] =
     """E_t = (sigma_t, U_t, m_draft) plus the text handed to the proposer."""
     untried = [c for c in K if c not in tried]
     if stall and untried:
-        text = (f"STALL: the incumbent has not moved by more than the noise band over the last rounds "
-                f"(sigma_t = 1). {m_draft} candidate slot(s) this round are RESERVED for exploratory edits on "
-                f"components the run has never exercised: {untried}. A variant holding a reserved slot must put "
-                f"at least one edit on one of those components.")
+        text = (
+            f"STALL: the incumbent has not moved by more than the noise band over the last rounds "
+            f"(sigma_t = 1). {m_draft} candidate slot(s) this round are RESERVED for exploratory edits on "
+            f"components the run has never exercised: {untried}. A variant holding a reserved slot must put "
+            f"at least one edit on one of those components."
+        )
     elif untried:
-        text = (f"Components not yet exercised in this run: {untried}. Not mandatory this round (sigma_t = 0), "
-                f"but evidence about them is still missing.")
+        text = (
+            f"Components not yet exercised in this run: {untried}. Not mandatory this round (sigma_t = 0), "
+            f"but evidence about them is still missing."
+        )
     else:
         text = "Every component in K has been exercised at least once."
     return {"sigma": stall, "untried": untried, "m_draft": m_draft, "text": text}

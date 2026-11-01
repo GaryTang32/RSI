@@ -13,6 +13,7 @@
 
 Run:  python experiments/bbh/merge.py [--benchmark bbh|bbeh] [--dir results/<bench>] [--reps 10000]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -71,22 +72,30 @@ def merge(d: Path, reps: int = 10000) -> dict:
         sp = o.get("spend", {})
         # compute cost: every call the arm used at its original price (fresh + replayed from the shared cache), so a
         # resumed run or one that reuses another arm's calls is not shown as free
-        full = {k: round((sp.get(k, {}).get("usd") or 0) + (sp.get(k, {}).get("usd_saved_by_cache") or 0), 4)
-                for k in ("search", "eval")}
+        full = {
+            k: round((sp.get(k, {}).get("usd") or 0) + (sp.get(k, {}).get("usd_saved_by_cache") or 0), 4)
+            for k in ("search", "eval")
+        }
         ph = {x.get("phase"): x for x in o.get("phases") or []}
-        if "prewarm" in ph and "stream" in ph:   # best-of-n: the stream replays the prewarmed rollouts; count once
+        if "prewarm" in ph and "stream" in ph:  # best-of-n: the stream replays the prewarmed rollouts; count once
             full["search"] = round(full["search"] - (ph["stream"].get("usd_saved_by_cache") or 0), 4)
         own = ((o.get("search") or {}).get("usage") or {}).get("cost_usd")
-        if own:     # a run resumed from saved method state never replays its earlier calls: take the method's counter
+        if own:  # a run resumed from saved method state never replays its earlier calls: take the method's counter
             full["search"] = round(max(full["search"], own), 4)
         n_ex = len(o.get("per_task") or {})
-        row = {"status": o.get("status"), "n": n_ex,
-               "search_usd": full["search"], "eval_usd": full["eval"],
-               "fresh_search_usd": sp.get("search", {}).get("usd"), "fresh_eval_usd": sp.get("eval", {}).get("usd"),
-               "eval_usd_per_example": round(full["eval"] / n_ex, 4) if n_ex else None, "fresh_usd": o.get("usd"),
-               "fresh_calls": sp.get("total", {}).get("fresh_calls"),
-               "cached_calls": sp.get("total", {}).get("cached_calls"),
-               "leak_check": None if "leak_check" not in o else ("pass" if o["leak_check"]["passed"] else "FAIL")}
+        row = {
+            "status": o.get("status"),
+            "n": n_ex,
+            "search_usd": full["search"],
+            "eval_usd": full["eval"],
+            "fresh_search_usd": sp.get("search", {}).get("usd"),
+            "fresh_eval_usd": sp.get("eval", {}).get("usd"),
+            "eval_usd_per_example": round(full["eval"] / n_ex, 4) if n_ex else None,
+            "fresh_usd": o.get("usd"),
+            "fresh_calls": sp.get("total", {}).get("fresh_calls"),
+            "cached_calls": sp.get("total", {}).get("cached_calls"),
+            "leak_check": None if "leak_check" not in o else ("pass" if o["leak_check"]["passed"] else "FAIL"),
+        }
         if name in mismatched:
             row["status"] = f"{row['status']} (different suite: not compared)"
         rows[name] = row
@@ -139,11 +148,23 @@ def merge(d: Path, reps: int = 10000) -> dict:
         ids = sorted(bon["base_per_task"])
         extra["bestofn_submitted_minus_H0_base1"] = _diff(bon["base_per_task"], bon["per_task"], ids, reps)
     pilot = arms.get("pilot")
-    return {"dir": str(d), "reps": reps, "suite": ref_sig and json.loads(ref_sig), "mismatched_suites": mismatched,
-            "arms": rows, "families": fam_rows, "paired_extra": extra,
-            "pilot": None if not pilot else {"family_accuracy": pilot.get("family_accuracy"),
-                                             "suggestion": pilot.get("suggestion"), "usd": pilot.get("usd")},
-            "fresh_usd_this_run": round(sum((o.get("usd") or 0) for o in arms.values()), 4)}
+    return {
+        "dir": str(d),
+        "reps": reps,
+        "suite": ref_sig and json.loads(ref_sig),
+        "mismatched_suites": mismatched,
+        "arms": rows,
+        "families": fam_rows,
+        "paired_extra": extra,
+        "pilot": None
+        if not pilot
+        else {
+            "family_accuracy": pilot.get("family_accuracy"),
+            "suggestion": pilot.get("suggestion"),
+            "usd": pilot.get("usd"),
+        },
+        "fresh_usd_this_run": round(sum((o.get("usd") or 0) for o in arms.values()), 4),
+    }
 
 
 def _fmt_ci(v):
@@ -163,20 +184,29 @@ def _fmt_tok(v):
 
 
 def markdown(m: dict) -> str:
-    out = ["| arm | status | n | accuracy [95% CI] | holdout | ood | vs seed | vs cot3 | eval $/ex | search $ | "
-           "calls (fresh+cached) | leak |", "|" + "---|" * 12]
+    out = [
+        "| arm | status | n | accuracy [95% CI] | holdout | ood | vs seed | vs cot3 | eval $/ex | search $ | "
+        "calls (fresh+cached) | leak |",
+        "|" + "---|" * 12,
+    ]
     for name, r in m["arms"].items():
-        out.append(f"| {name} | {r['status']} | {r['n']} | {_fmt_ci(r.get('acc'))} | {r.get('acc_holdout', '-')} | "
-                   f"{r.get('acc_ood', '-')} | {_fmt_diff(r.get('vs_seed'))} | {_fmt_diff(r.get('vs_cot3'))} | "
-                   f"{_money(r.get('eval_usd_per_example'))} | {_money(r.get('search_usd'))} | "
-                   f"{r.get('fresh_calls')}+{r.get('cached_calls')} | {r.get('leak_check') or '-'} |")
+        out.append(
+            f"| {name} | {r['status']} | {r['n']} | {_fmt_ci(r.get('acc'))} | {r.get('acc_holdout', '-')} | "
+            f"{r.get('acc_ood', '-')} | {_fmt_diff(r.get('vs_seed'))} | {_fmt_diff(r.get('vs_cot3'))} | "
+            f"{_money(r.get('eval_usd_per_example'))} | {_money(r.get('search_usd'))} | "
+            f"{r.get('fresh_calls')}+{r.get('cached_calls')} | {r.get('leak_check') or '-'} |"
+        )
     tok_rows = {n: r for n, r in m["arms"].items() if r.get("out_tokens_per_example") is not None}
     if tok_rows:
-        out.append("\n| arm | accuracy | output tokens per answer | tokens vs seed (paired) | $ per example (k trials) |")
+        out.append(
+            "\n| arm | accuracy | output tokens per answer | tokens vs seed (paired) | $ per example (k trials) |"
+        )
         out.append("|---|---|---|---|---|")
         for n, r in tok_rows.items():
-            out.append(f"| {n} | {_fmt_ci(r.get('acc'))} | {r['out_tokens_per_example']:.0f} | "
-                       f"{_fmt_tok(r.get('out_tokens_vs_seed'))} | {_money(r.get('usd_per_example'))} |")
+            out.append(
+                f"| {n} | {_fmt_ci(r.get('acc'))} | {r['out_tokens_per_example']:.0f} | "
+                f"{_fmt_tok(r.get('out_tokens_vs_seed'))} | {_money(r.get('usd_per_example'))} |"
+            )
     for k, v in m["paired_extra"].items():
         out.append(f"\n{k}: {_fmt_diff(v)}")
     fams = sorted({f for v in m["families"].values() for f in v})
@@ -185,10 +215,14 @@ def markdown(m: dict) -> str:
         out.append("|" + "---|" * (len(m["families"]) + 1))
         for f in fams:
             out.append(f"| {f} | " + " | ".join(str(v.get(f, "-")) for v in m["families"].values()) + " |")
-    out.append(f"\nHarness² and best-of-n rows use the {next((r.get('subset') for r in m['arms'].values() if r.get('subset')), '?')}"
-               "-example subsample; their vs-seed/vs-cot3 columns compare on those examples only.")
-    out.append("eval $/ex and search $ price every call an arm used, fresh or replayed from the shared cache (its compute "
-               "cost); the money actually spent is the sum over the cache, as the shared cache bills each call once.")
+    out.append(
+        f"\nHarness² and best-of-n rows use the {next((r.get('subset') for r in m['arms'].values() if r.get('subset')), '?')}"
+        "-example subsample; their vs-seed/vs-cot3 columns compare on those examples only."
+    )
+    out.append(
+        "eval $/ex and search $ price every call an arm used, fresh or replayed from the shared cache (its compute "
+        "cost); the money actually spent is the sum over the cache, as the shared cache bills each call once."
+    )
     return "\n".join(out)
 
 

@@ -8,12 +8,12 @@ Harness² library key). What changes: the tasks, :meth:`grade` (BBH answer conve
 :meth:`describe`, :meth:`leakage_terms` (generic targets such as ``(A)`` or ``True`` are not leakage terms), and the
 seed harness (one call, asked to end with an ``ANSWER:`` line).
 """
+
 from __future__ import annotations
 
 import sys
 import threading
 from pathlib import Path
-from typing import Optional
 
 from ...core.artifact import Artifact
 from ...core.domain import Execution
@@ -30,8 +30,10 @@ SEED_HARNESS_DIR = Path(__file__).parent / "seed_harness"
 #: file the domain adds to ``files`` when ``family_hint=True`` (only the fixed CoT reference arm uses it)
 FAMILY_FILE = "_task/family.txt"
 
-DEFAULT_OOD_HINT = ("The harness will later be run unchanged on other kinds of reasoning questions with exact "
-                    "answers (multiple choice, yes/no, counting, sequences), so improvements must be general.")
+DEFAULT_OOD_HINT = (
+    "The harness will later be run unchanged on other kinds of reasoning questions with exact "
+    "answers (multiple choice, yes/no, counting, sequences), so improvements must be general."
+)
 
 
 class BBHDomain(AgentQADomain):
@@ -49,10 +51,19 @@ class BBHDomain(AgentQADomain):
     _extract = staticmethod(extract_answer)
     _is_generic = staticmethod(is_generic_target)
 
-    def __init__(self, tasks: Optional[TaskSuite] = None, *, tool_timeout_s: float = 10.0,
-                 ood_hint: Optional[str] = None, family_hint: bool = False) -> None:
-        super().__init__(tasks if tasks is not None else make_suite(), tool_timeout_s=tool_timeout_s,
-                         ood_hint=ood_hint or DEFAULT_OOD_HINT)
+    def __init__(
+        self,
+        tasks: TaskSuite | None = None,
+        *,
+        tool_timeout_s: float = 10.0,
+        ood_hint: str | None = None,
+        family_hint: bool = False,
+    ) -> None:
+        super().__init__(
+            tasks if tasks is not None else make_suite(),
+            tool_timeout_s=tool_timeout_s,
+            ood_hint=ood_hint or DEFAULT_OOD_HINT,
+        )
         self.family_hint = family_hint
 
     @staticmethod
@@ -67,7 +78,10 @@ class BBHDomain(AgentQADomain):
             "tools.python(code) -> str runs Python in a sandbox and returns stdout, and files maps artifact file "
             "paths to their text (prompts, skills, memory). The returned string is graded by exact match of the "
             "final answer (a line 'ANSWER: <value>' is extracted if present, else the last line); "
-            + self.answer_note + f"Practice tasks are multi-step reasoning questions of these kinds: {fams}. " + (self.ood_hint or ""))
+            + self.answer_note
+            + f"Practice tasks are multi-step reasoning questions of these kinds: {fams}. "
+            + (self.ood_hint or "")
+        )
 
     def domain_of(self, task: Task) -> str:
         """Harness² library key: the BBH task family."""
@@ -82,16 +96,21 @@ class BBHDomain(AgentQADomain):
                 terms.append(str(t.target))
         return sorted(set(terms))
 
-    def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: Optional[LLM]) -> Execution:
+    def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: LLM | None) -> Execution:
         if self.family_hint:
             artifact = artifact.with_files({FAMILY_FILE: str(task.family)})
         counter = _OutputTokens(llm) if llm is not None else None
         ex = super().execute(artifact, task, seed=seed, llm=counter)
-        if counter is not None:     # answer length: SoL-Pi's objective, reported per example by the experiment
+        if counter is not None:  # answer length: SoL-Pi's objective, reported per example by the experiment
             ex.meta = {**(ex.meta or {}), "output_tokens": counter.output_tokens}
         if tampered := self._restore_grading():
-            return Execution(error=f"tamper: the harness replaced part of the grading path ({', '.join(tampered)}); "
-                                   "restored", trace=ex.trace, tokens=ex.tokens, cost_usd=ex.cost_usd, steps=ex.steps)
+            return Execution(
+                error=f"tamper: the harness replaced part of the grading path ({', '.join(tampered)}); restored",
+                trace=ex.trace,
+                tokens=ex.tokens,
+                cost_usd=ex.cost_usd,
+                steps=ex.steps,
+            )
         return ex
 
     def _restore_grading(self) -> list[str]:
@@ -132,11 +151,20 @@ class _OutputTokens:
 # ----- offline task model -------------------------------------------------------------------------------------------
 
 #: AgentQA SimModel kind per BBH family (sets the simulated direct-answer accuracy; unknown families: 0.5)
-SIM_KIND = {"multistep_arithmetic_two": "numeric", "word_sorting": "strings", "dyck_languages": "numeric",
-            "logical_deduction_five_objects": "numeric", "tracking_shuffled_objects_five_objects": "numeric",
-            "date_understanding": "dates", "object_counting": "lists", "navigate": "numeric",
-            "temporal_sequences": "strings", "geometric_shapes": "numeric", "penguins_in_a_table": "lists",
-            "web_of_lies": "numeric"}
+SIM_KIND = {
+    "multistep_arithmetic_two": "numeric",
+    "word_sorting": "strings",
+    "dyck_languages": "numeric",
+    "logical_deduction_five_objects": "numeric",
+    "tracking_shuffled_objects_five_objects": "numeric",
+    "date_understanding": "dates",
+    "object_counting": "lists",
+    "navigate": "numeric",
+    "temporal_sequences": "strings",
+    "geometric_shapes": "numeric",
+    "penguins_in_a_table": "lists",
+    "web_of_lies": "numeric",
+}
 
 
 class BBHSimModel(SimModel):
@@ -145,7 +173,7 @@ class BBHSimModel(SimModel):
     sim_kind = SIM_KIND
     prefix = "bbh"
 
-    def __init__(self, suite: TaskSuite, skill: float = 1.0, name: Optional[str] = None) -> None:
+    def __init__(self, suite: TaskSuite, skill: float = 1.0, name: str | None = None) -> None:
         p = self.prefix
         super().__init__(suite, skill=skill, name=name or (f"{p}-sim-model" if skill == 1.0 else f"{p}-sim@{skill:g}"))
         self.questions = {q: (ans, self.sim_kind.get(fam, fam)) for q, (ans, fam) in self.questions.items()}
@@ -177,14 +205,42 @@ def cot3_artifact(families, **load_kw) -> Artifact:
 
 # ----- grading-path integrity (BBH additions to AgentQA's tripwire) ------------------------------------------------
 
+
 def _integrity_targets() -> list:
     mod = sys.modules[__name__]
-    return ([(_grading, n) for n in ("is_correct", "grade_answer", "answer_kind", "parse_options", "_choice_letter",
-                                     "_binary_ok", "_number_ok", "_dyck_ok", "_text_ok", "_tokens", "extract_answer",
-                                     "normalize")]
-            + [(mod, n) for n in ("is_correct", "extract_answer", "_restore_integrity")]
-            + [(BBHDomain, n) for n in ("grade", "execute", "domain_of", "leakage_terms", "_restore_grading",
-                                        "_is_correct", "_extract", "_is_generic")])
+    return (
+        [
+            (_grading, n)
+            for n in (
+                "is_correct",
+                "grade_answer",
+                "answer_kind",
+                "parse_options",
+                "_choice_letter",
+                "_binary_ok",
+                "_number_ok",
+                "_dyck_ok",
+                "_text_ok",
+                "_tokens",
+                "extract_answer",
+                "normalize",
+            )
+        ]
+        + [(mod, n) for n in ("is_correct", "extract_answer", "_restore_integrity")]
+        + [
+            (BBHDomain, n)
+            for n in (
+                "grade",
+                "execute",
+                "domain_of",
+                "leakage_terms",
+                "_restore_grading",
+                "_is_correct",
+                "_extract",
+                "_is_generic",
+            )
+        ]
+    )
 
 
 def _restore_integrity() -> list[str]:

@@ -1,4 +1,5 @@
 """Retry round 2: GDI formula, faithful selector rule, hub signal layer, bounties and the git workspace."""
+
 from __future__ import annotations
 
 import json
@@ -11,8 +12,15 @@ from rsi.core import Artifact, FunctionDomain, MockLLM, Task, TaskSuite
 from rsi.domains.geneworld import GeneWorldModel, GeneWorldProposer
 from rsi.domains.geneworld.forge import GeneWorldForge
 from rsi.evomap import AgentNode, Config, Gene, LocalStore, NaiveEvoMapHub, PopulationSimulator
-from rsi.evomap.economy import (BountyBoard, BountyDriver, BountyTask, dormant_nodes, estimate_capability_match,
-                                rank_tasks, refer)
+from rsi.evomap.economy import (
+    BountyBoard,
+    BountyDriver,
+    BountyTask,
+    dormant_nodes,
+    estimate_capability_match,
+    rank_tasks,
+    refer,
+)
 from rsi.evomap.gitws import GitWorkspace
 from rsi.evomap.hub import AssetRecord, Bundle, CreditLedger, GDIRanker
 from rsi.evomap.mutation import MutationBuilder, PersonalityState
@@ -26,10 +34,20 @@ DATA = Path(__file__).parent / "data"
 
 
 def record(conf=0.9, streak=4, files=2, lines=100, trig=("a", "b", "c"), summary="x" * 100, epoch=0, author="n1"):
-    cap = {"confidence": conf, "success_streak": streak, "blast_radius": {"files": files, "lines": lines},
-           "outcome": {"status": "success", "score": 0.9}, "trigger": list(trig), "summary": summary}
-    b = Bundle(gene={"id": "gene_x", "signals_match": ["a"], "summary": "short", "strategy": ["s"]}, capsule=cap,
-               event=None, report={"overall_ok": True})
+    cap = {
+        "confidence": conf,
+        "success_streak": streak,
+        "blast_radius": {"files": files, "lines": lines},
+        "outcome": {"status": "success", "score": 0.9},
+        "trigger": list(trig),
+        "summary": summary,
+    }
+    b = Bundle(
+        gene={"id": "gene_x", "signals_match": ["a"], "summary": "short", "strategy": ["s"]},
+        capsule=cap,
+        event=None,
+        report={"overall_ok": True},
+    )
     return AssetRecord("sha256:x", b, author, "promoted", epoch)
 
 
@@ -61,8 +79,13 @@ def test_faithful_mode_uses_the_engine_selector_rule(gw):
     assert Config(mode="faithful", require_match=True).resolved().require_match is True
     ag = AgentNode("a", gw, gw.seed_artifact(), llm_task=GeneWorldModel(0.0), config=Config(mode="faithful"))
     assert ag.selector.scorer.require_match is False
-    g = Gene(id="gene_unrelated", signals_match=["zzzqqq"], summary="nothing in common", strategy=["x"],
-             learning_history=[{"outcome": "success"}] * 3)
+    g = Gene(
+        id="gene_unrelated",
+        signals_match=["zzzqqq"],
+        summary="nothing in common",
+        strategy=["x"],
+        learning_history=[{"outcome": "success"}] * 3,
+    )
     # no pattern hit and no token overlap: > 0 under the engine rule (history +0.36), 0 under the safe deviation
     assert ag.selector.scorer.score(g, ["task:c01"]) > 0
     ag_safe = AgentNode("b", gw, gw.seed_artifact(), llm_task=GeneWorldModel(0.0), config=Config(mode="safe"))
@@ -90,8 +113,14 @@ def test_hub_signal_layer_calls_every_fifth_cycle_with_a_truncated_corpus():
 
 def test_faithful_agent_merges_hub_llm_signals_on_its_first_cycle(gw):
     hub = NaiveEvoMapHub(signal_analyzer=lambda p: {"signals": ["external_opportunity"]})
-    ag = AgentNode("a", gw, gw.seed_artifact(), llm_task=GeneWorldModel(0.0), hub=hub,
-                   config=Config(mode="faithful", propose=False, distill=False, publish=False))
+    ag = AgentNode(
+        "a",
+        gw,
+        gw.seed_artifact(),
+        llm_task=GeneWorldModel(0.0),
+        hub=hub,
+        config=Config(mode="faithful", propose=False, distill=False, publish=False),
+    )
     t = gw.tasks.split("evolve")[0]
     cr1, cr2 = ag.cycle(t), ag.cycle(t)
     assert "external_opportunity" in cr1.signals and "external_opportunity" not in cr2.signals
@@ -103,10 +132,21 @@ def test_faithful_agent_merges_hub_llm_signals_on_its_first_cycle(gw):
 def test_task_ranking_matches_the_v2_javascript():
     d = json.loads((DATA / "taskreceiver_vectors.json").read_text())
     for c, js in zip(d["cases"], d["js"]):
-        ts = [BountyTask(t["task_id"], "p", t.get("bounty_amount"), t["signals"], t["title"], status=t["status"],
-                         claimed_by=t.get("claimed_by"), complexity_score=t.get("complexity_score"),
-                         historical_completion_rate=t.get("historical_completion_rate"), bounty_id=t.get("bounty_id"))
-              for t in c["tasks"]]
+        ts = [
+            BountyTask(
+                t["task_id"],
+                "p",
+                t.get("bounty_amount"),
+                t["signals"],
+                t["title"],
+                status=t["status"],
+                claimed_by=t.get("claimed_by"),
+                complexity_score=t.get("complexity_score"),
+                historical_completion_rate=t.get("historical_completion_rate"),
+                bounty_id=t.get("bounty_id"),
+            )
+            for t in c["tasks"]
+        ]
         got = rank_tasks(ts, "me", c["mem"], c["strategy"])
         assert [(e["task"].task_id, e["reason"]) for e in got] == [(e["id"], e["reason"]) for e in js["ranked"]]
         for e, j in zip(got, js["ranked"]):
@@ -134,8 +174,12 @@ def test_bounty_escrow_self_reported_completion_expiry_swarm_referral_dormancy()
     with pytest.raises(ValueError):
         board.complete_swarm(t3.task_id, {"s1": 1}, "low")
     pay = board.complete_swarm(t3.task_id, {"s1": 3, "s2": 1}, "agg")
-    assert pay == {"prop": pytest.approx(50), "s1": pytest.approx(637.5), "s2": pytest.approx(212.5),
-                   "agg": pytest.approx(100)}
+    assert pay == {
+        "prop": pytest.approx(50),
+        "s1": pytest.approx(637.5),
+        "s2": pytest.approx(212.5),
+        "agg": pytest.approx(100),
+    }
     refer(cr, "old", "new")
     assert cr.earned("old") == 50 and cr.earned("new") == 100
     cr.balance["idle"] = 0.0
@@ -147,10 +191,18 @@ def test_bounty_escrow_self_reported_completion_expiry_swarm_referral_dormancy()
 def _bounty_run(gw, specs, epochs, forge=None, **driver_kw):
     hub = NaiveEvoMapHub()
     drv = BountyDriver(BountyBoard(hub.credits), per_epoch=3, **driver_kw)
-    PopulationSimulator(gw, gw.seed_artifact(), hub, specs, config=Config(mode="faithful", seed=0),
-                        model_factory=lambda sp: GeneWorldModel(sp.ability),
-                        proposer_factory=lambda sp: GeneWorldProposer(gw.world, sp.insight, 1.0),
-                        forge=forge, seed=0, bounties=drv).run(epochs)
+    PopulationSimulator(
+        gw,
+        gw.seed_artifact(),
+        hub,
+        specs,
+        config=Config(mode="faithful", seed=0),
+        model_factory=lambda sp: GeneWorldModel(sp.ability),
+        proposer_factory=lambda sp: GeneWorldProposer(gw.world, sp.insight, 1.0),
+        forge=forge,
+        seed=0,
+        bounties=drv,
+    ).run(epochs)
     return hub, drv
 
 
@@ -163,9 +215,12 @@ def test_population_bounty_driver_pays_self_reported_completions(gw):
 
 def test_bounty_driver_can_let_farmers_self_report_completions(gw):
     """Farmer claimants complete with a fresh capsule id; the default driver never pays a farmer."""
+
     def farm(**driver_kw):
-        specs = [AgentSpec("a0_farmer", "farmer", farm_rate=2),
-                 AgentSpec("a1_honest", "honest", ability=0.5, insight=0.9)]
+        specs = [
+            AgentSpec("a0_farmer", "farmer", farm_rate=2),
+            AgentSpec("a1_honest", "honest", ability=0.5, insight=0.9),
+        ]
         return _bounty_run(gw, specs, 4, forge=GeneWorldForge(gw.world), **driver_kw)
 
     _, drv = farm()
@@ -223,13 +278,22 @@ def test_git_workspace_blast_rollback_and_untracked_cleanup(tmp_path):
 
 def test_agent_runs_inside_a_git_repo_without_a_hub(tmp_path):
     tasks = [Task(f"t{i}", {"x": i}, float(i), "fam") for i in range(6)]
-    dom = FunctionDomain(TaskSuite(tasks, {"evolve": [t.id for t in tasks]}),
-                         lambda art, task, seed, llm: float(task.input["x"]),
-                         lambda task, out: (float(out == task.target), ""), name="echo")
+    dom = FunctionDomain(
+        TaskSuite(tasks, {"evolve": [t.id for t in tasks]}),
+        lambda art, task, seed, llm: float(task.input["x"]),
+        lambda task, out: (float(out == task.target), ""),
+        name="echo",
+    )
     ws = GitWorkspace.init(tmp_path / "repo", {"README.md": "repo\n"})
-    ag = AgentNode("a", dom, Artifact({"agent.md": "echo\n"}), llm_task=MockLLM(lambda *a: "0", name="m"),
-                   hub=None, config=Config(mode="faithful", propose=False, distill=False, publish=False),
-                   workspace=ws)
+    ag = AgentNode(
+        "a",
+        dom,
+        Artifact({"agent.md": "echo\n"}),
+        llm_task=MockLLM(lambda *a: "0", name="m"),
+        hub=None,
+        config=Config(mode="faithful", propose=False, distill=False, publish=False),
+        workspace=ws,
+    )
     crs = [ag.cycle(t) for t in tasks[:3]]
     assert ag.solidifier.workspace is ws and ws.is_git_repo()
     failed = [cr for cr in crs if not cr.solidified]
@@ -244,9 +308,21 @@ def test_selector_history_penalty_applies_to_soft_mode_only_as_selector_js():
     """selector.js:130-138: success +0.12, mode 'hard' -0.22, mode 'soft' -0.08, any other mode 0."""
     sel = GeneScorer(mode="current")
     base = dict(id="gene_h", signals_match=["x"], summary="s", strategy=["a"])
-    g = Gene(**base, learning_history=[{"outcome": "failed", "mode": "none"}, {"outcome": "failed"},
-                                       {"outcome": "unknown", "mode": "x"}])
+    g = Gene(
+        **base,
+        learning_history=[
+            {"outcome": "failed", "mode": "none"},
+            {"outcome": "failed"},
+            {"outcome": "unknown", "mode": "x"},
+        ],
+    )
     assert sel.adjustment(g, ["x"], None) == pytest.approx(0.0)
-    g2 = Gene(**base, learning_history=[{"outcome": "failed", "mode": "soft"}, {"outcome": "failed", "mode": "hard"},
-                                        {"outcome": "success", "mode": "none"}])
+    g2 = Gene(
+        **base,
+        learning_history=[
+            {"outcome": "failed", "mode": "soft"},
+            {"outcome": "failed", "mode": "hard"},
+            {"outcome": "success", "mode": "none"},
+        ],
+    )
     assert sel.adjustment(g2, ["x"], None) == pytest.approx(-0.08 - 0.22 + 0.12)

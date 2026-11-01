@@ -2,6 +2,7 @@
 
 python scripts/check_package.py dist/rsi-*.whl
 """
+
 import subprocess
 import sys
 import zipfile

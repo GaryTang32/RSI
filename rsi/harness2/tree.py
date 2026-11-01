@@ -1,9 +1,10 @@
 """Harness trees: the domain's Artifact, its editable surface, and structural validation before any rollout."""
+
 from __future__ import annotations
 
 import fnmatch
 import re
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from ..core.artifact import Artifact, is_safe_relpath
 
@@ -15,7 +16,7 @@ def is_code(path: str) -> bool:
     return path.endswith(".py")
 
 
-def editable_globs(seed: Artifact, editable: Optional[Sequence[str]]) -> list[str]:
+def editable_globs(seed: Artifact, editable: Sequence[str] | None) -> list[str]:
     return list(editable) if editable is not None else sorted(seed)
 
 
@@ -85,7 +86,7 @@ def diff_summary(old: Artifact, new: Artifact) -> dict:
 def diversity(trees: Sequence[Artifact]) -> float:
     """Mean pairwise line-Jaccard distance of the trees' text (0 = identical) [code tree.diversity]."""
     sets = [{f"{p}\0{ln}" for p, t in tr.items() for ln in t.splitlines() if ln.strip()} for tr in trees]
-    pairs = [(a, b) for i, a in enumerate(sets) for b in sets[i + 1:]]
+    pairs = [(a, b) for i, a in enumerate(sets) for b in sets[i + 1 :]]
     if not pairs:
         return 0.0
     return sum(1 - len(a & b) / max(1, len(a | b)) for a, b in pairs) / len(pairs)
