@@ -100,7 +100,9 @@ what it cannot find: whether to install the package, which model runs the loop, 
 cache go. It then helps you wrap your task (an artifact to change, tasks, a grader), measures the noise, picks a
 method and runs it.
 
-**Try it without Claude Code.** The same loop from the command line or Python:
+**Try it without Claude Code.** [`examples/`](examples/README.md) has three short scripts that run offline in under a
+minute: a prompt improved on your own CSV of labelled examples (GEPA), an agent harness (RRSI), and a training script
+(autoresearch). The same loop from the command line or Python:
 ```bash
 rsi methods                                                                  # what each method does
 rsi improve --method rrsi --problem agentqa --llm sim --out runs/rrsi-sim    # offline, ~10 s, no API key

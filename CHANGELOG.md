@@ -11,6 +11,8 @@ Before 1.0, minor versions may change the API.
 - Slow tests are marked, so `pytest -m "not slow"` gives a quick local subset.
 
 ### Added
+- `examples/`: three runnable examples (a prompt from a CSV with GEPA, an agent harness with RRSI, a training script
+  with autoresearch), offline by default, live with `--llm claude:haiku`.
 - Claude Code plugin: `/plugin install rsi --marketplace GaryTang32/RSI` installs the skill as `/rsi:rsi-improve`.
 - Documentation site (MkDocs Material) with getting started, methodology, every method's docs, the benchmarks, the
   evidence, an API reference and the chart gallery; built on every PR and published to GitHub Pages from `main`.

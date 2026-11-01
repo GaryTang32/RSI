@@ -87,6 +87,7 @@ nav:
   - Home: index.md
   - Get started:
       - Install and use: getting-started.md
+      - Examples: examples.md
       - Prerequisites: prerequisites.md
       - The Claude Code skill: skill.md
   - Methodology:
