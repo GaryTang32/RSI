@@ -15,7 +15,8 @@ from _common import (
     claim,
     hardened_audit,
     insert_audit_code,
-    pool_map,  # noqa: I001
+    pool_map,
+    require_windows,
     scored_keeps,
     write,
 )
@@ -55,13 +56,14 @@ class ValReuseTask(TinyLMTask):
     """tinylm selecting on val window ``sel_epoch``; audit mode also scores the other window and test_iid on the
     same weights (kept aside, never shown to the agent)."""
 
-    def __init__(self, sel_epoch: int, budget_s: float = 2.0):
+    def __init__(self, sel_epoch: int, budget_s: float = 2.0, data_root=None):
         files = {
             "prepare.py": variant_prepare(),
             "train.py": (DOMAIN_DIR / "train.py").read_text(),
             "README.md": (DOMAIN_DIR / "README.md").read_text(),
         }
-        super().__init__(budget_s=budget_s, files=files)
+        super().__init__(budget_s=budget_s, files=files, data_root=data_root)
+        require_windows(self, {"val": 2})
         self.sel_epoch = sel_epoch
         self.env = {"RSI_AR_VAL_ALT_EPOCH": str(1 - sel_epoch)}
         self.held_out: list[dict] = []
