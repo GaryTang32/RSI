@@ -13,7 +13,7 @@ to your prompts, agent harness or training script, and keep only the changes tha
   <img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C410-2f5d8a">
 </p>
 
-<p align="center"><a href="https://garytang32.github.io/RSI/">Docs site</a> · <a href="#1-what-this-repo-is">What it is</a> · <a href="#2-methodology">Methodology</a> · <a href="#3-install-the-skill">Install</a> · <a href="#4-prerequisites">Prerequisites</a> · <a href="#5-how-to-use">How to use</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">66 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
+<p align="center"><a href="https://garytang32.github.io/RSI/">Docs site</a> · <a href="#1-what-this-repo-is">What it is</a> · <a href="#2-methodology">Methodology</a> · <a href="#3-install-the-skill">Install</a> · <a href="#4-prerequisites">Prerequisites</a> · <a href="#5-how-to-use">How to use</a> · <a href="#6-adopt-it-in-your-own-project">Adopt it</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">66 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
 
 ---
 
@@ -192,6 +192,55 @@ print(rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baselin
 ```
 
 <!-- --8<-- [end:usage] -->
+
+## 6. Adopt it in your own project
+
+<!-- --8<-- [start:adopt] -->
+
+To keep the skill and the package inside your own (for example private) repository instead of installing them from
+here, copy these from the root of this repo:
+
+| Path | Needed? | Why |
+|---|---|---|
+| `.claude/skills/rsi-improve/` | required | the skill: `SKILL.md` and the eight method references |
+| `rsi/` | required | the package the skill runs (about 2.8 MB). Copy all of it: some methods use `rsi/domains/` for their offline defaults |
+| `pyproject.toml` | required | makes `pip install -e .` work and installs the `rsi` command; the only dependency is `numpy` |
+| `LICENSE` | required | MIT: keep the copyright notice (`rsi/` already carries the EvoMap schema notice) |
+| `experiments/` | optional | the `example_new_problem.py` templates the skill points to, and `rsi experiments <method>` |
+| `docs/methods/`, `docs/guide/` | optional | the paper specs and implementation notes the method references link to |
+| `examples/`, `tests/` | optional | starter scripts, and a way to check the copy works (`pytest -m "not slow"`) |
+| `.claude-plugin/` | optional | only to install it with `/plugin install` from your own repository |
+
+Everything else (`demo/`, `docs/reports/`, `docs/skill-claims/`, `mkdocs.yml`, `.github/`, `scripts/`) is this
+project's evidence and tooling, and not needed to use the skill.
+
+```bash
+DEST=../my-project                                     # your repository
+mkdir -p "$DEST/.claude/skills"
+cp -r .claude/skills/rsi-improve "$DEST/.claude/skills/"
+cp -r rsi pyproject.toml LICENSE "$DEST/"
+cp -r experiments examples "$DEST/"                     # optional
+mkdir -p "$DEST/docs" && cp -r docs/methods docs/guide "$DEST/docs/"   # optional
+find "$DEST" -name __pycache__ -prune -exec rm -rf {} +
+```
+
+Then make three edits in the copy:
+
+1. **`pyproject.toml`**: point `[project.urls]` at your repository. Its `readme` field names a `README.md`; add one
+   or delete that line (the install works either way, but a built package then has no description).
+2. **`.claude/skills/rsi-improve/SKILL.md`, step 0**: the install commands clone or install this public repository.
+   Replace them with `pip install -e .` (or your repository's git URL), so the skill installs your copy.
+3. **`SKILL.md`, the opening link and the closing "References" lines**: point them at your copy, or remove the
+   `docs/` and `experiments/` references if you did not copy those folders.
+
+Install the copy and check it with an offline run:
+```bash
+cd "$DEST" && pip install -e ".[science]"
+rsi improve --method rrsi --problem agentqa --llm sim --out runs/check   # about 10 s, no API key
+```
+Then open Claude Code in that repository: `/rsi-improve` is available and works as described in How to use.
+
+<!-- --8<-- [end:adopt] -->
 
 ## Results with a real model
 

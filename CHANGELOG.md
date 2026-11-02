@@ -13,6 +13,8 @@ Before 1.0, minor versions may change the API.
 ### Added
 - README section 5, "How to use": what to ask, the setup questions, what the skill does, the files a run writes
   and how to read them (also on the docs site's Install and use page).
+- README section 6, "Adopt it in your own project": which files to copy into your own repository, a tested copy
+  script, and the three edits to make afterwards.
 - `ROADMAP.md` (including the API friction found while writing the examples) and `.github/SUPPORT.md`.
 - `examples/`: three runnable examples (a prompt from a CSV with GEPA, an agent harness with RRSI, a training script
   with autoresearch), offline by default, live with `--llm claude:haiku`.
