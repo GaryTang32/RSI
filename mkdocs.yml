@@ -37,7 +37,7 @@ theme:
 exclude_docs: |
   _hooks.py
   __pycache__/
-  README.md
+  /README.md
   skill-claims/*.py
   skill-claims/corpus/
 

@@ -11,6 +11,8 @@ Before 1.0, minor versions may change the API.
 - Slow tests are marked, so `pytest -m "not slow"` gives a quick local subset.
 
 ### Added
+- README section 5, "How to use": what to ask, the setup questions, what the skill does, the files a run writes
+  and how to read them (also on the docs site's Install and use page).
 - `ROADMAP.md` (including the API friction found while writing the examples) and `.github/SUPPORT.md`.
 - `examples/`: three runnable examples (a prompt from a CSV with GEPA, an agent harness with RRSI, a training script
   with autoresearch), offline by default, live with `--llm claude:haiku`.
