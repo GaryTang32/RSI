@@ -13,7 +13,7 @@ to your prompts, agent harness or training script, and keep only the changes tha
   <img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C410-2f5d8a">
 </p>
 
-<p align="center"><a href="https://garytang32.github.io/RSI/">Docs site</a> · <a href="#1-what-this-repo-is">What it is</a> · <a href="#2-methodology">Methodology</a> · <a href="#3-install-and-use-the-skill">Install and use</a> · <a href="#4-prerequisites">Prerequisites</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">66 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
+<p align="center"><a href="https://garytang32.github.io/RSI/">Docs site</a> · <a href="#1-what-this-repo-is">What it is</a> · <a href="#2-methodology">Methodology</a> · <a href="#3-install-the-skill">Install</a> · <a href="#4-prerequisites">Prerequisites</a> · <a href="#5-how-to-use">How to use</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">66 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
 
 ---
 
@@ -74,7 +74,7 @@ report shows whether it holds on tasks the loop never saw.
 
 <!-- --8<-- [end:methodology] -->
 
-## 3. Install and use the skill
+## 3. Install the skill
 
 <!-- --8<-- [start:install] -->
 
@@ -94,11 +94,81 @@ pip install -e ".[science,dev]"        # or, without cloning: pip install "rsi @
   cp -r RSI/.claude/skills/rsi-improve your-project/.claude/skills/ # one project
   ```
 
-**Use it.** Describe the goal ("self-improve my agent's prompts", "run autoresearch on train.py") or type
-`/rsi-improve` (`/rsi:rsi-improve` when installed as a plugin). The skill checks the setup first and asks only about
-what it cannot find: whether to install the package, which model runs the loop, a spend limit, and where runs and the
-cache go. It then helps you wrap your task (an artifact to change, tasks, a grader), measures the noise, picks a
-method and runs it.
+Then follow **How to use** below.
+
+<!-- --8<-- [end:install] -->
+
+## 4. Prerequisites
+
+<!-- --8<-- [start:prerequisites] -->
+
+| Need | For | Notes |
+|---|---|---|
+| Python 3.11+ and `pip` | everything | the package needs only `numpy`; `[science]` adds scipy, scikit-learn and matplotlib for some domains |
+| [Claude Code](https://claude.com/claude-code) | the skill | CLI, desktop, IDE or web |
+| A model for live runs, one of: | running a loop for real | not needed for the offline simulator (`--llm sim`) |
+| &nbsp;&nbsp;the `claude` CLI, logged in | `claude:<model>` | uses your Claude plan and counts toward its usage limits |
+| &nbsp;&nbsp;`ANTHROPIC_API_KEY` and `pip install -e ".[api]"` | `api:<model>` | billed per token |
+| Your problem in three parts | using it on your own task | an artifact the loop may change (prompts, a harness, a script); about 20 practice tasks plus held-out tasks it never sees; a grader that does not depend on the artifact, ideally deterministic |
+| A spend limit and some patience | live runs | the skill measures the cost of one call before a run; long runs on hard tasks take hours and can stop at a usage limit, then resume from the cache |
+
+<!-- --8<-- [end:prerequisites] -->
+
+## 5. How to use
+
+<!-- --8<-- [start:usage] -->
+
+**1. Ask for it.** Open Claude Code in the project that holds the thing you want to improve, and either type
+`/rsi-improve` (`/rsi:rsi-improve` when installed as a plugin) or describe the goal in your own words:
+
+> "Self-improve the prompts in `prompts/` against the labelled examples in `data/eval.csv`."
+>
+> "Run autoresearch on `train.py`; the metric is `val_loss` printed at the end, lower is better."
+>
+> "Improve my agent harness in `agent/`. The grader is `tests/grade.py`. Keep the spend under $10."
+
+**2. Answer the setup questions.** The skill checks your environment first and asks only about what it could not
+find, in one round of questions:
+
+| Question | Typical answer |
+|---|---|
+| Install the `rsi` package? (only if it is missing) | clone and install editable |
+| Which model runs the loop? | `claude:haiku` through the `claude` CLI, `api:<model>` with an API key, or `sim` offline |
+| Spend limit? | a $2 smoke run first, then a real budget |
+| Where do runs and the cache go? | `runs/<name>` and `.rsi_cache/<name>` |
+
+**3. Agree on the problem.** Claude then pins down three things with you and writes them into the run notes:
+
+- **the artifact**: the only files the loop may change; everything else is frozen;
+- **the tasks**: about 20 practice tasks, plus held-out tasks the loop never sees, and ideally a few of a different
+  kind;
+- **the grader**: a check that lives outside the artifact, deterministic if possible (exact match, unit tests, a
+  metric).
+
+**4. Let it work.** The skill wraps your problem as a `Domain`, scores the original several times to measure the
+noise band (the smallest gain worth believing), recommends a method and says why, gives the expected cost, and
+runs the loop with a cache so an interrupted run resumes for free.
+
+**5. Read the result.** Each run writes a folder you can inspect:
+
+| File in `runs/<name>/` | What it holds |
+|---|---|
+| `summary.json` | method, rounds run, why it stopped, first and last scores, tokens and cost |
+| `best_artifact/` | the improved files, ready to diff against your original |
+| `transfer.json` | seed vs final on the practice, held-out and different-kind tasks, with a paired 95% interval of the gain (`rsi improve` writes it; from Python call `rsi.transfer_report`; Harness² writes `report.json` instead) |
+| `trace.jsonl` → `TRACE.md` | every round: what was proposed, the actual diff, per-task scores, the keep/reject arithmetic (`rsi inspect runs/<name>` renders it) |
+
+Claude's report gives seed vs final on the practice, held-out and different-kind tasks with their intervals, the
+cost, and what the kept edits were. Trust the held-out numbers over the practice score. If no change beat the noise
+band, it says so and keeps your original: that is a valid outcome (see *What to expect* under Methodology).
+Before adopting a change, diff `best_artifact/` against your files and check that the edits are generic (no task
+ids or copied answers).
+
+**Tips**
+- Start with `sim` or a $2 smoke run to check the wiring, then spend real money.
+- Several short runs that each save their results beat one long run: a usage limit then costs little.
+- To continue an interrupted run, ask Claude to rerun it with the same cache directory: finished calls replay from
+  the cache at $0, so only the remaining work is paid for.
 
 **Try it without Claude Code.** [`examples/`](examples/README.md) has three short scripts that run offline in under a
 minute: a prompt improved on your own CSV of labelled examples (GEPA), an agent harness (RRSI), and a training script
@@ -121,23 +191,7 @@ res = rsi.improve(dom, method="rrsi", llm_task="claude:haiku", llm_propose="clau
 print(rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baseline, "rrsi": res.best}, k=2))
 ```
 
-<!-- --8<-- [end:install] -->
-
-## 4. Prerequisites
-
-<!-- --8<-- [start:prerequisites] -->
-
-| Need | For | Notes |
-|---|---|---|
-| Python 3.11+ and `pip` | everything | the package needs only `numpy`; `[science]` adds scipy, scikit-learn and matplotlib for some domains |
-| [Claude Code](https://claude.com/claude-code) | the skill | CLI, desktop, IDE or web |
-| A model for live runs, one of: | running a loop for real | not needed for the offline simulator (`--llm sim`) |
-| &nbsp;&nbsp;the `claude` CLI, logged in | `claude:<model>` | uses your Claude plan and counts toward its usage limits |
-| &nbsp;&nbsp;`ANTHROPIC_API_KEY` and `pip install -e ".[api]"` | `api:<model>` | billed per token |
-| Your problem in three parts | using it on your own task | an artifact the loop may change (prompts, a harness, a script); about 20 practice tasks plus held-out tasks it never sees; a grader that does not depend on the artifact, ideally deterministic |
-| A spend limit and some patience | live runs | the skill measures the cost of one call before a run; long runs on hard tasks take hours and can stop at a usage limit, then resume from the cache |
-
-<!-- --8<-- [end:prerequisites] -->
+<!-- --8<-- [end:usage] -->
 
 ## Results with a real model
 
