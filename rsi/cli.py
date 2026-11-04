@@ -36,6 +36,14 @@ def _parse_value(v: str) -> Any:
         return v
 
 
+def _kv(s: str) -> tuple[str, Any]:
+    """argparse ``type`` for ``--set key=value``: a clean usage error instead of a traceback."""
+    k, sep, v = s.partition("=")
+    if not sep or not k:
+        raise argparse.ArgumentTypeError(f"expected key=value, got {s!r}")
+    return k, _parse_value(v)
+
+
 def load_problem(spec: str, *, seed: int = 0):
     """``(domain, seed_artifact, offline_task_llm)`` for ``agentqa``, ``bbh``, ``bbeh`` or ``path/to/file.py:factory``."""
     if spec == "bbh":
@@ -117,7 +125,7 @@ def cmd_improve(a) -> int:
     prop_spec = a.propose_llm or a.llm
     offline_mode = prop_spec in ("offline", "none", "sim")
     llm_prop = offline_proposer(a.method, a.problem) if offline_mode else get_llm(prop_spec, cache_dir=a.cache)
-    cfg = {k: _parse_value(v) for k, v in (kv.split("=", 1) for kv in a.set)} if a.set else None
+    cfg = dict(a.set) if a.set else None  # (key, value) pairs parsed by _kv
     try:
         res = improve(dom, art, method=a.method, llm_task=llm_task, llm_propose=llm_prop, config=cfg, out_dir=a.out)
     except ValueError as e:
@@ -190,7 +198,7 @@ def main(argv=None) -> int:
     i.add_argument("--problem", default="agentqa", help="agentqa | bbh | bbeh | path/to/file.py:factory")
     i.add_argument("--llm", default="sim", help="task model: sim (offline) | claude:haiku | api:sonnet | ...")
     i.add_argument("--propose-llm", default=None, help="proposer model (default: same as --llm; 'offline' = mocks)")
-    i.add_argument("--set", nargs="*", default=[], help="Config overrides key=value (JSON values)")
+    i.add_argument("--set", nargs="*", type=_kv, default=[], help="Config overrides key=value (JSON values)")
     i.add_argument("--out", required=True)
     i.add_argument("--seed", type=int, default=0)
     i.add_argument("--k", type=int, default=1, help="trials per task in the transfer report")

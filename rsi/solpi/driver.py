@@ -139,6 +139,7 @@ class AutoResearchDriver:
                 review_max=self.cfg.review_max,
                 sweep=self.cfg.sweep,
                 tracer=self.tr if self.tr.enabled else None,
+                round=rnd,
             )
             results.append(lin.run())
         frozen = [r.frozen for r in results if r.frozen is not None]
@@ -156,7 +157,13 @@ class AutoResearchDriver:
                 sink_dir=self.out / f"firewall_r{rnd}",
                 workers=self.cfg.workers,
             )
-            passed = {f.name: fw.evaluate_frozen(f.name, f.artifact) for f in frozen}
+            # the firewall touches the held-out split once per artifact: byte-identical frozen candidates
+            # (two lineages converging on one edit) share the first one's verdict
+            by_artifact: dict[str, bool] = {}
+            for f in frozen:
+                if f.artifact.id not in by_artifact:
+                    by_artifact[f.artifact.id] = fw.evaluate_frozen(f.name, f.artifact)
+            passed = {f.name: by_artifact[f.artifact.id] for f in frozen}
             heldout = fw.final_report()
         else:
             passed, heldout = {f.name: True for f in frozen}, []
@@ -197,7 +204,11 @@ class AutoResearchDriver:
                     parent=None,
                     round=rnd,
                     kind="frozen",
-                    status="survivor" if f in kept else "heldout_rejected",
+                    status="survivor"
+                    if f in kept
+                    else "composition_dropped"
+                    if passed.get(f.name)
+                    else "heldout_rejected",
                     score=f.metrics.agg["score"],
                     cost=f.metrics.agg["tokens"],
                     change=f.name,

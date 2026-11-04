@@ -161,6 +161,9 @@ class AutoresearchLoop:
         self.seed_art = seed_artifact
         self.inc: dict = {}
         self.keeps: list[tuple[str, Samples]] = []
+        # every kept node's latest samples and the validation epoch they were scored on; ``keeps``
+        # holds only the current epoch's, so ``rewind`` to an older keep looks it up here
+        self.keep_samples: dict[str, tuple[int, Samples]] = {}
         self.seen: dict[str, str] = {}
         self.trajectory: list[dict] = []
         self.n_rounds = self.n_runs = self.n_experiments = self.n_invalid_streak = self.val_epoch = 0
@@ -559,6 +562,7 @@ class AutoresearchLoop:
         )
         self.inc.update(node=node.id, samples=samples)
         self.keeps.append((node.id, samples))
+        self.keep_samples[node.id] = (self.val_epoch, samples)
         self.seen[art.id] = node.id
         self.trajectory[-1]["best"] = self.best_value()
         if self.tracer.enabled:
@@ -612,10 +616,18 @@ class AutoresearchLoop:
         )
         if node is None:
             raise KeyError(f"no kept commit {commit!r}")
+        if node.id not in self.keep_samples:
+            raise KeyError(f"no samples recorded for kept commit {commit!r}")
         sha = next(c.sha for c in self.ws.commits.values() if c.sha.startswith(node.meta["commit"]))
         self.ws.rewind(sha)
-        samples = next(s for nid, s in self.keeps if nid == node.id)
-        self.inc = {"sha": sha, "artifact": self.ws.artifact(sha), "node": node.id, "samples": samples}
+        epoch, samples = self.keep_samples[node.id]
+        art = self.ws.artifact(sha)
+        if epoch != self.val_epoch:
+            # kept before a validation resample: re-score it on the current epoch so the incumbent and
+            # the candidates it is compared with share one validation set
+            samples = self._rescore(node.id, art, samples, tag=f"rewind_{node.id}_") or samples
+            self.keeps.append((node.id, samples))
+        self.inc = {"sha": sha, "artifact": art, "node": node.id, "samples": samples}
         self.ledger.update(node.id, meta={"rewound_to_at_round": self.n_rounds})
 
     def _propose(self, ctx: AgentContext) -> Proposal:
@@ -631,19 +643,24 @@ class AutoresearchLoop:
     def _resample_val(self) -> None:
         """Switch to a new validation epoch and re-score the incumbent on it."""
         self.val_epoch += 1
-        art = self.inc["artifact"]
+        samples = self._rescore(self.inc["node"], self.inc["artifact"], self.inc["samples"])
+        if samples is not None:
+            self.inc["samples"] = samples
+            self.keeps = [(self.inc["node"], samples)]
+
+    def _rescore(self, node_id: str, art: Artifact, old: Samples, tag: str = "") -> Samples | None:
+        """Re-run a kept artifact on the current validation epoch; None when every run fails."""
         vals = [
-            self._run(art, s, f"rescore_{self.val_epoch}_{i}").metric
+            self._run(art, s, f"rescore_{self.val_epoch}_{tag}{i}").metric
             for i, s in enumerate(self._seeds(self.keep.repeats))
         ]
         vals = [v for v in vals if v is not None]
-        if vals:
-            samples = Samples(
-                vals, memory_gb=self.inc["samples"].memory_gb, loc=self.inc["samples"].loc, artifact_id=art.id
-            )
-            self.inc["samples"] = samples
-            self.keeps = [(self.inc["node"], samples)]
-            self.ledger.update(self.inc["node"], meta={f"rescore_epoch_{self.val_epoch}": vals})
+        if not vals:
+            return None
+        samples = Samples(vals, memory_gb=old.memory_gb, loc=old.loc, artifact_id=art.id)
+        self.keep_samples[node_id] = (self.val_epoch, samples)
+        self.ledger.update(node_id, meta={f"rescore_epoch_{self.val_epoch}": vals})
+        return samples
 
     def _skip(self, before: dict, why: str, **node_kw) -> None:
         """Ledger node for a turn that runs nothing."""
@@ -927,6 +944,7 @@ class AutoresearchLoop:
             )
             self.inc = {"sha": sha, "artifact": cand, "node": node.id, "samples": samples}
             self.keeps.append((node.id, samples))
+            self.keep_samples[node.id] = (self.val_epoch, samples)
             reason = verdict.reason if verdict is not None else ""
             self._trace_decision(node, before, f"kept: {reason}; branch advances to {sha[:7]}")
             self._kept(self.n_rounds, name, cand, samples.mean)

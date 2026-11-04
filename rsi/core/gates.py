@@ -203,7 +203,13 @@ class MinGainOrEqualWithinBand(Gate):
 
 
 class BootstrapRigor(Gate):
-    """Keep iff P_boot(candidate beats best) >= p over per-seed samples (autoresearch-mlx ``rigor.py``)."""
+    """Keep iff P_boot(candidate beats best) >= p over per-seed samples (autoresearch-mlx ``rigor.py``).
+
+    A bootstrap of a single value has zero variance, so with one sample on either arm P(better) is 1.0 for any
+    gain, however small. With fewer than 2 samples on either arm the gate therefore does not bootstrap: it
+    accepts only if the mean gain exceeds a positive noise band ``ctx.delta`` (by more than ``TIE_EPS``), and
+    rejects otherwise (always, when no noise band is supplied).
+    """
 
     name = "bootstrap_rigor"
 
@@ -213,6 +219,14 @@ class BootstrapRigor(Gate):
     def check(self, cand, inc, ctx):
         if not cand.samples or not inc.samples:
             return Verdict(False, "no samples")
+        if len(cand.samples) < 2 or len(inc.samples) < 2:
+            mc, mb = sum(cand.samples) / len(cand.samples), sum(inc.samples) / len(inc.samples)
+            gain = mb - mc if self.lower else mc - mb
+            det = {"gain": gain, "n_cand": len(cand.samples), "n_inc": len(inc.samples)}
+            if ctx.delta > 0 and gain > ctx.delta + TIE_EPS:  # a NaN gain fails too
+                return Verdict(True, f"<2 samples; gain {gain:+.4f} > noise band {ctx.delta}", det)
+            band = f"noise band {ctx.delta}" if ctx.delta > 0 else "no noise band supplied"
+            return Verdict(False, f"<2 samples on an arm: bootstrap undefined; gain {gain:+.4f}, {band}", det)
         pb = prob_better_bootstrap(cand.samples, inc.samples, reps=self.reps, lower_is_better=self.lower)
         ok = pb >= self.p
         return Verdict(ok, f"P(better)={pb:.3f} {'>=' if ok else '<'} {self.p}", {"p_better": pb})

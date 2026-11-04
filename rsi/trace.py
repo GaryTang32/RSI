@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import threading
 import time
+import warnings
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
@@ -43,6 +44,7 @@ class RunTracer:
         self.path = Path(out_dir) / "trace.jsonl" if out_dir else None
         self._seq = 0
         self._lock = threading.Lock()
+        self._tail_checked = False
         self.monitor: ShadowMonitor | None = None
         if self.path:
             self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -67,8 +69,16 @@ class RunTracer:
                 "data": _clip(data, self.max_text, self.max_long_text),
             }
             self._seq += 1
+            line = json.dumps(rec, default=str) + "\n"
+            if not self._tail_checked:  # as core Ledger._write
+                self._tail_checked = True
+                if self.path.exists() and self.path.stat().st_size:
+                    with self.path.open("rb") as f:
+                        f.seek(-1, 2)
+                        if f.read(1) != b"\n":  # a torn last line from a crash: start on a fresh line
+                            line = "\n" + line
             with self.path.open("a") as f:
-                f.write(json.dumps(rec, default=str) + "\n")
+                f.write(line)
 
     def proposal(
         self,
@@ -193,10 +203,26 @@ class ShadowMonitor:
 
 
 def load_trace(run_dir: str | Path) -> list[dict]:
+    """Parsed ``trace.jsonl`` records; lines that do not parse (torn by a crash mid-write) are skipped with a warning."""
     p = Path(run_dir) / "trace.jsonl"
     if not p.exists():
         raise FileNotFoundError(f"no trace.jsonl in {run_dir}")
-    return [json.loads(line) for line in p.read_text().splitlines() if line.strip()]
+    out, n_bad = [], 0
+    for line in p.read_text().split("\n"):
+        if not line.strip():
+            continue
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            n_bad += 1
+            continue
+        if isinstance(rec, dict):
+            out.append(rec)
+        else:
+            n_bad += 1
+    if n_bad:
+        warnings.warn(f"{p}: skipped {n_bad} unparseable line(s) (torn by a crash mid-write?)", stacklevel=2)
+    return out
 
 
 def _fmt(v: Any) -> str:

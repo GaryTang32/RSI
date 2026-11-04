@@ -892,7 +892,8 @@ class RRSIRun:
         return cands
 
     def truncate(self, t: int) -> None:
-        """Remove every round after t (history, attribution, frontier, round dirs; ledger nodes marked truncated)."""
+        """Remove every round after t (history, attribution, frontier, round dirs, held-out monitor rows; ledger
+        nodes marked truncated)."""
         fr = self.frontier.load()
         traj = [x for x in fr["trajectory"] if x["t"] <= t + 1]
         fr["trajectory"] = traj
@@ -904,6 +905,10 @@ class RRSIRun:
         for p in self.out.glob("r*"):
             if p.is_dir() and p.name[1:].isdigit() and int(p.name[1:]) > t:
                 shutil.rmtree(p)
+        mon = self.out / "heldout_monitor.jsonl"
+        if mon.exists():  # round t' logs row t'+1 (its trajectory entry), so rounds <= t own rows <= t+1
+            rows = [r for r in read_jsonl(mon) if int(r.get("t", 0)) <= t + 1]
+            mon.write_text("".join(json.dumps(r) + "\n" for r in rows))
         for n in self.ledger.nodes():
             if n.round > t and n.kind == "candidate" and n.status != "truncated":
                 self.ledger.update(n.id, status="truncated")

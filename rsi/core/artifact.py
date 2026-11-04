@@ -76,7 +76,7 @@ class Artifact(Mapping[str, str]):
     def _diff_lines(self, other: Artifact, name: str, context: int):
         old, new = self._files.get(name, ""), other._files.get(name, "")
         for line in difflib.unified_diff(
-            old.splitlines(keepends=True), new.splitlines(keepends=True), f"a/{name}", f"b/{name}", n=context
+            split_lines(old, keepends=True), split_lines(new, keepends=True), f"a/{name}", f"b/{name}", n=context
         ):
             yield line if line.endswith("\n") else line + "\n\\ No newline at end of file\n"
 
@@ -114,10 +114,19 @@ class Artifact(Mapping[str, str]):
         return cls(files)
 
     def to_dir(self, path: str | Path, clean: bool = False) -> Path:
-        """Write every file under ``path``; ValueError, before any write, for an unsafe file name."""
+        """Write every file under ``path``; ValueError, before any write, for an unsafe file name.
+
+        Unsafe: absolute or escaping the directory, an empty or ``.`` path component (``"."``, ``"a//b"``,
+        ``"a/"``), or a name that is also a parent directory of another name (``"a.md"`` and ``"a.md/b"``).
+        """
         root = Path(path)
         if bad := [n for n in self._files if not is_safe_relpath(n)]:
             raise ValueError(f"unsafe artifact file names (absolute or escaping the directory): {bad[:5]}")
+        if bad := [n for n in self._files if any(c in ("", ".") for c in n.replace("\\", "/").split("/"))]:
+            raise ValueError(f"unsafe artifact file names (empty or '.' path component): {bad[:5]}")
+        dirs = {"/".join(parts[:i]) for parts in (n.split("/") for n in self._files) for i in range(1, len(parts))}
+        if bad := sorted(dirs & set(self._files)):
+            raise ValueError(f"artifact file names that are also directories of other files: {bad[:5]}")
         if clean and root.exists():
             shutil.rmtree(root)
         root.mkdir(parents=True, exist_ok=True)
@@ -141,6 +150,18 @@ class Artifact(Mapping[str, str]):
             body = text if len(text) <= max_chars_per_file else text[:max_chars_per_file] + "\n...[truncated]"
             parts.append(f"=== FILE: {name} ===\n{body}")
         return "\n\n".join(parts)
+
+
+def split_lines(text: str, keepends: bool = False) -> list[str]:
+    """``str.splitlines`` that breaks on ``"\n"`` only, as unified diffs and patch do.
+
+    ``str.splitlines`` also breaks on ``\r``, ``\x0b``, ``\x0c``, ``\x1c``-``\x1e``, ``\x85``, U+2028 and U+2029; a
+    form feed in a file would then end a diff line mid-line and desynchronise hunk counts.
+    """
+    parts = text.split("\n")
+    last = parts.pop()  # "" when the text ends with a newline (or is empty)
+    lines = [p + "\n" for p in parts] if keepends else parts
+    return lines + [last] if last else lines
 
 
 def is_safe_relpath(name: str) -> bool:
