@@ -203,7 +203,7 @@ here, copy these from the root of this repo:
 | Path | Needed? | Why |
 |---|---|---|
 | `.claude/skills/rsi-improve/` | required | the skill: `SKILL.md` and the eight method references |
-| `rsi/` | required | the package the skill runs (about 2.8 MB). Copy all of it: some methods use `rsi/domains/` for their offline defaults |
+| `rsi/` | required | the package the skill runs (about 2.8 MB). Copy the whole folder; `rsi/domains/` can be trimmed afterwards (see **Slim core** below) |
 | `pyproject.toml` | required | makes `pip install -e .` work and installs the `rsi` command; the only dependency is `numpy` |
 | `LICENSE` | required | MIT: keep the copyright notice (`rsi/` already carries the EvoMap schema notice) |
 | `experiments/` | optional | the `example_new_problem.py` templates the skill points to, and `rsi experiments <method>` |
@@ -223,6 +223,20 @@ cp -r experiments examples "$DEST/"                     # optional
 mkdir -p "$DEST/docs" && cp -r docs/methods docs/guide "$DEST/docs/"   # optional
 find "$DEST" -name __pycache__ -prune -exec rm -rf {} +
 ```
+
+**Slim core: just enough to run the skill.** If you only want the skill working on your own problems, copy the four
+required items and nothing else (skip the two optional lines above). Your own problems go through `rsi.core` and the
+method packages, never through `rsi/domains/`, which holds the twelve built-in demo problems. You can delete all of
+them except `agentqa/` and `memoclassify/`, which some methods use as offline defaults:
+```bash
+cd "$DEST/rsi/domains" && ls | grep -vE '^(__init__.py|agentqa|memoclassify)$' | xargs rm -rf
+```
+That takes `rsi/` from about 2.8 MB to 2.3 MB. What you give up: the built-in demo problems other than AgentQA
+(for example `rsi improve --problem bbh` or `bbeh`, and the tiny training script `examples/03_training_script` uses),
+plus the `experiments/` templates and the paper notes in `docs/`. The skill, all eight methods, `rsi.improve` on
+your own `Domain` and the offline check below keep working. Tested in a clean environment: the slim copy imports
+every method, completes the offline check, and runs the bring-your-own-problem templates for GEPA, autoresearch,
+Dream-RSI, Meta-Harness and SoL-Pi.
 
 Then make three edits in the copy:
 
