@@ -20,7 +20,11 @@ class SelectionResult:
 
 
 def _mean(xs: Sequence[float], idx: Sequence[int]) -> float:
-    return float(np.mean([xs[i] for i in idx])) if idx else float("-inf")
+    """Mean of ``xs`` over ``idx``; ``-inf`` when there is nothing to average or ``xs`` lacks a world in ``idx``
+    (a rejected revision's report has ``per_world=[]``, so it is never selected)."""
+    if not idx or max(idx) >= len(xs):
+        return float("-inf")
+    return float(np.mean([xs[i] for i in idx]))
 
 
 class Selector:
@@ -85,7 +89,7 @@ class GuardedSelector(Selector):
     def select(self, reports: Sequence) -> SelectionResult:
         n = len(reports[0].per_world) if reports else 0
         dev, hold = self.dev_worlds(n), self.holdout_worlds(n)
-        dev_vals = [_mean(r.per_world, dev) for r in reports]
+        dev_vals = [_mean(r.per_world, dev) if len(r.per_world) == n else float("-inf") for r in reports]
         cands = [i for i in range(1, len(reports)) if np.isfinite(dev_vals[i])]
         if not cands:
             return SelectionResult(0, "no candidate: keep incumbent", dev_vals)

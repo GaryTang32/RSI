@@ -24,6 +24,21 @@ Before 1.0, minor versions may change the API.
 - RRSI's agentic digester shell is read-only and confined to its traces folder: no chaining, redirection, expansion,
   writing options (`find -delete`, `sort -o`, sed `w`/`r`/`e`, awk `system`), or paths outside the folder (the run's
   own trace holds sealed-split shadow scores), and it runs without the caller's environment variables.
+- Harness²: in sequential mode both editors of a round see the same snapshot of notes and pool, so the DOM editor no
+  longer sees the INV editor's notes from the same round. The leak tripwire ignores verbatim copies of the task's own
+  text, so a `"score":` key in user data no longer aborts the stream; a grader score anywhere else still does.
+- SoL-Pi: every paid Ralph repair is checked (`max_iters` counts repairs, so up to `max_iters + 1` exit checks); the
+  relative capability floor stays below a negative base; "solved" means reaching the top of the domain's
+  `score_range` (1 by default).
+- Meta-Harness: the leakage screen matches path terms (`/tests`, `results/`) inside paths, screens the configured
+  `search_split`, and flags only string tables an edit adds or grows, not ones the seed already had.
+- Dream-RSI: `selector="guarded"` no longer crashes when a policy revision is rejected; `llm_develop` given as a
+  spec string (`"claude:sonnet"`) is resolved and cached. `rsi.improve` resolves every `llm_*` spec string the same
+  way.
+- autoresearch: with `workers > 1`, shadow audits wait until no run is in flight, so in-flight spend is no longer
+  booked as monitor spend and excluded from `max_usd` / `max_wall_s`.
+- RRSI: `reevaluate()` refuses before measuring when later rounds exist, and keeps a stored evaluation unless the
+  re-measurement is valid.
 
 ### Changed
 - The codebase is formatted and linted with ruff (CI checks both); a pre-commit config runs the same checks.

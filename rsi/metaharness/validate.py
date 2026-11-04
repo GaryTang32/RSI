@@ -11,11 +11,12 @@ import signal
 import threading
 import time
 import traceback
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 
 from ..core import sandbox as _sandbox
 from ..core.artifact import Artifact
-from ..core.critic import LeakageCritic
+from ..core.critic import LeakageCritic, added_lines
 from ..core.llm import Usage
 
 try:  # the C function sets the mask before running pending handlers (signal's wrapper may run them first)
@@ -271,40 +272,54 @@ class LeakageScreen:
     n_rejected: int = 0
 
     def __post_init__(self) -> None:
+        terms = [str(t) for t in (*self.forbidden, *self.universal)]
+        # the critic's whole-token match never fires on a path term inside a real path ("/repo/tests/x.py"),
+        # so terms containing '/' are matched as plain (case-insensitive) substrings of the added lines instead
+        self.path_terms = sorted({t.lower() for t in terms if "/" in t and len(t) >= 4}, key=lambda t: (-len(t), t))
         self.critic = LeakageCritic(
-            terms=list(self.forbidden) + list(self.universal),
+            terms=[t for t in terms if "/" not in t],
             llm=self.llm,
             domain_brief=self.domain_brief,
             min_term_len=4,
         )
 
     @classmethod
-    def for_domain(cls, domain, llm=None) -> LeakageScreen:
-        return cls(forbidden=list(domain.leakage_terms("evolve")), llm=llm, domain_brief=domain.describe())
+    def for_domain(cls, domain, llm=None, split: str = "evolve") -> LeakageScreen:
+        """Screen the terms of ``split``: the split the loop searches on (``Config.search_split``)."""
+        return cls(forbidden=list(domain.leakage_terms(split)), llm=llm, domain_brief=domain.describe())
 
     def check(self, artifact: Artifact, base: Artifact | None = None) -> str | None:
         """Return a rejection reason or None."""
         self.n_screened += 1
-        v = self.critic.screen((base or Artifact({})).diff(artifact))
+        base = base or Artifact({})
+        diff = base.diff(artifact)
+        added = added_lines(diff).lower()
+        hits = [t for t in self.path_terms if t in added]
+        if hits:
+            self.n_rejected += 1
+            return f"leakage: edit hard-codes evaluation data: {hits[0]!r}"
+        v = self.critic.screen(diff)
         if not v.accept:
             self.n_rejected += 1
             return f"leakage: {v.objections[0] if v.objections else v.stage}"
+        # only tables the edit adds or grows count: a list the seed already had is not the candidate's leakage
+        inherited = [tab for name, text in base.items() if name.endswith(".py") for tab in _string_tables(text)]
         for name, text in artifact.items():
             if name.endswith(".py"):
-                n = _max_string_table(text)
+                n = max((len(t) for t in _string_tables(text) if _is_new_table(t, inherited)), default=0)
                 if n > self.max_literal_strings:
                     self.n_rejected += 1
                     return f"leakage: {name} hard-codes a table of {n} string literals"
         return None
 
 
-def _max_string_table(src: str) -> int:
-    """Most string constants in one list/set/tuple literal or among one dict literal's keys."""
+def _string_tables(src: str) -> list[list[str]]:
+    """The string constants of each list/set/tuple literal and of each dict literal's keys."""
     try:
         tree = ast.parse(src)
     except SyntaxError:
-        return 0
-    best = 0
+        return []
+    out = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Dict):
             elts = node.keys
@@ -312,5 +327,17 @@ def _max_string_table(src: str) -> int:
             elts = node.elts
         else:
             continue
-        best = max(best, sum(isinstance(e, ast.Constant) and isinstance(e.value, str) for e in elts))
-    return best
+        out.append([e.value for e in elts if isinstance(e, ast.Constant) and isinstance(e.value, str)])
+    return out
+
+
+def _is_new_table(table: list[str], inherited: list[list[str]]) -> bool:
+    """True unless an inherited table supplied most of ``table``'s strings and is at least as long (not grown)."""
+    if not table:
+        return False
+    mine = Counter(table)
+    for old in inherited:
+        shared = sum((mine & Counter(old)).values())
+        if 2 * shared >= len(table) and len(table) <= len(old):
+            return False
+    return True

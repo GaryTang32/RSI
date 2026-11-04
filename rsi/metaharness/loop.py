@@ -60,7 +60,7 @@ class MetaHarnessLoop:
         self.seed_names = list(seed_names) if seed_names else list(self.baselines)  # what seed_only shows
         self.summarizer = summarizer
         if config.leakage_screen and leakage_screen is None:
-            leakage_screen = LeakageScreen.for_domain(domain)
+            leakage_screen = LeakageScreen.for_domain(domain, split=config.search_split)
         self.screen = leakage_screen if config.leakage_screen else None
         self.validator = validator or InterfaceValidator(config.validate_timeout_s, config.validate_in_subprocess)
         self.evaluator = Evaluator(domain, llm_task, workers=config.workers)

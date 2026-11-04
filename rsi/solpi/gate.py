@@ -48,7 +48,17 @@ class Metrics:
         return {"agg": self.agg, "fam": self.fam, "n": self.n}
 
 
-def metrics_from_eval(ev: EvalResult, families: Iterable[str] | None = None) -> Metrics:
+def solved_threshold(domain) -> float:
+    """The score that counts as solved: the top of ``domain.score_range`` (1.0 when unknown)."""
+    try:
+        top = float(getattr(domain, "score_range", (0.0, 1.0))[1])
+    except (TypeError, ValueError, IndexError):
+        return 1.0
+    return top if math.isfinite(top) else 1.0
+
+
+def metrics_from_eval(ev: EvalResult, families: Iterable[str] | None = None, *, solved_at: float = 1.0) -> Metrics:
+    """Per-trial means; a trial is solved when its score reaches ``solved_at`` (see :func:`solved_threshold`)."""
     fams = set(families) if families else None
     rows: dict[str, list[dict]] = {}
     allrows = []
@@ -58,7 +68,7 @@ def metrics_from_eval(ev: EvalResult, families: Iterable[str] | None = None) -> 
                 continue
             r = {
                 "score": t.score,
-                "solved": float(t.score >= 1.0 - SOLVED_EPS),
+                "solved": float(t.score >= solved_at - SOLVED_EPS),
                 "tokens": float(t.tokens),
                 "cost": float(t.cost_usd),
                 "steps": float(t.steps),
@@ -90,6 +100,10 @@ class GateResult:
 
 
 def _within(base: float, cand: float, tol: float, kind: str) -> bool:
+    # relative floor = base - tol*|base|: for base >= 0 that is base*(1-tol); for a negative base base*(1-tol)
+    # would sit above base and reject an identical candidate
+    if kind == "relative" and base < 0:
+        return cand >= base - tol * abs(base) - 1e-12
     return cand >= (base * (1 - tol) if kind == "relative" else base - tol) - 1e-12
 
 
@@ -230,6 +244,7 @@ class HoldoutFirewall:
         self._split = split
         self._k = k
         self._ev = Evaluator(domain, llm, workers=workers, allow_sealed=True)
+        self._solved_at = solved_threshold(domain)
         self._base = base_artifact
         self._base_metrics: Metrics | None = None
         self._sink = Path(sink_dir) / "heldout.jsonl" if sink_dir else None
@@ -237,7 +252,7 @@ class HoldoutFirewall:
         self._seen: set[str] = set()
 
     def _metrics(self, art) -> Metrics:
-        return metrics_from_eval(self._ev.evaluate(art, self._split, k=self._k))
+        return metrics_from_eval(self._ev.evaluate(art, self._split, k=self._k), solved_at=self._solved_at)
 
     def evaluate_frozen(self, name: str, artifact) -> bool:
         if artifact.id in self._seen:

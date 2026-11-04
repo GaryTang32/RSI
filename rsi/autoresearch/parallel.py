@@ -32,12 +32,14 @@ class ParallelAutoresearchLoop(AutoresearchLoop):
         self.n_deferred_audits = 0
 
     def _audit_competes(self) -> bool:
-        """A shadow audit re-trains the incumbent; under a wall-clock budget it would steal CPU from in-flight runs."""
-        return (
-            self.monitor is not None
-            and bool(self.inflight)
-            and getattr(self.task.budget, "kind", "") in ("wallclock", "ceiling")
-        )
+        """A shadow audit must not overlap in-flight runs, so its cost can be told apart from the loop's.
+
+        ``_kept`` books the audit's ``usd()`` delta as monitor spend and credits its wall time back to ``max_wall_s``;
+        with runs in flight that delta and that time include the runs' own LLM spend and progress, which would then
+        escape ``max_usd`` / ``max_wall_s``. Under a wall-clock run budget the audit would also steal CPU from them.
+        So audits wait until nothing is in flight (``_flush_audits``).
+        """
+        return self.monitor is not None and bool(self.inflight)
 
     def _kept(self, round: int, name: str, art, score) -> None:
         if self._audit_competes():

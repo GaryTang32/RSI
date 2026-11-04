@@ -18,7 +18,7 @@ from ..core.evaluate import Evaluator
 from ..core.ledger import Ledger, Node
 from ..core.llm import Usage
 from ..core.tasks import DECISION_SPLITS, SEALED_SPLITS
-from .gate import DualGate, GateResult, Metrics, metrics_from_eval, nondominated
+from .gate import DualGate, GateResult, Metrics, metrics_from_eval, nondominated, solved_threshold
 
 FAMILY_CODES = {
     "C": "Context",
@@ -165,10 +165,14 @@ def implement(
     exit_check: Callable[[Artifact], str | None],
     max_iters: int = 3,
 ) -> tuple[MechanismProposal, list[str]]:
-    """Ralph loop: repair until the exit check passes; the returned ``usage`` totals every call."""
+    """Ralph loop: repair until the exit check passes; the returned ``usage`` totals every call.
+
+    ``max_iters`` is the number of repairs (``fix`` calls). Every repair is checked, so the loop runs up to
+    ``max_iters + 1`` exit checks: one on the proposal, one after each repair.
+    """
     errors = []
     total = prop.usage
-    for _ in range(max_iters):
+    for n in range(max_iters + 1):
         if prop.artifact is None:
             errors.append(prop.error or "no artifact")
             if prop.meta.get("exhausted"):
@@ -179,6 +183,8 @@ def implement(
                 prop.usage = total
                 return prop, errors
             errors.append(err)
+        if n == max_iters:  # no repair is bought that could not be checked
+            break
         prop = proposer.fix(idea, prop, errors[-1])
         total = total + prop.usage
     prop.error = prop.error or f"exit check failed: {errors[-1] if errors else '?'}"
@@ -332,7 +338,7 @@ class Lineage:
                 continue
             # 06 in-trajectory validation on the training screen + dual gate
             vr = self.ev.evaluate(prop.artifact, self.screen, k=self.k, label="screen")
-            m = metrics_from_eval(vr)
+            m = metrics_from_eval(vr, solved_at=solved_threshold(self.ev.domain))
             g = self.gate.accept(self.base_metrics, m)
             self._t("validation", name, vr, m, g)
             row.update(

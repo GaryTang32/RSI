@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ..core.artifact import Artifact
 from ..core.ledger import Ledger, Node
-from ..core.llm import LLM
+from ..core.llm import LLM, get_llm
 from ..core.run import ImprovementResult
 from ..trace import RunTracer, ShadowMonitor
 from .agent import (
@@ -687,6 +687,10 @@ def run(
 ) -> ImprovementResult:
     """Run Dream-RSI on any problem; without LLMs it uses the domain's mock agent and the ParametricMutator."""
     cfg = config or Config()
+    # an LLM may be given as a spec string ("mock", "claude:sonnet"); rsi.improve resolves it with its cache_dir
+    llm_task, llm_propose, llm_develop = (
+        get_llm(x) if isinstance(x, str) else x for x in (llm_task, llm_propose, llm_develop)
+    )
     task = as_task(domain, seed_artifact, llm_task, **(task_kwargs or {}))
     if agent is None:
         if llm_propose is not None:
