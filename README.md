@@ -1,19 +1,59 @@
-<h1 align="center">RSI: Recursive Self-Improvement Agent Skills</h1>
+<h1 align="center">RSI</h1>
 
-<p align="center"><b>This repo turns recursive self-improvement papers into agent skills.<br>
-Eight methods, each rebuilt from its paper as tested code plus a Claude Code skill, so an agent can apply them<br>
-to your prompts, agent harness or training script, and keep only the changes that prove themselves on tasks the loop never saw.</b></p>
+<p align="center"><b>Let Claude improve your prompts, agent harness or training script,<br>
+and keep only the changes that hold up on tasks it never saw.</b></p>
+
+<p align="center">Eight recursive self-improvement methods (GEPA, autoresearch, RRSI, Meta-Harness and four more),
+rebuilt from their papers on one guarded loop and packaged as a Claude Code skill.</p>
 
 <p align="center">
   <a href="https://github.com/GaryTang32/RSI/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/GaryTang32/RSI/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="python" src="https://img.shields.io/badge/python-3.11%2B-3776ab">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-2e7d4f">
-  <img alt="methods" src="https://img.shields.io/badge/methods-8-6f42c1">
-  <img alt="paper claims audited" src="https://img.shields.io/badge/paper%20claims%20audited-475-b8860b">
-  <img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C410-2f5d8a">
+  <a href="docs/reports/claims-summary.md"><img alt="paper claims audited" src="https://img.shields.io/badge/paper%20claims%20audited-475-b8860b"></a>
+  <a href="docs/skill-claims/README.md"><img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C410-2f5d8a"></a>
 </p>
 
-<p align="center"><a href="https://garytang32.github.io/RSI/">Docs site</a> · <a href="#1-what-this-repo-is">What it is</a> · <a href="#2-methodology">Methodology</a> · <a href="#3-install-the-skill">Install</a> · <a href="#4-prerequisites">Prerequisites</a> · <a href="#5-how-to-use">How to use</a> · <a href="#6-adopt-it-in-your-own-project">Adopt it</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">66 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
+<p align="center">
+  <a href="#quick-start"><b>Quick start</b></a> ·
+  <a href="#results-at-a-glance">Results</a> ·
+  <a href="#choose-a-method">Methods</a> ·
+  <a href="#5-how-to-use">How to use</a> ·
+  <a href="https://garytang32.github.io/RSI/">Docs</a> ·
+  <a href="demo/gallery.html">66 charts</a>
+</p>
+
+<p align="center"><img src="demo/figures/seed_vs_final.png" alt="Seed vs improved harness on four AgentQA runs with Claude Haiku, re-scored on sealed tasks with fresh trials" width="720"></p>
+
+## Quick start
+
+1. In Claude Code, add the skill: `/plugin install rsi --marketplace GaryTang32/RSI`
+2. Ask in your own words: *"Self-improve the prompts in `prompts/` against the labelled examples in `data/eval.csv`."*
+3. Answer a few setup questions (model, spend limit). Claude measures the noise, picks a method, runs it, and reports
+   the result on held-out tasks, including "no change beat the noise; your original is kept" when that is the truth.
+
+No Claude Code? Try the loop offline, no API key:
+
+```bash
+pip install "rsi @ git+https://github.com/GaryTang32/RSI"
+rsi improve --method rrsi --problem agentqa --llm sim --out runs/demo   # ~10 s, simulated model
+```
+
+## Results at a glance
+
+Live runs with Claude Haiku as agent and proposer, scored on sealed tasks the loop never saw
+([details](#results-with-a-real-model)):
+
+| Your artifact | Method | Before → after, held-out | Cost |
+|---|---|---|---:|
+| Agent harness (AgentQA) | RRSI | 0.50 → **0.94** | $2.76 |
+| Agent harness (AgentQA) | Meta-Harness | 0.31 → **0.75** | $1.71 |
+| Training script (tinylm, val_bpb ↓) | autoresearch | 2.905 → **2.682** | $0.70 |
+| Harness, no grader at all | Harness² (k = 3) | 0.50 → **0.95** | $13.83 |
+
+Small task sets (6-20 tasks), so read these as demonstrations, not benchmarks. **Why trust a kept change:** the grader
+is locked, a gain must beat the measured noise, and the held-out tasks stay sealed during the run. A plain "keep it if
+the score went up" loop keeps an unchanged artifact about half the time.
 
 ---
 
@@ -269,8 +309,6 @@ excludes zero. Details, intervals and every candidate are in [`demo/`](demo/READ
 | AgentQA, hard | Meta-Harness | 0.69 → 1.00 | 0.58 → 0.92 | 0.42 → 0.75 | $8.80 |
 | AgentQA, hard | RRSI | 0.63 → 0.63 (kept the seed) | 0.50 → 0.50 | 0.58 → 0.58 | $7.19 |
 | tinylm training script (val_bpb, lower is better) | autoresearch | 2.835 → **2.599** | 2.905 → **2.682** | 2.969 → **2.733** | $0.70 |
-
-<p align="center"><img src="demo/figures/seed_vs_final.png" alt="Seed vs final harness on the four AgentQA runs, re-scored with fresh trials" width="720"></p>
 
 These are small task sets (6-12 tasks per split), so read them as demonstrations rather than benchmarks. The hard
 Meta-Harness gains are large but not significant, and its best harness copied practice answers into its prompts; the
