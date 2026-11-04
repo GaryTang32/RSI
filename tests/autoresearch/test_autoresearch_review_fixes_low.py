@@ -37,3 +37,12 @@ def test_rewind_to_unknown_keep_samples_raises_key_error():
         pass
     else:
         raise AssertionError("expected KeyError")
+
+
+def test_rigor_keep_rule_warns_when_one_run_per_arm_cannot_be_bootstrapped():
+    import pytest
+
+    from rsi.autoresearch import BootstrapRigorKeep
+
+    with pytest.warns(UserWarning, match="repeats >= 2"):
+        BootstrapRigorKeep(repeats=1)

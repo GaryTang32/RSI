@@ -39,6 +39,20 @@ Before 1.0, minor versions may change the API.
   booked as monitor spend and excluded from `max_usd` / `max_wall_s`.
 - RRSI: `reevaluate()` refuses before measuring when later rounds exist, and keeps a stored evaluation unless the
   re-measurement is valid.
+- `BootstrapRigor` no longer accepts any gain when an arm has a single sample (a one-value bootstrap has no
+  variance); it then accepts only a gain beyond a supplied noise band. `keep_rule="rigor"` with `repeats < 2` warns.
+- Diffs split lines on `\n` only, so a form feed or other Unicode line break can no longer hide an added line from
+  the leakage critic.
+- Traces survive a kill mid-write: a resumed run starts a fresh line, and `rsi inspect` skips (and counts) a torn line.
+- `Artifact.to_dir` rejects `.` / empty path components and a name that is also another name's directory before
+  writing anything; `rsi improve --set T` without `=` is a usage error.
+- autoresearch: `REWIND` to a commit kept before a validation resample re-scores it instead of crashing.
+- RRSI: `truncate()` also drops the held-out monitor rows of removed rounds.
+- SoL-Pi: ledger node ids include the round from round 2 on (round 1 ids unchanged), candidates dropped by
+  `validate_composition` are labelled `composition_dropped`, and byte-identical frozen candidates share one holdout
+  verdict instead of crashing the round.
+- Harness²: `best_of_n` grades the streamed tasks themselves, so custom tasks no longer crash the report.
+- EvoMap: `rsi-taskcheck --n 0` (or a negative n) checks one task instead of crashing.
 
 ### Changed
 - The codebase is formatted and linted with ruff (CI checks both); a pre-commit config runs the same checks.

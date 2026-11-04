@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
@@ -98,6 +99,12 @@ class BootstrapRigorKeep(KeepRule):
         early: bool = True,
         never_repeat: bool = True,
     ) -> None:
+        if repeats < 2:
+            warnings.warn(
+                f"keep_rule='rigor' with repeats={repeats}: a bootstrap needs at least 2 runs per arm, so every "
+                "candidate is rejected; use repeats >= 2 (default 3)",
+                stacklevel=2,
+            )
         self.repeats = repeats
         self.confidence = confidence
         self.vary_seed = vary_seed
