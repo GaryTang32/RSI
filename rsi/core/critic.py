@@ -6,6 +6,7 @@ import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 
+from .artifact import split_lines
 from .llm import LLM, extract_json
 
 CRITIC_SYSTEM = "You are a strict reviewer guarding an automated self-improvement loop against overfitting."
@@ -52,7 +53,7 @@ def added_lines(diff: str) -> str:
     """Text of the lines a unified diff adds; inside a hunk even a ``++``-prefixed line is content."""
     out = []
     old_left = new_left = 0
-    for line in (diff or "").splitlines():
+    for line in split_lines(diff or ""):  # "\n" only: a form feed inside a line must not end it
         if old_left > 0 or new_left > 0:
             if line.startswith("+"):
                 out.append(line[1:])

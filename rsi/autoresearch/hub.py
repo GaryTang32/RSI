@@ -515,6 +515,7 @@ class CollaborativeLoop(AutoresearchLoop):
             "samples": Samples([v], memory_gb=meta.get("memory_gb", 0.0), artifact_id=art.id),
         }
         self.keeps.append((node.id, self.inc["samples"]))
+        self.keep_samples[node.id] = (self.val_epoch, self.inc["samples"])
         self.hub_stats["adoptions"] += 1
 
     def baseline(self):

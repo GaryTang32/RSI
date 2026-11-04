@@ -262,6 +262,7 @@ class AgentNode:
                 n = int(argv[argv.index("--n") + 1])
             except (ValueError, IndexError):
                 pass
+        n = max(1, n)  # --n 0 or a negative N would empty (or, sliced, shrink from the end) the scope
         scope = [
             t
             for t in self.decision_tasks

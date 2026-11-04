@@ -234,8 +234,10 @@ class Lineage:
         sweep: bool = True,
         tracer=None,
         review_max: int = 2,
+        round: int = 1,
     ) -> None:
         self.idea, self.ev, self.gate, self.proposer, self.reviewer = idea, evaluator, gate, proposer, reviewer
+        self.round = round  # driver round; ledger ids carry it from round 2 on (round-1 ids are unchanged)
         self.base, self.base_metrics = base, base_metrics
         self.split, self.k, self.max_iters, self.ralph_max = screen_split, k, max_iters, ralph_max
         self.review_max = review_max  # review -> re-implementation rounds per iteration (0: a rejection ends it)
@@ -386,8 +388,9 @@ class Lineage:
     def _log(self, row: dict, art: Artifact | None, parent: str | None, m: Metrics | None = None):
         if self.ledger is None:
             return None
+        rnd = "" if self.round == 1 else f"r{self.round}_"
         n = Node(
-            id=f"sp_{self.idea.id}_{row['iteration']}",
+            id=f"sp_{rnd}{self.idea.id}_{row['iteration']}",
             parent=parent,
             round=row["iteration"],
             kind="lineage",
@@ -397,7 +400,7 @@ class Lineage:
             change=f"{self.idea.id} {row.get('change', '')}"[:300],
             artifact_id=art.id if art else None,
             metrics=dict(m.agg) if m else {},
-            meta={"idea": self.idea.id, "stage": row.get("stage"), "error": row.get("error")},
+            meta={"idea": self.idea.id, "round": self.round, "stage": row.get("stage"), "error": row.get("error")},
         )
         return self.ledger.add(n)
 

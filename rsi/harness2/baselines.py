@@ -37,6 +37,7 @@ def best_of_n(
     """``{"records": [...], "report": posthoc_report(...)}``; rollout seeds match Harness²'s ``base{i}`` labels."""
     if n < 1:
         raise ValueError("n >= 1")
+    tasks = list(tasks)  # also handed to posthoc_report: the streamed copies are the ones graded
     stream = TaskStream(tasks)
     records: list[TaskRecord] = []
     with OpenWorld(domain) as guard:
@@ -69,4 +70,4 @@ def best_of_n(
                 rec.stages.append(st)
             rec.selection, rec.adopted, rec.status = sel, sel["chosen"], ("ok" if sel["ok"] else "partial")
             records.append(rec)
-    return {"records": records, "report": posthoc_report(domain, records, seed=seed) if report else None}
+    return {"records": records, "report": posthoc_report(domain, records, seed=seed, tasks=tasks) if report else None}
