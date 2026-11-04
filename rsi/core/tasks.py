@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import random
+import warnings
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -36,11 +37,24 @@ class SealedSplitError(RuntimeError):
 class TaskSuite:
     def __init__(self, tasks: Iterable[Task], splits: dict[str, list[str]], name: str = "suite") -> None:
         self.name = name
+        tasks = list(tasks)
         self.tasks: dict[str, Task] = {t.id: t for t in tasks}
+        if len(self.tasks) != len(tasks):  # a repeated id would silently replace one task with another
+            seen: set[str] = set()
+            dup = sorted({t.id for t in tasks if t.id in seen or seen.add(t.id)})
+            raise ValueError(f"task ids must be unique; repeated: {dup[:5]} (e.g. prefix ids with their family)")
         self.splits = {k: list(v) for k, v in splits.items()}
         for k, ids in self.splits.items():
             if missing := [i for i in ids if i not in self.tasks]:
                 raise KeyError(f"split {k!r} references unknown tasks {missing[:5]}")
+        for d in DECISION_SPLITS:  # a task in both lets the loop learn from a "sealed" task: allowed, but loudly
+            for s in SEALED_SPLITS:
+                if both := sorted(set(self.splits.get(d, ())) & set(self.splits.get(s, ()))):
+                    warnings.warn(
+                        f"splits {d!r} and {s!r} share {len(both)} tasks (e.g. {both[:3]}): the loop sees them, so "
+                        f"{s!r} is not held out",
+                        stacklevel=2,
+                    )
         self._sealed = {s for s in SEALED_SPLITS if s in self.splits}
 
     def split(self, name: str, *, allow_sealed: bool = False) -> list[Task]:

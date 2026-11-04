@@ -129,6 +129,12 @@ def _stable_repr(o) -> str:
             return json.dumps(o.to_json(), sort_keys=True, default=_stable_repr)
         except Exception:  # noqa: BLE001
             pass
+    if hasattr(o, "tobytes") and hasattr(o, "dtype") and hasattr(o, "shape"):  # numpy arrays: repr elides values
+        try:
+            digest = hashlib.sha256(o.tobytes()).hexdigest()
+            return f"{type(o).__qualname__}:{o.dtype}:{tuple(o.shape)}:{digest}"
+        except Exception:  # noqa: BLE001
+            pass
     r = repr(o)
     return type(o).__qualname__ if " at 0x" in r else r
 
@@ -160,15 +166,23 @@ class Evaluator:
     def _cache_path(self, aid: str, tid: str, seed: int) -> Path | None:
         if not self.cache_dir:
             return None
-        safe = "".join(c if c.isalnum() or c in "-_." else "_" for c in tid)
-        return self.cache_dir / aid[:12] / f"{safe}__{seed}.json"
+        return self.cache_dir / aid[:12] / f"{self._safe_name(tid)}__{seed}.json"
+
+    @staticmethod
+    def _safe_name(tid: str) -> str:
+        return "".join(c if c.isalnum() or c in "-_." else "_" for c in tid)
 
     def cache_identity(self, task: Task) -> dict:
         """What a disk-cache entry depends on besides (artifact, task id, seed)."""
         name = getattr(self.llm, "name", None) if self.llm is not None else None
         while isinstance(name, str) and name.startswith("cached:"):
             name = name[len("cached:") :]  # a CachedLLM replays the same model: its trials are interchangeable
-        blob = json.dumps([task.input, task.target, task.family], sort_keys=True, default=_stable_repr)
+        parts = [task.input, task.target, task.family]
+        if task.meta:  # graders may read task.meta (answers, aspects); tasks without meta keep their old identity
+            parts.append(task.meta)
+        if self._safe_name(task.id) != task.id:  # ids that share a cache file ("q/1", "q_1") must not share entries
+            parts.append({"id": task.id})
+        blob = json.dumps(parts, sort_keys=True, default=_stable_repr)
         return {
             "llm": name,
             "domain": getattr(self.domain, "name", None),

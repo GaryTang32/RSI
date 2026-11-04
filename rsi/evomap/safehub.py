@@ -36,7 +36,14 @@ from .inject import FileInjector, Injector
 from .schema import JsonSchemaValidator
 from .signals import RunContext, TaskSignalExtractor, cosine, jaccard, pattern_hits, tokens
 from .solidify import CountedFilePolicy, blast_radius
-from .validation import CommandPolicy, InProcessExecutor, VacuityDetector, ValidationRunner
+from .validation import (
+    CommandPolicy,
+    InProcessExecutor,
+    SubprocessExecutor,
+    VacuityDetector,
+    ValidationRunner,
+    unsafe_paths,
+)
 
 INJECTION_PATTERNS = [
     r"ignore (all )?(previous|prior|above) (instructions|rules)",
@@ -106,6 +113,15 @@ class UpliftLCB(Gate):
             f"U={d['mean_diff']:+.3f} LCB={d['lo']:+.3f} {why}",
             {"U": d["mean_diff"], "U_LCB": d["lo"], "n": d["n"]},
         )
+
+
+def _is_real_model(llm) -> bool:
+    """True for a live Claude backend (``claude`` CLI or API), also behind a cache."""
+    from rsi.core.llm import AnthropicAPI, CachedLLM, ClaudeCLI
+
+    while isinstance(llm, CachedLLM):
+        llm = llm.inner
+    return isinstance(llm, (ClaudeCLI, AnthropicAPI))
 
 
 @dataclass
@@ -232,9 +248,9 @@ class SafeHub(_HubBase):
         self.require_discriminative = require_discriminative
         self.deprecate_after = deprecate_after
         self.rng = random.Random(seed)
-        self.runner = ValidationRunner(
-            CommandPolicy.safe(internal=TASK_CHECKS), executor or InProcessExecutor(), mode="safe"
-        )
+        if executor is None:  # the in-process executor is for simulated worlds; real-model code gets a subprocess
+            executor = SubprocessExecutor() if _is_real_model(bank.llm) else InProcessExecutor()
+        self.runner = ValidationRunner(CommandPolicy.safe(internal=TASK_CHECKS), executor, mode="safe")
         self.vacuity = VacuityDetector(self.runner, min_kill_rate=min_kill_rate)
         self.schema = JsonSchemaValidator(strict=False)
         self.auditor = LeakageAuditor(deny_terms or bank.domain.leakage_terms(bank.split))
@@ -265,6 +281,9 @@ class SafeHub(_HubBase):
                 r.append("forgery guard: empty trace or missing integer exit codes")
             if not (c.get("diff") or c.get("proof_of_work")):
                 r.append("bundle rule: no diff / proof_of_work")
+        for label, state in (("pre_state", b.pre_state), ("post_state", b.post_state)):
+            if bad := unsafe_paths(state):  # verification writes these files: they must stay in its scratch dir
+                r.append(f"path guard: {label} file names outside the workspace: {bad[:3]}")
         g = Gene.from_dict(b.gene)
         strategy_gene = is_strategy_gene(g)
         if b.pre_state is None or b.post_state is None:
