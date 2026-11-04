@@ -76,6 +76,14 @@ def task_text(domain: Domain, task: Task) -> str:
     return task.input if isinstance(task.input, str) else repr(task.input)
 
 
+def own_text(task: Task, text: str, source: Mapping[str, str]) -> tuple[str, ...]:
+    """What the task itself brought: its request, its raw input (rollout traces quote it) and its source files.
+
+    The guard cuts verbatim copies of these out before screening improver prompts: user data, not a verdict."""
+    raw = task.input if isinstance(task.input, str) else repr(task.input)
+    return (text, raw, *source.values())
+
+
 def task_source(domain: Domain, task: Task) -> dict[str, str]:
     """``context/source/`` files (``domain.task_source(task)`` if the domain has one, else none)."""
     hook = getattr(domain, "task_source", None)
@@ -110,6 +118,7 @@ class TaskRunner:
         )
         self.text = task_text(self.domain, self.task)
         self.source = task_source(self.domain, self.task)
+        self.own = own_text(self.task, self.text, self.source)
         self.decisions: dict[str, str] = {}
 
     # ------------------------------------------------------------------ doors
@@ -152,7 +161,15 @@ class TaskRunner:
     ) -> Stage:
         self.budget.charge_session(label)
         st = run_stage(
-            self.session, label=label, role=role, prompt=prompt, ctx=ctx, start=start, fallback=fallback, pool=pool
+            self.session,
+            label=label,
+            role=role,
+            prompt=prompt,
+            ctx=ctx,
+            start=start,
+            fallback=fallback,
+            pool=pool,
+            own=self.own,
         )
         self.rec.stages.append(st)
         self.decisions[label] = (
@@ -240,12 +257,14 @@ class TaskRunner:
         finals = []
         for t in range(1, k + 1):
             kw = self._prompt_kw()
+            # one snapshot per round, taken before either editor runs: editors never see a same-round candidate
+            seen, before = list(history), dict(self.decisions)
             cands = [
                 self.stage(
                     f"{d}{t}",
                     d,
                     P.propose(d, k, t, round_t=t if k > 1 else None, **kw),
-                    self.evidence(cur, B, history, dict(self.decisions)),
+                    self.evidence(cur, B, seen, before),
                     cur,
                     cur,
                 )
@@ -287,6 +306,7 @@ class TaskRunner:
             slots=self.slots,
             obs_trunc=self.cfg.obs_trunc,
             mode_token=MODE_TOKEN[self.cfg.mode],
+            own=self.own,
         )
         if st is not None:
             rec.stages.append(st)
@@ -332,6 +352,7 @@ class TaskRunner:
             decisions=dict(self.decisions),
             slots=self.slots,
             obs_trunc=self.cfg.obs_trunc,
+            own=self.own,
         )
         rec.stages.append(st)
         rec.reflection = out

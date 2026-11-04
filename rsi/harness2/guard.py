@@ -54,9 +54,20 @@ def find_marker(text: str, markers: Iterable[str]) -> str | None:
     return hit
 
 
-def check_text(text: str, markers: Iterable[str], where: str) -> None:
-    """Raise :class:`GraderLeak` if ``text`` carries a grader verdict."""
-    if hit := find_marker(text, markers):
+def without_own(text: str, own: Iterable[str] = ()) -> str:
+    """``text`` with every verbatim copy of the task's own text cut out (longest first, each cut leaves a newline).
+
+    ``own`` is what the task itself brought (its request, raw input and source files): user data, not a grader
+    verdict, so a ``"score":`` key in it is not a leak. Anything the loop generated around it is still screened."""
+    text = str(text or "")
+    for piece in sorted({str(o) for o in own if o and str(o).strip()}, key=lambda o: (-len(o), o)):
+        text = text.replace(piece, "\n")
+    return text
+
+
+def check_text(text: str, markers: Iterable[str], where: str, own: Iterable[str] = ()) -> None:
+    """Raise :class:`GraderLeak` if ``text`` carries a grader verdict outside the task's own text ``own``."""
+    if hit := find_marker(without_own(text, own), markers):
         raise GraderLeak(f"grader-verdict marker {hit!r} in {where}: this is a leak, not a false positive to widen")
 
 
@@ -113,8 +124,8 @@ class OpenWorld:
         self._saved.clear()
         self.active = False
 
-    def check(self, text: str, where: str) -> None:
-        check_text(text, self.markers, where)
+    def check(self, text: str, where: str, own: Iterable[str] = ()) -> None:
+        check_text(text, self.markers, where, own)
 
     def screen(self, files: Mapping[str, str | None], where: str) -> None:
         screen_tree(files, self.markers, where)

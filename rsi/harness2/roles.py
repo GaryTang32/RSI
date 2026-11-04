@@ -39,11 +39,15 @@ class Session:
     calls: int = 0
     transport_attempts: int = 2  # TRANSPORT_ATTEMPTS [code proposer.py]; no back-off sleep here
 
-    def ask(self, prompt: str, *, role: str, where: str, attempts: int | None = None) -> LLMResponse:
+    def ask(
+        self, prompt: str, *, role: str, where: str, attempts: int | None = None, own: Sequence[str] = ()
+    ) -> LLMResponse:
         """The single choke point to an improver: every prompt is screened for grader verdicts first.
 
+        ``own`` is the task's own text (request, raw input, source files), cut out before screening: user data
+        such as ``{"score": 4}`` in the task is not a grader verdict; everything the loop generated is screened.
         A transport failure (``resp.ok`` false) is retried up to ``transport_attempts`` times in total."""
-        self.guard.check(SYSTEM + "\n" + prompt, where)
+        self.guard.check(SYSTEM + "\n" + prompt, where, own)
         resp = None
         for n in range(max(1, attempts or self.transport_attempts)):
             self.calls += 1
@@ -96,6 +100,7 @@ def run_stage(
     start: Artifact,
     fallback: Artifact,
     pool: Mapping[str, Artifact] = {},
+    own: Sequence[str] = (),
 ) -> Stage:
     """Up to ``1 + retry_invalid`` attempts; an invalid or failed proposal inherits ``fallback``."""
     st = Stage(label=label, role=role)
@@ -103,7 +108,7 @@ def run_stage(
     cur_ctx, cur_start, err = dict(ctx), start, None
     for attempt in range(1 + s.retry_invalid):
         text = mission + (P.REJECTED.format(err=err) if err else "") + "\n" + C.render(cur_ctx) + END
-        resp = s.ask(text, role=role, where=f"{label} attempt {attempt + 1}")
+        resp = s.ask(text, role=role, where=f"{label} attempt {attempt + 1}", own=own)
         st.attempts, st.prompt, st.reply = st.attempts + 1, text, resp.text
         if not resp.ok:
             err = f"transport: {resp.error}"
@@ -148,6 +153,7 @@ def select(
     slots: Mapping[str, str],
     obs_trunc: int,
     mode_token: str | None = None,
+    own: Sequence[str] = (),
 ) -> tuple[dict, Stage | None]:
     """``(selection, stage)``: trivial at k = 1, else one anonymised deliverable-only selector session."""
     delivered = [lab for lab in finals if rec.rollouts[lab].delivered]
@@ -184,7 +190,7 @@ def select(
     resp = None
     for _ in range(attempts):
         st.attempts += 1
-        resp = s.ask(text + END, role="selector", where="selector", attempts=1)
+        resp = s.ask(text + END, role="selector", where="selector", attempts=1, own=(task_text, *source.values(), *own))
         if resp.ok:
             break
     st.reply = resp.text if resp else ""
@@ -229,6 +235,7 @@ def reflect(
     decisions: Mapping[str, str],
     slots: Mapping[str, str],
     obs_trunc: int,
+    own: Sequence[str] = (),
 ) -> tuple[dict, Stage]:
     sel = rec.selection
     adoption = {"chosen_label": rec.adopted, "candidate_ids": sel.get("ids", {}), "reason": sel.get("why", "")}
@@ -244,7 +251,7 @@ def reflect(
     )
     text = P.experience(rec.adopted, sel.get("why", ""), slots=slots) + "\n" + C.render(ctx) + END
     st = Stage(label="reflect", role="reflector", prompt=text, attempts=1)
-    resp = s.ask(text, role="reflector", where="reflector")
+    resp = s.ask(text, role="reflector", where="reflector", own=(task_text, *own))
     st.reply = resp.text
     if not resp.ok:
         st.error = f"transport: {resp.error}"

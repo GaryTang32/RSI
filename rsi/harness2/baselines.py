@@ -15,7 +15,7 @@ from ..core.llm import LLM
 from ..core.tasks import Task
 from .api import TaskStream, domain_of, posthoc_report
 from .guard import OpenWorld
-from .loop import _seed, task_source, task_text
+from .loop import _seed, own_text, task_source, task_text
 from .records import Rollout, TaskRecord
 from .roles import Session, select
 
@@ -52,16 +52,18 @@ def best_of_n(
                     lab, seed_artifact.id, sd, domain.rollout(seed_artifact, task, seed=sd, llm=llm_task)
                 )
                 rec.trees[lab] = seed_artifact
+            text, source = task_text(domain, task), task_source(domain, task)
             sel, st = select(
                 s,
                 rec,
                 list(rec.rollouts),
-                task_text=task_text(domain, task),
-                source=task_source(domain, task),
+                task_text=text,
+                source=source,
                 attempts=selector_attempts,
                 slots=slots or {},
                 obs_trunc=obs_trunc,
                 mode_token="bon",
+                own=own_text(task, text, source),
             )
             if st is not None:
                 rec.stages.append(st)
