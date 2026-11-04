@@ -113,7 +113,8 @@ Mechanism Proposal -> Candidate Implementation -> Independent Review -> Developm
    pipeline retains the nondominated results under the declared metrics." As a formula (ours; the paper has none),
    with `m_j` capability metrics, `tau_j` tolerances, `e_k` efficiency metrics:
    `accept(c) <=> for all j: m_j(c) within tau_j of m_j(b)  AND  exists k: e_k(c) better than e_k(b)`.
-   rsi (relative mode): `m_j(c) >= m_j(b) * (1 - tol_j)` for score AND solved rate (2% each), and tokens or cost
+   rsi (relative mode): `m_j(c) >= m_j(b) * (1 - tol_j)` (`m_j(b) - tol_j * |m_j(b)|` for a negative base) for
+   score AND solved rate (2% each), and tokens or cost
    saves more than `min_gain` = 2% relative to base; with `sweep=True` the lineage keeps the lowest-eta passer among
    the nondominated (score up, tokens and cost down).
 8. On a gate failure the paper may "retain, revise, or discard" [paper §2.2]; rsi returns to step 1 with this
@@ -164,7 +165,8 @@ survivors. `stop_reason` is always `"rounds"`.
   x `k`.
 - **Recorded**: token traffic split into input, cache read, cache write and output; token cost at fixed API prices;
   average score; $/score [paper Table 1]; per mechanism, trigger rate (share of tasks where it fires) and trigger
-  intensity (activations per triggered task) [paper §3.4]. rsi per trial: score, `solved` (= score >= 1), `tokens`,
+  intensity (activations per triggered task) [paper §3.4]. rsi per trial: score, `solved` (= score at the top of the
+  domain's `score_range`, 1 by default), `tokens`,
   `cost_usd`, `steps`, trace text, feedback, `meta["oracle"]`; `agentworld` simulates the prefix cache (`TokenMeter`).
 - **Aggregation**: the paper reports average score and totals over the task set; $/score = cost per task / average
   score (e.g. $1,339 / 51 / 44.833 ~ 0.5855) [paper §3, Table 1]. How the gate aggregates across environments is not
