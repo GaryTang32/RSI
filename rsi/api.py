@@ -185,7 +185,8 @@ def improve(
         llm_propose=_llm(llm_propose, cache_dir),
         config=make_config(method, config),
         out_dir=str(out_dir) if out_dir else None,
-        **kwargs,
+        # every other model role (llm_develop, llm_critic, ...) may be a spec string too, cached like llm_propose
+        **{k: _llm(v, cache_dir) if k.startswith("llm_") and isinstance(v, str) else v for k, v in kwargs.items()},
     )
 
 

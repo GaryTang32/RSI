@@ -15,7 +15,7 @@ from ..core.evaluate import Evaluator
 from ..core.ledger import Ledger, Node
 from ..core.llm import LLM, Usage
 from ..core.run import ImprovementResult
-from .gate import DualGate, GateSpec, HoldoutFirewall, Metrics, metrics_from_eval
+from .gate import DualGate, GateSpec, HoldoutFirewall, Metrics, metrics_from_eval, solved_threshold
 from .research import (
     Idea,
     IdeaPool,
@@ -86,6 +86,7 @@ class AutoResearchDriver:
                 "the screen alone"
             )
         self.gate = DualGate(config.gate)
+        self.solved_at = solved_threshold(domain)  # top of domain.score_range
         self.reviewer = reviewer or SmokeReviewer(domain, llm_task)
         self.out = Path(out_dir) if out_dir else Path(tempfile.mkdtemp(prefix="solpi_"))
         self.out.mkdir(parents=True, exist_ok=True)
@@ -111,7 +112,7 @@ class AutoResearchDriver:
     def base_metrics(self, art: Artifact) -> tuple[Metrics, list]:
         r = self.ev.evaluate(art, self.screen_tasks(), k=self.cfg.k, label="screen")
         self._base_ev = r
-        return metrics_from_eval(r), [t for trs in r.trials.values() for t in trs]
+        return metrics_from_eval(r, solved_at=self.solved_at), [t for trs in r.trials.values() for t in trs]
 
     def run_round(self, base: Artifact, rnd: int) -> dict:
         t0 = time.time()
@@ -162,7 +163,9 @@ class AutoResearchDriver:
         kept = [f for f in frozen if passed.get(f.name)]
         composed, conflicts = compose(base, [f.artifact for f in kept]) if (self.cfg.compose and kept) else (base, [])
         cm = (
-            metrics_from_eval(self.ev.evaluate(composed, self.screen_tasks(), k=self.cfg.k, label="screen"))
+            metrics_from_eval(
+                self.ev.evaluate(composed, self.screen_tasks(), k=self.cfg.k, label="screen"), solved_at=self.solved_at
+            )
             if kept
             else bm
         )
@@ -174,7 +177,10 @@ class AutoResearchDriver:
                 for f in kept:
                     rest = [g for g in kept if g is not f]
                     c2, _ = compose(base, [g.artifact for g in rest]) if rest else (base, [])
-                    m2 = metrics_from_eval(self.ev.evaluate(c2, self.screen_tasks(), k=self.cfg.k, label="screen"))
+                    m2 = metrics_from_eval(
+                        self.ev.evaluate(c2, self.screen_tasks(), k=self.cfg.k, label="screen"),
+                        solved_at=self.solved_at,
+                    )
                     trials.append((self.gate.accept(bm, m2).accept, m2.agg["score"], -m2.agg["cost"], f, c2, m2))
                 *_, f, c2, m2 = max(trials, key=lambda x: (x[0], x[1], x[2]))
                 kept.remove(f)

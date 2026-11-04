@@ -908,12 +908,16 @@ class RRSIRun:
             if n.round > t and n.kind == "candidate" and n.status != "truncated":
                 self.ledger.update(n.id, status="truncated")
 
-    def readjudicate(self, t: int, config: Config | None = None) -> list:
-        """Re-run Alg. 2 on round t's stored measurements (no new evaluation); call :meth:`truncate` first."""
-        cfg = config or self.cfg
+    def _require_last_round(self, t: int) -> dict:
         fr = self.frontier.load()
         if len(fr["trajectory"]) > t + 2:
             raise RuntimeError(f"rounds after {t} exist in the frontier; truncate({t}) first")
+        return fr
+
+    def readjudicate(self, t: int, config: Config | None = None) -> list:
+        """Re-run Alg. 2 on round t's stored measurements (no new evaluation); call :meth:`truncate` first."""
+        cfg = config or self.cfg
+        fr = self._require_last_round(t)
         inc_entry = fr["trajectory"][t]
         inc_ev = self.load_eval(inc_entry["job"])
         S_star = max(x["S"] for x in fr["trajectory"][: t + 1])
@@ -956,16 +960,23 @@ class RRSIRun:
         return decisions
 
     def reevaluate(self, t: int, variants: Sequence[str] | None = None) -> list:
-        """Re-measure round t's stored candidates (after an infrastructure failure), then re-adjudicate."""
+        """Re-measure round t's stored candidates (after an infrastructure failure), then re-adjudicate.
+
+        Refuses (like :meth:`readjudicate`) before measuring anything when rounds after t exist. A stored eval is
+        replaced only by a valid re-measurement; an invalid one (infrastructure) keeps the stored eval, if any.
+        """
+        self._require_last_round(t)
         for vdir in self._variant_dirs(t):
             if variants and vdir.name not in variants:
                 continue
             prep = read_json(vdir / "prep.json", {})
             if not prep.get("artifact_id") or prep.get("gate_failure"):
                 continue
-            (vdir / "eval.json").unlink(missing_ok=True)
-            ev, _ = self._measure_valid(self.store.get(prep["artifact_id"]), f"r{t}{vdir.name}_re")
-            if ev is not None:
-                ev.save(vdir / "eval.json")
-                ev.save(self.eval_path(ev.job))
+            ev, why = self._measure_valid(self.store.get(prep["artifact_id"]), f"r{t}{vdir.name}_re")
+            if ev is None:
+                kept = "keeping the stored eval" if (vdir / "eval.json").exists() else "no stored eval"
+                self.log(f"r{t}{vdir.name}: re-measurement invalid ({why}); {kept}")
+                continue
+            ev.save(self.eval_path(ev.job))
+            ev.save(vdir / "eval.json")  # Measurement.save writes a temp file and renames it over the old eval
         return self.readjudicate(t)

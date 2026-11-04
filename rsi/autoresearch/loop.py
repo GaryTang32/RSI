@@ -201,7 +201,11 @@ class AutoresearchLoop:
         return self.usd() - self._monitor_usd
 
     def _kept(self, round: int, name: str, art: Artifact, score: float | None) -> None:
-        """``tracer.kept`` whose shadow-audit time and spend do not count against the loop's budgets."""
+        """``tracer.kept`` whose shadow-audit time and spend do not count against the loop's budgets.
+
+        The audit is metered as a ``usd()`` / wall-time delta, so it must run while no loop work spends or runs
+        concurrently: ``ParallelAutoresearchLoop`` defers it until no experiment is in flight.
+        """
         if self.monitor is None:
             self.tracer.kept(round, name, art, score)
             return
