@@ -11,6 +11,7 @@ import subprocess
 import sys
 import threading
 import time
+import warnings
 from collections.abc import Callable
 from dataclasses import asdict, astuple, dataclass
 from pathlib import Path
@@ -145,8 +146,29 @@ class MockLLM(LLM):
 
 DEFAULT_SYSTEM = "You are a careful, concise assistant."
 
-#: (input, output) USD per million tokens; only used when a backend reports no cost
-_PRICES_PER_MTOK = {"claude-haiku-4-5-20251001": (1.0, 5.0)}
+#: (input, output) USD per million tokens, first-party API rates; only used when a backend reports no cost
+#: (the API backend). Prompt-caching discounts and Haiku 5.5's long-prompt tier are not modelled.
+_PRICES_PER_MTOK = {
+    "claude-fable-5-1": (10.0, 50.0),
+    "claude-fable-5": (10.0, 50.0),
+    "claude-opus-5-5": (4.0, 20.0),
+    "claude-opus-5": (5.0, 25.0),
+    "claude-opus-4-8": (5.0, 25.0),
+    "claude-opus-4-7": (5.0, 25.0),
+    "claude-opus-4-6": (5.0, 25.0),
+    "claude-sonnet-5-5": (2.0, 10.0),
+    "claude-sonnet-5": (2.0, 10.0),
+    "claude-sonnet-4-6": (3.0, 15.0),
+    "claude-haiku-5-5": (0.10, 0.50),
+    "claude-haiku-4-5": (1.0, 5.0),
+    "claude-haiku-4-5-20251001": (1.0, 5.0),
+}
+
+
+def price_per_mtok(model: str) -> tuple[float, float] | None:
+    """(input, output) USD per million tokens for ``model`` (an alias or an ID), or None when unknown."""
+    return _PRICES_PER_MTOK.get(resolve_model(model))
+
 
 _ATTRIBUTION = re.compile(
     r"^[ \t#/*-]*(Co-Authored-By: Claude[^\n]*|Claude-Session: https://claude\.ai/\S*)[ \t]*\n?", re.M | re.I
@@ -175,7 +197,8 @@ class ClaudeCLI(LLM):
     ) -> None:
         super().__init__()
         self.model = resolve_model(model)
-        self.name = f"claude-cli:{self.model}"
+        # effort changes the replies, so it is part of the name the caches key on (unset keeps the old name)
+        self.name = f"claude-cli:{self.model}" + (f"@effort={effort}" if effort else "")
         self.timeout_s = timeout_s
         self.retries = retries
         self.effort = effort
@@ -275,9 +298,17 @@ class AnthropicAPI(LLM):
 
         self.client = anthropic.Anthropic()
         self.model = resolve_model(model)
-        self.name = f"api:{self.model}"
+        # the default max_tokens applies to every call that passes none, so a non-default value is part of the
+        # name the caches key on: replies truncated at a smaller cap are never replayed for a larger one
+        self.name = f"api:{self.model}" + (f"@max_tokens={max_tokens}" if max_tokens != 4096 else "")
         self.max_tokens = max_tokens
         self.retries = retries
+        if price_per_mtok(self.model) is None:
+            warnings.warn(
+                f"no price is known for model {self.model!r}: its calls are recorded as $0, so a max_usd spend cap "
+                "cannot stop the run. Add the model to rsi.core.llm._PRICES_PER_MTOK.",
+                stacklevel=2,
+            )
 
     def _complete(self, prompt, *, system, max_tokens, seed) -> LLMResponse:
         t0 = time.time()
@@ -291,10 +322,12 @@ class AnthropicAPI(LLM):
                     messages=[{"role": "user", "content": prompt}],
                 )
                 text = "".join(getattr(b, "text", "") for b in msg.content)
-                pin, pout = _PRICES_PER_MTOK.get(self.model, (0.0, 0.0))
+                pin, pout = price_per_mtok(self.model) or (0.0, 0.0)
                 cost = (msg.usage.input_tokens * pin + msg.usage.output_tokens * pout) / 1e6
                 usage = Usage(1, msg.usage.input_tokens, msg.usage.output_tokens, cost, time.time() - t0)
-                return LLMResponse(text=text, usage=usage, model=self.model)
+                # stop_reason lets callers (and the cache) tell a reply cut off at max_tokens from a complete one
+                raw = {"stop_reason": getattr(msg, "stop_reason", None)}
+                return LLMResponse(text=text, usage=usage, model=self.model, raw=raw)
             except Exception as e:  # noqa: BLE001 - network errors vary by SDK version
                 last = repr(e)
                 time.sleep(2**attempt)

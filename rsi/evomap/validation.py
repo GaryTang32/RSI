@@ -39,6 +39,25 @@ class PolicyCheck:
     info_only: bool = False
 
 
+def _option_names(flag: str) -> list[str]:
+    """Every option a command-line flag turns on: ``-Ic`` is ``-I`` plus ``-c``; ``--opt=x`` is ``--opt``.
+
+    Short options can be combined into one argument, so checking only the whole argument would let ``-Ic "code"``
+    through a policy that blocks ``-c``. Every character after the dash is treated as an option: an attached value
+    (``-Werror``) can only add false rejections, never let a blocked option through.
+    """
+    if flag.startswith("--") or len(flag) <= 2:
+        return [flag.split("=")[0]]
+    return [flag[:2]] + [f"-{ch}" for ch in flag[2:]]
+
+
+def unsafe_paths(files: Mapping[str, str] | None) -> list[str]:
+    """Workspace file names that would be written outside a scratch directory (absolute, ``..``, empty)."""
+    from rsi.core.artifact import is_safe_relpath
+
+    return sorted(n for n in (files or {}) if not (isinstance(n, str) and is_safe_relpath(n)))
+
+
 @dataclass
 class CommandPolicy:
     """No shell, an allowlisted executable, no eval-style flags, and a relative script argument unless info-only."""
@@ -78,7 +97,8 @@ class CommandPolicy:
         if exe not in self.executables:
             return PolicyCheck(False, f"executable {exe!r} not allowed", argv)
         flags = [a for a in argv[1:] if a.startswith("-")]
-        blocked = [f for f in flags if f.split("=")[0] in self.blocked_flags.get(exe, ())]
+        deny = self.blocked_flags.get(exe, ())
+        blocked = [f for f in flags if any(n in deny for n in _option_names(f))]
         if blocked:
             return PolicyCheck(False, f"blocked flag {blocked[0]!r}", argv)
         positional = [a for a in argv[1:] if not a.startswith("-")]
@@ -134,6 +154,8 @@ class SubprocessExecutor(_MemoExecutor):
     def _run(self, argv: list[str], files: Mapping[str, str]) -> ExecOutcome:
         from rsi.core.sandbox import run_cmd
 
+        if bad := unsafe_paths(files):  # a workspace file name must not write outside the scratch directory
+            return ExecOutcome(2, "", f"refused: workspace file names outside the workspace: {bad[:3]}")
         d = Path(tempfile.mkdtemp(prefix="rsi_evomap_val_"))
         for name, text in files.items():
             p = d / name
@@ -149,12 +171,10 @@ class SubprocessExecutor(_MemoExecutor):
         return out
 
 
-_SAFE_IMPORTS = {
+_SAFE_IMPORTS = {  # no os / sys: their process and filesystem access defeat even this simulation-level guard
     "math",
     "re",
     "json",
-    "sys",
-    "os",
     "string",
     "collections",
     "itertools",

@@ -748,9 +748,147 @@ Aggregation rules:
    with targeted questions before reporting. Report once, at the end."""
 
 
-def _bash_ok(cmd: str) -> bool:
-    programs = [seg.split()[0] for seg in re.split(r"[|;&]+", cmd) if seg.strip()]
-    return not DENY_BASH.search(cmd) and all(p in ALLOWED_BASH for p in programs)
+def _bash_ok(cmd: str, root: Path) -> bool:
+    """True if ``cmd`` is a read-only pipeline of allowed programs that stays inside ``root``.
+
+    The digester's shell runs with ``shell=True`` (pipes, globs and quoting behave as the paper's agent expects), so
+    this is the boundary: no chaining, redirection or expansion, no option or script that writes or runs commands,
+    and no path argument outside the traces dir (where the run's own trace, with sealed-split shadow scores, lives).
+    """
+    if DENY_BASH.search(cmd):
+        return False
+    try:
+        _check_readonly(cmd, root)
+    except ValueError:
+        return False
+    return True
+
+
+#: options that write files or run commands, per program (short options may be combined: ``-ro`` contains ``-o``)
+_WRITE_OPTIONS = {
+    "find": (
+        "-exec",
+        "-execdir",
+        "-ok",
+        "-okdir",
+        "-delete",
+        "-fprint",
+        "-fprint0",
+        "-fprintf",
+        "-fls",
+        "-L",
+        "-follow",
+    ),
+    "sort": ("-o", "--output"),
+    "sed": ("-i", "--in-place", "-s", "--separate"),
+    "jq": ("--rawfile", "--slurpfile", "-L", "--from-file", "-f"),
+}
+#: a sed script is allowed only as ";"-separated parts that print, delete or substitute over an optional line range:
+#: everything else (w/W/r/R/e commands, the s///w and s///e flags) can write, read files or run commands
+_SED_ADDR = r"(?:\d+|\$|/[^/]*/)"
+_SED_SAFE_PART = re.compile(
+    rf"^\s*(?:{_SED_ADDR}(?:\s*,\s*{_SED_ADDR})?)?\s*(?:[pdq=]|s(.)(?:(?!\1).)*\1(?:(?!\1).)*\1[gpI0-9]*)\s*$"
+)
+_AWK_UNSAFE = re.compile(r"\bsystem\b|\bgetline\b|\bENVIRON\b|\||\bclose\b|\bfflush\b|@include|@load")
+_PATTERN_FIRST = {"grep", "egrep", "awk", "sed", "jq"}  # their first positional is a pattern or program, not a path
+
+
+def _scan_unquoted(cmd: str) -> None:
+    """Reject shell syntax outside quotes that could chain commands, redirect, or expand variables and paths."""
+    quote = None
+    for i, ch in enumerate(cmd):
+        if quote:
+            if ch == quote:
+                quote = None
+            elif quote == '"' and ch in "$`":
+                raise ValueError("expansion inside double quotes")
+            continue
+        if ch in "'\"":
+            quote = ch
+        elif ch in ";&<>`$\n\r(){}" or (ch == "~" and (i == 0 or cmd[i - 1] in " \t=:")):
+            raise ValueError(f"shell syntax {ch!r} is not allowed")
+    if quote:
+        raise ValueError("unbalanced quotes")
+
+
+def _inside(root: Path, token: str) -> bool:
+    """True if ``token``, read as a path (or a glob) relative to ``root``, cannot leave ``root``."""
+    for part in token.split("/"):  # ".*" and ".?" globs can match ".." itself
+        if part.startswith(".") and any(c in part for c in "*?["):
+            return False
+    if not ("/" in token or token in (".", "..")):
+        return True
+    base = token.split("*", 1)[0].split("?", 1)[0].split("[", 1)[0]  # the fixed prefix of a glob
+    p = Path(base) if base.startswith("/") else root / base
+    try:
+        p = p.resolve()
+    except (OSError, RuntimeError):
+        return False
+    r = root.resolve()
+    return p == r or r in p.parents
+
+
+def _check_readonly(cmd: str, root: Path) -> None:
+    """Raise ValueError if ``cmd`` could write, run another program, or read outside ``root``."""
+    import shlex
+
+    _scan_unquoted(cmd)
+    lex = shlex.shlex(cmd, posix=True, punctuation_chars="|")
+    lex.whitespace_split = True
+    tokens = list(lex)
+    segments: list[list[str]] = [[]]
+    for t in tokens:
+        if t == "|":
+            segments.append([])
+        elif set(t) == {"|"}:
+            raise ValueError("'||' is not allowed")
+        else:
+            segments[-1].append(t)
+    for seg in segments:
+        if not seg:
+            raise ValueError("empty pipeline stage")
+        prog, args = seg[0], seg[1:]
+        if prog not in ALLOWED_BASH:
+            raise ValueError(f"program {prog!r} is not allowed")
+        deny = _WRITE_OPTIONS.get(prog, ())
+        flags = [a for a in args if a.startswith("-") and a != "-"]
+        for f in flags:
+            names = (
+                [f.split("=")[0]]
+                if f.startswith("--") or len(f) <= 2 or prog == "find"
+                else [f[:2]] + [f"-{c}" for c in f[2:]]
+            )
+            if any(
+                n in deny or (n.startswith("--") and any(n.startswith(d) for d in deny if d.startswith("--")))
+                for n in names
+            ):
+                raise ValueError(f"{prog} option {f!r} writes files or runs commands")
+        positional = [a for a in args if not (a.startswith("-") and a != "-")]
+        script = positional[0] if prog in _PATTERN_FIRST and positional else None
+        if prog == "sed" and script is not None and not all(_SED_SAFE_PART.match(x) for x in script.split(";")):
+            raise ValueError("sed scripts may only print, delete or substitute over a line range")
+        if prog == "awk" and any(_AWK_UNSAFE.search(a) for a in args):
+            raise ValueError("awk system/getline/pipes/ENVIRON are not allowed")
+        if prog == "uniq" and len(positional) > 1:
+            raise ValueError("uniq with an output file is not allowed")
+        for a in args:
+            if a is script:
+                continue
+            values = [a]
+            if a.startswith("--") and "=" in a:
+                values = [a.split("=", 1)[1]]
+            elif a.startswith("-") and len(a) > 2 and not a.startswith("--"):
+                values = [a[2:]]  # a short option with its value attached: -f/etc/passwd
+            if not all(_inside(root, v) for v in values):
+                raise ValueError(f"path {a!r} is outside the traces dir")
+
+
+def _readonly_env() -> dict[str, str]:
+    """The digester shell's environment: PATH and locale only, so no secret (an API key) can be printed."""
+    import os
+
+    keep = ("PATH", "LANG", "LC_ALL", "LC_CTYPE")
+    return {k: os.environ[k] for k in keep if k in os.environ} or {"PATH": "/usr/bin:/bin"}
 
 
 def _safe(root: Path, rel: str) -> Path:
@@ -844,7 +982,7 @@ def digest_task(
                 result = _grep(traces_dir, act.get("pattern", ""), act.get("path", ""), int(act.get("max_hits", 40)))
             elif a == "bash":
                 cmd = act.get("cmd", "")
-                if not _bash_ok(cmd):
+                if not _bash_ok(cmd, traces_dir):
                     result = (
                         "ERROR: command rejected (read-only shell; allowed: "
                         "grep/head/tail/awk/jq/sed/wc/cat/ls/find/cut/sort/"
@@ -852,7 +990,13 @@ def digest_task(
                     )
                 else:
                     r = subprocess.run(
-                        cmd, shell=True, cwd=traces_dir, capture_output=True, text=True, timeout=BASH_TIMEOUT
+                        cmd,
+                        shell=True,
+                        cwd=traces_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=BASH_TIMEOUT,
+                        env=_readonly_env(),
                     )
                     result = (r.stdout or "") + (r.stderr or "")
             else:

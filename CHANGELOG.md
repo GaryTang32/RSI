@@ -6,6 +6,25 @@ Before 1.0, minor versions may change the API.
 
 ## [Unreleased]
 
+### Fixed
+- Spend caps now work for every model on the API backend: prices cover all current Claude models (only Haiku was
+  priced, so Sonnet and Opus calls were recorded as $0 and `max_usd` never stopped a run). An unpriced model warns.
+- `TaskSuite` rejects repeated task ids. Ids reused across families (`q0, q1` in each) silently moved sealed OOD
+  tasks into the loop's `evolve` split. An explicit overlap between a decision split and a sealed split now warns.
+- `FunctionDomain` turns a failed model call (outage, usage limit, offline cache miss) into an `infra:` error, so the
+  trial counts as missing and is retried instead of being graded and cached as a wrong answer
+  (`raise_on_llm_error=False` keeps the old behaviour).
+- Caches no longer replay replies made with other backend settings: the `claude` CLI's `effort` and a non-default
+  API `max_tokens` are part of the cache key, and the trial cache covers `task.meta`, numpy arrays by value, and ids
+  that map to the same cache file. The API backend also reports `stop_reason`, so truncated replies are visible.
+- EvoMap's command policy expands combined short flags, so `python -Ic "..."` no longer slips past a blocked `-c`.
+  SafeHub rejects bundles whose workspace files would be written outside the scratch directory, runs validation in a
+  subprocess by default when its reference model is a real Claude backend, and the in-process simulation executor no
+  longer allows `os` or `sys`.
+- RRSI's agentic digester shell is read-only and confined to its traces folder: no chaining, redirection, expansion,
+  writing options (`find -delete`, `sort -o`, sed `w`/`r`/`e`, awk `system`), or paths outside the folder (the run's
+  own trace holds sealed-split shadow scores), and it runs without the caller's environment variables.
+
 ### Changed
 - The codebase is formatted and linted with ruff (CI checks both); a pre-commit config runs the same checks.
 - Slow tests are marked, so `pytest -m "not slow"` gives a quick local subset.

@@ -167,12 +167,36 @@ class Domain:
         return (self.run(artifact, self.tasks.get(ids[0]), seed=0, llm=llm).error or None) if ids else None
 
 
+class _InfraOnError(LLM):
+    """Wraps an LLM so a failed call raises an ``infra:`` error instead of returning an empty reply.
+
+    Backends report failures (outages, usage limits, offline cache misses) in ``LLMResponse.error`` rather than
+    raising. Code that reads only ``.text`` would grade the empty reply as a wrong answer, and the evaluator would
+    cache that score; raised as ``infra:`` the trial is counted as missing and retried instead.
+    """
+
+    def __init__(self, inner: LLM) -> None:  # no super().__init__(): metering stays on the wrapped model
+        self._inner = inner
+        self.name = getattr(inner, "name", LLM.name)
+
+    def complete(self, prompt, **kw):
+        resp = self._inner.complete(prompt, **kw)
+        if resp.error is not None:
+            raise RuntimeError(f"infra: model call failed: {resp.error}")
+        return resp
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
 class FunctionDomain(Domain):
     """A Domain from ``execute_fn(artifact, task, seed, llm)`` and ``grade_fn(task, output) -> score | (score, fb)``.
 
     The quickest way to wrap your own problem: ``execute_fn`` runs the artifact (e.g. fills a prompt and calls
     ``llm``) and returns the output or an ``Execution``; ``grade_fn`` returns a score, or ``(score, feedback)`` where
     the feedback text helps reflective methods such as GEPA and RRSI. Keep the grader outside the artifact.
+    A model call that fails (``LLMResponse.error``) raises an ``infra:`` error, so the trial counts as missing and is
+    retried rather than graded as a wrong answer; pass ``raise_on_llm_error=False`` to handle errors yourself.
 
     Example:
         ```python
@@ -199,14 +223,18 @@ class FunctionDomain(Domain):
         *,
         name: str = "function-domain",
         description: str = "",
+        raise_on_llm_error: bool = True,
     ) -> None:
         super().__init__(tasks)
         self.execute_fn = execute_fn
         self.grade_fn = grade_fn
         self.name = name
         self._description = description
+        self.raise_on_llm_error = raise_on_llm_error
 
     def execute(self, artifact, task, *, seed, llm):
+        if llm is not None and self.raise_on_llm_error:
+            llm = _InfraOnError(llm)
         out = self.execute_fn(artifact, task, seed, llm)
         return out if isinstance(out, Execution) else Execution(output=out)
 
