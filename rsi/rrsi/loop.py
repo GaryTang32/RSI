@@ -873,9 +873,8 @@ class RRSIRun:
             return
         ev = Evaluator(self.domain, self.llm_task, workers=self.cfg.workers, allow_sealed=True)
         m = ev.evaluate(self.store.get(winner.artifact_id), "holdout", self.cfg.k)
-        append_lines(
-            path, [json.dumps({"t": t + 1, "S_evolve": winner.ev.S, "S_holdout": m.score, "C_holdout": m.cost}) + "\n"]
-        )
+        row = {"t": t + 1, "S_evolve": winner.ev.S, "S_holdout": m.score, "C_holdout": m.cost}
+        append_lines(path, [json.dumps({**row, "artifact_id": winner.artifact_id}) + "\n"])
 
     def _variant_dirs(self, t: int) -> list[Path]:
         return sorted(p for p in (self.out / f"r{t}").iterdir() if p.is_dir() and len(p.name) == 1)
@@ -920,7 +919,10 @@ class RRSIRun:
         return fr
 
     def readjudicate(self, t: int, config: Config | None = None) -> list:
-        """Re-run Alg. 2 on round t's stored measurements (no new evaluation); call :meth:`truncate` first."""
+        """Re-run Alg. 2 on round t's stored measurements (no new evaluation); call :meth:`truncate` first.
+
+        With the ``heldout_monitor`` extension on, a changed winner's held-out score is logged afresh (the only
+        evaluation it can trigger, and never read by the loop)."""
         cfg = config or self.cfg
         fr = self._require_last_round(t)
         inc_entry = fr["trajectory"][t]
@@ -962,7 +964,20 @@ class RRSIRun:
             {"t": t, "delta": delta, "winner": winner.variant if winner else None}
         )
         self.frontier.save(fr)
+        self._refresh_monitor(t, winner, cfg)
         return decisions
+
+    def _refresh_monitor(self, t: int, winner: Candidate | None, cfg: Config) -> None:
+        """After re-adjudication: drop row t+1 unless it belongs to the (possibly new) winner, then log the winner."""
+        mon = self.out / "heldout_monitor.jsonl"
+        if mon.exists():
+            keep_id = winner.artifact_id if winner is not None else None
+            rows = read_jsonl(mon)
+            kept = [r for r in rows if int(r.get("t", 0)) != t + 1 or (keep_id and r.get("artifact_id") == keep_id)]
+            if len(kept) != len(rows):
+                mon.write_text("".join(json.dumps(r) + "\n" for r in kept))
+        if cfg.heldout_monitor and winner is not None:
+            self._monitor(t, winner)
 
     def reevaluate(self, t: int, variants: Sequence[str] | None = None) -> list:
         """Re-measure round t's stored candidates (after an infrastructure failure), then re-adjudicate.

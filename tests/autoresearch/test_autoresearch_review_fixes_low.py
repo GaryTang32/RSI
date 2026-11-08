@@ -46,3 +46,43 @@ def test_rigor_keep_rule_warns_when_one_run_per_arm_cannot_be_bootstrapped():
 
     with pytest.warns(UserWarning, match="repeats >= 2"):
         BootstrapRigorKeep(repeats=1)
+
+
+def _chain_factory(shared_llm, max_usd=None):
+    from rsi.autoresearch import AutoresearchLoop, Config, LandscapeTask, MockResearchAgent, landscape_edit_pool
+
+    def make(i, out):
+        cfg = Config(max_experiments=1, max_usd=max_usd, persist=False)
+        return AutoresearchLoop(
+            LandscapeTask(), MockResearchAgent(landscape_edit_pool(), seed=i), cfg, out_dir=out, llms=[shared_llm(i)]
+        )
+
+    return make
+
+
+def test_concurrent_chains_sharing_an_llm_with_a_spend_cap_are_refused(tmp_path):
+    import pytest
+
+    from rsi.autoresearch.parallel import MultiChainLauncher
+    from rsi.core import MockLLM
+
+    one = MockLLM()
+    with pytest.raises(ValueError, match="max_usd"):
+        MultiChainLauncher(_chain_factory(lambda i: one, max_usd=1.0), 2, tmp_path / "mc").launch()
+    with pytest.warns(UserWarning, match="share LLM objects"):
+        MultiChainLauncher(_chain_factory(lambda i: one), 2, tmp_path / "mc2").launch()
+
+
+def test_concurrent_chains_with_their_own_llms_run_without_a_warning(tmp_path):
+    import warnings
+
+    from rsi.autoresearch.parallel import MultiChainLauncher
+    from rsi.core import MockLLM
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        warnings.filterwarnings("ignore", message=".*keep rule 'upstream'")
+        res = MultiChainLauncher(
+            _chain_factory(lambda i: MockLLM(name=f"m{i}"), max_usd=1.0), 2, tmp_path / "mc"
+        ).launch()
+    assert len(res) == 2

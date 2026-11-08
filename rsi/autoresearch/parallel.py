@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import time
+import warnings
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -130,7 +131,11 @@ class ParallelAutoresearchLoop(AutoresearchLoop):
 
 
 class MultiChainLauncher:
-    """N independent chains (upstream ``spawn.sh``); ``make_loop(i, out_dir)`` builds chain ``i``."""
+    """N independent chains (upstream ``spawn.sh``); ``make_loop(i, out_dir)`` builds chain ``i``.
+
+    Concurrent chains should each get their own LLM objects from ``make_loop``: a chain's spend is read from its
+    LLMs' meters, so chains sharing an LLM would each count the others' spend.
+    """
 
     def __init__(
         self,
@@ -146,6 +151,24 @@ class MultiChainLauncher:
         self.tag = tag
         self.concurrent = concurrent
 
+    @staticmethod
+    def _check_shared_llms(loops: list[AutoresearchLoop]) -> None:
+        """Concurrent chains that share an LLM cannot keep separate spend totals: refuse with a cap, else warn."""
+        owners: dict[int, set[int]] = {}
+        for i, lp in enumerate(loops):
+            for llm in lp.llms:
+                owners.setdefault(id(llm), set()).add(i)
+        shared = sorted({i for s in owners.values() if len(s) > 1 for i in s})
+        if not shared:
+            return
+        msg = (
+            f"chains {shared} share LLM objects: each chain's spend is read from its LLMs' meters, so it would count "
+            "the other chains' spend too; build separate LLMs per chain in make_loop(i, out_dir)"
+        )
+        if any(loops[i].cfg.max_usd is not None for i in shared):
+            raise ValueError(f"{msg} (a per-chain max_usd cannot be enforced)")
+        warnings.warn(f"{msg}; per-chain usage totals will overlap", stacklevel=3)
+
     def launch(self) -> list[ImprovementResult]:
         loops = []
         for i in range(self.n):
@@ -154,5 +177,6 @@ class MultiChainLauncher:
             loops.append(lp)
         if not self.concurrent:
             return [lp.run() for lp in loops]
+        self._check_shared_llms(loops)
         with ThreadPoolExecutor(self.n) as ex:
             return list(ex.map(lambda lp: lp.run(), loops))
