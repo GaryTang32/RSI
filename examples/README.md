@@ -55,8 +55,12 @@ does not state them, so it misroutes those tickets and there is something real t
   (`offline_classifier`) that follows only the rules written in the prompt and answers at random 20% of the time.
   The proposer is GEPA's `GenericReflectionLM`, which appends a failing example's feedback as a `Lesson:` line.
 - **Your data:** `--csv my.csv` with columns `text,label`, then edit `prompt.md` and `LABEL_GUIDE` to your labels.
-- **Live cost:** about 350 short task calls (noise measurement, 150 GEPA rollouts, the report) and 10-40 reflection
-  calls: well under $1 with Haiku. GEPA runs rollouts one at a time, so a CLI run takes some minutes.
+- **Live cost:** about 700 task calls (noise measurement, 300 GEPA rollouts, the report) and a few reflection calls.
+  One run with `--llm claude:haiku` (8 November 2026) cost $1.52 and took about 50 minutes, since GEPA runs rollouts
+  one at a time. The seed scored 0.917 on evolve (delta 0.038), so the headroom check passed. GEPA's best prompt
+  wrote out all three house rules, and the sealed holdout went from 0.910 to 1.000 (paired 95% CI +0.013 to
+  +0.179, 39 tickets). This is one run: an earlier three-seed trial on the same tickets with subtype-level feedback
+  gave holdout gains of +0.04 to +0.09, with CIs that included 0.
 
 ## 02: an agent harness
 
