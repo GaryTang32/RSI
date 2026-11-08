@@ -1,31 +1,95 @@
 text,label
-I was charged twice for my order last week,billing
-Please send me the invoice for March,billing
-When will my refund arrive?,billing
-The subscription price went up without notice,billing
-My payment was declined but the money left my bank,billing
-Can I get a refund for the unused months?,billing
-Why is there a charge from you on my card?,billing
-I need a copy of my latest invoice for taxes,billing
-The app crashes every time I open the camera,technical
-I get an error 500 when I upload a file,technical
-There is a bug in the export button,technical
-The screen freezes after the latest update,technical
-Everything is very slow since yesterday,technical
-The app crashes on start on my tablet,technical
-Syncing fails with an unknown error,technical
-I forgot my password and the reset link expired,account
-I cannot login with my new phone,account
-How do I change the username on my profile?,account
-Please delete my profile and all my data,account
-My password stopped working this morning,account
-I want to update the email on my profile,account
-My parcel has not been delivered yet,shipping
-The tracking number does not work,shipping
-The courier left the package at the wrong house,shipping
-My delivery is three days late,shipping
-Can I change the delivery address for my parcel?,shipping
-The package arrived damaged,shipping
-Where is my stuff? It has been two weeks,shipping
-Someone else seems to be using my account,account
-You took money from me again!,billing
+I see a charge from you that I don't recognise,billing
+My handling payment was taken twice,billing
+My service payment was taken twice,billing
+The invoice total for #1187 is wrong,billing
+The invoice total for #4471 is wrong,billing
+My bank shows a pending charge for an order I cancelled,billing
+I was charged two times for the same order,billing
+I was charged three times for the same order,billing
+My card was declined but the money left my account,billing
+Can you send the invoice for order #1187?,billing
+Can you send the invoice for order #4471?,billing
+Why is there a service fee on my statement?,billing
+Why is there a handling fee on my statement?,billing
+"The mug was shattered on arrival, I'd like a refund",shipping
+"Box was empty when it arrived, refund me",shipping
+"Item #1187 never showed up, I want the money back",shipping
+"Item #9032 never showed up, I want the money back",shipping
+"Item #4471 never showed up, I want the money back",shipping
+"Received a damaged glass, please return my money",shipping
+"Received a damaged mug, please return my money",shipping
+"The glass arrived broken, I want my money back",shipping
+"My parcel never came, please refund me",shipping
+"Half the mugs were missing from the box, refund please",shipping
+"Half the glasses were missing from the box, refund please",shipping
+"The courier lost my package, I need a refund",shipping
+Getting error E42 on the settings page,technical
+Getting error 500 on the settings page,technical
+Getting error 403 on the settings page,technical
+The app freezes when I tap orders,technical
+The app freezes when I tap settings,technical
+Images won't load on Firefox,technical
+Images won't load on Safari,technical
+Search returns a server error,technical
+The app crashes every time I open the settings page,technical
+The app crashes every time I open the cart page,technical
+Checkout shows error 403 and freezes,technical
+Checkout shows error 500 and freezes,technical
+Checkout shows error E42 and freezes,technical
+Your website is extremely slow on Firefox,technical
+The cart screen is blank after the update,technical
+The settings screen is blank after the update,technical
+The orders screen is blank after the update,technical
+Login keeps failing with error 403,account
+Login keeps failing with error E42,account
+My 2FA app code is rejected every time,account
+"Can't sign in, it says session expired",account
+Sign-in page throws an authentication failure on Safari,account
+I get error E42 when I try to log in,account
+I get error 500 when I try to log in,account
+The two-factor code never arrives so I can't sign in,account
+Password reset link says the token is invalid,account
+The app logs me out with an authentication error,account
+Change my display name to sam_k,account
+How do I update my date of birth on my profile?,account
+Remove my old email address from my account,account
+I want to edit my saved profile picture,account
+How do I change the email on my profile?,account
+Please update my username to jlee,account
+I want to change the phone number on my account,account
+Can I add a second email address to my profile?,account
+End my subscription today,account
+Cancel the auto-renewal of my plan,account
+I'd like to downgrade and cancel premium,account
+Please pause my subscription while I travel,account
+Please cancel my subscription before the next payment,account
+I want to pause my membership for three months,account
+I want to pause my membership for two months,account
+"Stop my monthly plan, I no longer need it",account
+How do I cancel the premium plan?,account
+Order #4471 shows no movement for three days,shipping
+When will order #9032 be delivered?,shipping
+When will order #4471 be delivered?,shipping
+When will order #1187 be delivered?,shipping
+Courier says delivered but I have nothing,shipping
+Is there a tracking link for #4471?,shipping
+Is there a tracking link for #1187?,shipping
+Where is my order #9032? It is three days late,shipping
+Where is my order #1187? It is three days late,shipping
+The tracking number doesn't work,shipping
+My delivery was supposed to arrive yesterday,shipping
+My delivery was supposed to arrive Monday,shipping
+Has my package been dispatched yet?,shipping
+Please update the shipping address on order #9032,shipping
+Please update the shipping address on order #1187,shipping
+Send #1187 to a pickup point instead,shipping
+Send #4471 to a pickup point instead,shipping
+I typed the wrong postcode for order #1187,shipping
+I typed the wrong postcode for order #9032,shipping
+Change delivery address to my parents' house,shipping
+Can I change the delivery address for order #1187?,shipping
+"I moved, please send order #9032 to my new address",shipping
+"I moved, please send order #1187 to my new address",shipping
+"Wrong street on my order, please fix the shipping address",shipping
+Redirect my parcel to my office instead,shipping

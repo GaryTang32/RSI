@@ -33,6 +33,28 @@ def test_01_prompt_from_csv(tmp_path, capsys):
     assert "Lesson:" in res["best_prompt"]  # the mock reflection LM folded grader feedback into the prompt
 
 
+def test_01_headroom_check():
+    mod = load("01_prompt_from_csv/improve_prompt.py")
+    assert mod.headroom_check(1.0, 0.0, 36) is not None  # a perfect seed: nothing to gain
+    assert mod.headroom_check(0.97, 0.05, 36) is not None  # the gap is inside the noise band
+    assert mod.headroom_check(0.98, 0.0, 36) is not None  # less than one task of headroom
+    assert mod.headroom_check(0.94, 0.027, 36) is None  # the bundled tickets with a real model (seed 0.94)
+    assert mod.headroom_check(-0.5, 0.1, 10, top=0.0) is None  # a score range that tops out at 0
+
+
+@pytest.mark.filterwarnings("ignore:GEPA. the keep rule has no noise band")  # delta is 0 on this toy CSV
+def test_01_stops_without_spending_when_the_seed_has_no_headroom(tmp_path, monkeypatch, capsys):
+    mod = load("01_prompt_from_csv/improve_prompt.py")
+    easy = tmp_path / "easy.csv"
+    easy.write_text("text,label\n" + "".join(f"the app crashes {i},technical\n" for i in range(12)))
+    monkeypatch.setattr(mod, "offline_classifier", lambda prompt, system, seed, i: "technical")  # always right
+    res = mod.main(["--csv", str(easy), "--out", str(tmp_path / "run")])
+    assert "STOP no headroom" in capsys.readouterr().out and res["seed_score"] == 1.0
+    assert not (tmp_path / "run" / "trace.jsonl").exists()  # the loop never ran
+    res = mod.main(["--csv", str(easy), "--out", str(tmp_path / "forced"), "--force", "--budget", "20"])
+    assert "stopped" not in res and (tmp_path / "forced" / "trace.jsonl").exists()
+
+
 def test_01_rejects_unknown_labels(tmp_path):
     bad = tmp_path / "bad.csv"
     bad.write_text("text,label\nhello,greeting\n")

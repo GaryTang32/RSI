@@ -6,6 +6,23 @@ Before 1.0, minor versions may change the API.
 
 ## [Unreleased]
 
+### Added
+- `noise_from_repeats(..., small_sample=True)` uses the Student-t quantile with the coverage of z = 2 for R - 1
+  degrees of freedom (4.53 at R = 3), so a noise band from a few repeats keeps the false-keep rate near the
+  nominal 2.3%.
+- Example 01 checks headroom before the loop: if the seed scores within `max(delta, 1/n)` of the top score, it prints
+  `STOP no headroom` and exits before spending anything (`--force` runs the loop anyway).
+
+### Changed
+- `noise_from_repeats` warns with fewer than 5 repeats. The band is right on average but noisy itself: with R = 2 its
+  width is below 60% of the true width 45% of the time, and in a null test a z = 2 band kept 8.3% of unchanged
+  candidates at R = 2 and 5.8% at R = 3 (nominal 2.3%). RRSI with `calibration_repeats` 2-4 shows the warning.
+- Example 01 uses 94 support tickets whose labels follow three company routing rules the seed prompt does not state.
+  The old 30 tickets were too easy: Claude Haiku scored 1.0 with the seed prompt, so the loop had nothing to learn.
+  The GEPA budget default rises from 150 to 300 rollouts.
+- The skill recommends R >= 5 repeats (or `small_sample=True`, or k >= 2 trials with the corrected bootstrap)
+  instead of R >= 2.
+
 ## [0.1.1] - 2026-11-08
 
 Fixes for all 29 findings of the November 2026 code review and three follow-ups, plus README and docs

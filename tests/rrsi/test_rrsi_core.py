@@ -86,7 +86,8 @@ def test_calibration_bootstrap_and_repeats():
     cal = calibrate([ev], z=2.0, reps=300)
     assert cal["delta"] > 0 and cal["method"].startswith("bootstrap")
     ev2 = _ev("base2", {f"t{i}": [1, 1 if i % 3 else 0] for i in range(40)}, 2)
-    cal2 = calibrate([ev, ev2], z=2.0, reps=100)
+    with pytest.warns(UserWarning, match="only 2 repeated"):
+        cal2 = calibrate([ev, ev2], z=2.0, reps=100)
     assert cal2["n_evals"] == 2 and cal2["delta"] >= 0 and "max_abs_diff" in cal2
     corr = calibrate([ev], z=2.0, reps=300, small_k_correction=True)
     assert corr["delta"] == pytest.approx(cal["delta"] * math.sqrt(2), rel=1e-3)

@@ -33,23 +33,34 @@ the run prints its own spend at the end.
 
 ## 01: a prompt for your own labelled examples
 
-[`improve_prompt.py`](01_prompt_from_csv/improve_prompt.py) classifies the 30 support tickets in
-[`tickets.csv`](01_prompt_from_csv/tickets.csv) into billing / technical / account / shipping, starting from the
-one-line [`prompt.md`](01_prompt_from_csv/prompt.md).
+[`improve_prompt.py`](01_prompt_from_csv/improve_prompt.py) routes the 94 support tickets in
+[`tickets.csv`](01_prompt_from_csv/tickets.csv) to billing / technical / account / shipping, starting from the
+one-line [`prompt.md`](01_prompt_from_csv/prompt.md). The labels follow three company rules that a model cannot guess
+from the ticket: refunds for damaged, missing or lost items go to shipping (not billing), login and two-factor errors
+go to account (not technical), and cancelling or pausing a subscription goes to account (not billing). The seed prompt
+does not state them, so it misroutes those tickets and there is something real to learn.
 
 - **Domain:** a `FunctionDomain` from two functions: `execute` (prompt + ticket -> model -> label) and `grade` (exact
   match; on a miss the feedback is the label's line from `LABEL_GUIDE`, the annotation guide, which GEPA's
   reflection reads).
-- **Splits:** 12 evolve (the loop learns from these), 8 val (GEPA's Pareto/selection set), 10 holdout (sealed: the
+- **Splits:** 36 evolve (the loop learns from these), 19 val (GEPA's Pareto/selection set), 39 holdout (sealed: the
   script shows the loop's evaluator refusing it; only `transfer_report` reads it, after the run).
 - **Noise:** 3 trials of the seed prompt on evolve give the noise band `delta`; GEPA then keeps a child prompt only if
   it beats its parent by more than `delta` (`acceptance="noise_margin"`), not on any strict gain.
+- **Headroom check:** if the seed already scores within `max(delta, 1/n)` of the top score (n = evolve tasks), no
+  kept change could be told apart from noise, so the script prints `STOP no headroom` and exits before the loop
+  spends anything. Make the tasks harder or use a weaker model; `--force` runs the loop anyway. (An earlier version
+  of this example used 30 easy tickets that Claude Haiku already got 100% right, and still spent the full budget.)
 - **Offline:** no existing simulator fits a custom CSV, so the script defines a small keyword classifier
   (`offline_classifier`) that follows only the rules written in the prompt and answers at random 20% of the time.
   The proposer is GEPA's `GenericReflectionLM`, which appends a failing example's feedback as a `Lesson:` line.
 - **Your data:** `--csv my.csv` with columns `text,label`, then edit `prompt.md` and `LABEL_GUIDE` to your labels.
-- **Live cost:** about 350 short task calls (noise measurement, 150 GEPA rollouts, the report) and 10-40 reflection
-  calls: well under $1 with Haiku. GEPA runs rollouts one at a time, so a CLI run takes some minutes.
+- **Live cost:** about 700 task calls (noise measurement, 300 GEPA rollouts, the report) and a few reflection calls.
+  One run with `--llm claude:haiku` (8 November 2026) cost $1.52 and took about 50 minutes, since GEPA runs rollouts
+  one at a time. The seed scored 0.917 on evolve (delta 0.038), so the headroom check passed. GEPA's best prompt
+  wrote out all three house rules, and the sealed holdout went from 0.910 to 1.000 (paired 95% CI +0.013 to
+  +0.179, 39 tickets). This is one run: an earlier three-seed trial on the same tickets with subtype-level feedback
+  gave holdout gains of +0.04 to +0.09, with CIs that included 0.
 
 ## 02: an agent harness
 

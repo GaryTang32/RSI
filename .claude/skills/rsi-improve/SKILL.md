@@ -87,7 +87,9 @@ base = ev.evaluate(seed, "evolve", k=2)
 print(base.summary(), noise_from_trials(base.trial_matrix(), small_k_correction=True))   # delta = the smallest gain worth believing
 ```
 RRSI's bootstrap (`noise_from_trials`) underestimates the variance by (k-1)/k at small k, so pass
-`small_k_correction=True`, or better, score the seed R >= 2 times and use `noise_from_repeats(scores)`.
+`small_k_correction=True`, or score the seed R >= 5 times and use `noise_from_repeats(scores)`. With
+fewer repeats the band itself is noisy (R = 2 gives a band below 60% of the true width about 45% of the
+time), so pass `small_sample=True` for a Student-t band, or use k >= 2 trials and the corrected bootstrap.
 If the seed already scores ~1.0, or delta is larger than any plausible gain, stop and fix the task set.
 
 ## 4. Choose a method
