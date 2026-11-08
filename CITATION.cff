@@ -13,8 +13,8 @@ authors:
 repository-code: "https://github.com/GaryTang32/RSI"
 url: "https://github.com/GaryTang32/RSI"
 license: MIT
-version: "0.1.0"
-date-released: "2026-11-01"
+version: "0.1.1"
+date-released: "2026-11-08"
 keywords:
   - recursive self-improvement
   - prompt optimization
