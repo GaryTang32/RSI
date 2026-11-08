@@ -199,7 +199,7 @@ GEPA) uses more information. `res.best` is H0; do not run `transfer_report` on i
   the same selector did not beat one H0 draw.
 - **Shared premise**: candidates and composer share model biases; agreement is support, not proof [paper App. H].
 - **Leak tripwire stops the run**: any grader phrase or `"score":` key in a trajectory raises `GraderLeak`, except
-  inside verbatim copies of the task's own text (its request, raw input and source files); fix the domain or its
+  inside the task's own text (its request, raw input and source files), quoted whole or cut off; fix the domain or its
   markers, never widen the guard.
 - **Prompt growth**: single-shot sessions carry the whole evidence and library; watch improver tokens per task in
   `res.usage` and cap spend with `max_usd`.

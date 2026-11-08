@@ -53,6 +53,12 @@ Before 1.0, minor versions may change the API.
   verdict instead of crashing the round.
 - Harness²: `best_of_n` grades the streamed tasks themselves, so custom tasks no longer crash the report.
 - EvoMap: `rsi-taskcheck --n 0` (or a negative n) checks one task instead of crashing.
+- RRSI: `readjudicate()` drops the held-out monitor row of a winner it replaces and logs the new winner's score; an
+  unchanged winner keeps its row (monitor rows now record their artifact).
+- autoresearch: `MultiChainLauncher` refuses to run concurrent chains that share an LLM object when a chain has
+  `max_usd` (each chain would count the others' spend), and warns otherwise; build separate LLMs per chain.
+- Harness²: the leak tripwire also accepts a marker inside a quotation of the task's own text that is cut off (as in a
+  trace that truncates the task), not only an exact copy; a grader score elsewhere is still a leak.
 
 ### Changed
 - The codebase is formatted and linted with ruff (CI checks both); a pre-commit config runs the same checks.

@@ -65,10 +65,43 @@ def without_own(text: str, own: Iterable[str] = ()) -> str:
     return text
 
 
+#: characters of context, on one side of a marker, that must match the task's own text for the marker to count as a
+#: quotation of the task (a trace may quote the task truncated, so a whole verbatim copy is not always present)
+QUOTE_CONTEXT = 24
+
+
+def _occurrences(text: str, markers: Iterable[str]):
+    """``(start, end, marker)`` for every grader-verdict marker occurrence in ``text``."""
+    for m in markers:
+        i = text.find(m)
+        while m and i != -1:
+            yield i, i + len(m), m
+            i = text.find(m, i + 1)
+    for mt in _GRADED_KEY.finditer(text):
+        yield mt.start(), mt.end(), mt.group(0)
+
+
+def _quotes_own(text: str, start: int, end: int, own: list[str]) -> bool:
+    """True if the marker at ``text[start:end]`` sits in a stretch of the task's own text: QUOTE_CONTEXT characters
+    before it, or after it, together with the marker, occur verbatim in ``own``."""
+    left = text[max(0, start - QUOTE_CONTEXT) : end]
+    right = text[start : end + QUOTE_CONTEXT]
+    for snippet, ctx in ((left, text[max(0, start - QUOTE_CONTEXT) : start]), (right, text[end : end + QUOTE_CONTEXT])):
+        if len(ctx.strip()) >= QUOTE_CONTEXT // 2 and any(snippet in o for o in own):
+            return True
+    return False
+
+
 def check_text(text: str, markers: Iterable[str], where: str, own: Iterable[str] = ()) -> None:
-    """Raise :class:`GraderLeak` if ``text`` carries a grader verdict outside the task's own text ``own``."""
-    if hit := find_marker(without_own(text, own), markers):
-        raise GraderLeak(f"grader-verdict marker {hit!r} in {where}: this is a leak, not a false positive to widen")
+    """Raise :class:`GraderLeak` if ``text`` carries a grader verdict outside the task's own text ``own``.
+
+    Verbatim copies of ``own`` are cut out first; a marker left over still counts as the task's own when the text
+    around it is a quotation of ``own`` (e.g. a trace that quotes the task cut off at a length limit)."""
+    rest = without_own(text, own)
+    pieces = [str(o) for o in own if o and str(o).strip()]
+    for start, end, hit in sorted(_occurrences(rest, markers)):
+        if not (pieces and _quotes_own(rest, start, end, pieces)):
+            raise GraderLeak(f"grader-verdict marker {hit!r} in {where}: this is a leak, not a false positive to widen")
 
 
 def screen_tree(files: Mapping[str, str | None], markers: Iterable[str], where: str) -> None:

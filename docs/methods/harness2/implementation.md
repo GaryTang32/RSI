@@ -192,7 +192,9 @@ How to read it:
 - **Markers are strings.** The leak tripwire raises on any grader phrase in evidence; a model that prints
   `"score": ` in JSON, or one of AgentQA's grader phrases, stops the run with `GraderLeak` (by design: "a leak, not a
   false positive to widen around"). Verbatim copies of the task's own text (request, raw input, source files) are cut
-  out before screening, so user data such as `{"score": 4}` in a task is not a leak.
+  out before screening, and a marker whose surrounding text is a quotation of the task (for example a trace that
+  quotes it cut off at a length limit) is not counted either, so user data such as `{"score": 4}` in a task is not
+  a leak.
 - **No resume**: a killed run restarts the stream (a `CachedLLM` makes the replay cheap).
 
 ### Before a live run (k = 1 and k = 3 with Claude Haiku, $25 cap)

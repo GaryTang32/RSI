@@ -46,3 +46,30 @@ def test_truncate_drops_monitor_rows_of_removed_rounds_and_rerun_logs_the_new_in
     assert [x["t"] for x in rows] == [1, 2]
     traj = read_json(out / "frontier.json")["trajectory"]
     assert rows[1]["S_evolve"] == traj[2]["S"]
+
+
+def test_readjudicate_keeps_the_monitor_row_of_an_unchanged_winner(tmp_path, monkeypatch):
+    out = tmp_path / "m"
+    r = _run(out, [LOWER, GENERIC + "\n# a\n"])
+    drive(r)
+    before = read_jsonl(out / "heldout_monitor.jsonl")
+    assert [x["t"] for x in before] == [1, 2] and all("artifact_id" in x for x in before)
+    holdout = []
+    real = L.Evaluator.evaluate
+    monkeypatch.setattr(
+        L.Evaluator,
+        "evaluate",
+        lambda self, a, split="evolve", *x, **kw: holdout.append(split) or real(self, a, split, *x, **kw),
+    )
+    r.readjudicate(1)  # same measurements, same config: the same winner
+    assert read_jsonl(out / "heldout_monitor.jsonl") == before and "holdout" not in holdout
+
+
+def test_readjudicate_drops_the_monitor_row_when_the_winner_goes_away(tmp_path, monkeypatch):
+    out = tmp_path / "m"
+    r = _run(out, [LOWER, GENERIC + "\n# a\n"])
+    drive(r)
+    real = L.select_round
+    monkeypatch.setattr(L, "select_round", lambda *a, **kw: (None, real(*a, **kw)[1]))  # nothing admissible now
+    r.readjudicate(1)
+    assert [x["t"] for x in read_jsonl(out / "heldout_monitor.jsonl")] == [1]  # row 2 named the old winner
