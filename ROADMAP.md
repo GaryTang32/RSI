@@ -22,6 +22,8 @@ Found while writing `examples/`:
 - **Total spend in one place.** `res.usage` leaves out the noise measurement and `transfer_report`, and adding the task
   and proposer meters double-counts when they are the same object. **good first issue**
 - **Consistent reruns.** Reusing an `out_dir` resumes for GEPA but fails without `overwrite=True` for autoresearch.
+- **A headroom check in the API.** Example 01 stops before the loop when the seed is already within the noise band of
+  the top score; `rsi.improve` could warn the same way for every method.
 - **`transfer_report` splits.** The default `("evolve", "holdout", "ood")` silently skips a `val` or `test` split;
   warn, or score every sealed split by default. **good first issue**
 

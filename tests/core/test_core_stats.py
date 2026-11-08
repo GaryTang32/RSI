@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import sys
+import warnings
 
 import numpy as np
 import pytest
@@ -30,15 +31,41 @@ def _all_nan(values) -> bool:
 
 
 def test_noise_from_repeats_uses_sqrt2_factor():
-    ne = noise_from_repeats([0.5, 0.6, 0.7])
-    sd = np.std([0.5, 0.6, 0.7], ddof=1)
+    five = [0.5, 0.6, 0.7, 0.55, 0.65]
+    ne = noise_from_repeats(five)
+    sd = np.std(five, ddof=1)
     assert ne.sd_null == pytest.approx(sd * math.sqrt(2))
     assert ne.delta == pytest.approx(2.0 * sd * math.sqrt(2))
-    assert (ne.mode, ne.n, ne.z) == ("repeat", 3, 2.0)
-    assert noise_from_repeats([0.5, 0.6, 0.7], z=3).delta == pytest.approx(3 * sd * math.sqrt(2))
-    assert noise_from_repeats([0.4, 0.4]).delta == 0.0
+    assert (ne.mode, ne.n, ne.z) == ("repeat", 5, 2.0)
+    assert noise_from_repeats(five, z=3).delta == pytest.approx(3 * sd * math.sqrt(2))
     with pytest.raises(ValueError):
         noise_from_repeats([0.5])
+
+
+def test_few_repeats_warn_and_small_sample_widens_the_band():
+    three = [0.5, 0.6, 0.7]
+    sd = np.std(three, ddof=1) * math.sqrt(2)
+    with pytest.warns(UserWarning, match="only 3 repeated"):
+        assert noise_from_repeats(three).delta == pytest.approx(2.0 * sd)
+    with pytest.warns(UserWarning, match="only 2 repeated"):
+        assert noise_from_repeats([0.4, 0.4]).delta == 0.0
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        t = noise_from_repeats(three, small_sample=True)  # Student-t band: no warning
+        noise_from_repeats([0.5, 0.6, 0.7, 0.55, 0.65])  # five repeats: no warning
+    assert t.z == pytest.approx(4.527) and t.delta == pytest.approx(4.527 * sd) and t.sd_null == pytest.approx(sd)
+    assert noise_from_repeats([0.1 * i for i in range(40)], small_sample=True).z == 2.0  # large R: plain z
+    with pytest.raises(ValueError, match="z = 2"):
+        noise_from_repeats(three, z=3, small_sample=True)
+
+
+def test_small_sample_quantiles_have_the_coverage_of_z2():
+    from scipy.stats import norm, t
+
+    from rsi.core.stats import _T_Z2
+
+    for df, q in _T_Z2.items():
+        assert q == pytest.approx(t.ppf(norm.cdf(2.0), df), abs=1e-3)
 
 
 def test_noise_from_trials_matches_analytic_within_task_se():

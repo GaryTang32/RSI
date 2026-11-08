@@ -1,8 +1,13 @@
-"""Improve a classification prompt on your own labelled CSV with GEPA (support-ticket intents).
+"""Improve a classification prompt on your own labelled CSV with GEPA (support-ticket routing with house rules).
 
 Offline (default, ~5 s, no API key):  python examples/01_prompt_from_csv/improve_prompt.py
 Live (claude CLI, uses your plan):    python examples/01_prompt_from_csv/improve_prompt.py --llm claude:haiku
 Your data: --csv my.csv (columns text,label); edit prompt.md and LABEL_GUIDE below to match your labels.
+
+The bundled tickets follow three company routing rules a model cannot guess (refunds for damaged or lost items
+go to shipping, login errors to account, subscription cancellations to account), so the one-line seed prompt
+leaves room to improve. If your seed already scores within the noise band of the top, the script stops before
+spending on the loop (--force runs it anyway).
 """
 
 from __future__ import annotations
@@ -37,11 +42,18 @@ from rsi.gepa import GenericReflectionLM
 HERE = Path(__file__).resolve().parent
 OFFLINE_NOTE = "offline simulated model: numbers show the loop working, not real gains"
 # The grader's annotation guide: one sentence per label, returned as feedback when a ticket is misclassified.
+# It states the house rules (the seed prompt does not), so GEPA's reflection can learn them from the feedback.
 LABEL_GUIDE = {
-    "billing": "Tickets about a refund, charge, invoice, payment or subscription price are billing.",
-    "technical": "Tickets about a crash, error, bug, freeze or slowness are technical.",
-    "account": "Tickets about a password, login, username or profile are account.",
-    "shipping": "Tickets about a delivery, parcel, tracking number, courier or package are shipping.",
+    "billing": "Tickets about an unexpected charge, invoice, fee or failed payment are billing.",
+    "technical": "Tickets about an app or website crash, page error, freeze, blank screen or slowness are technical.",
+    "account": (
+        "House rules: tickets about a login, sign-in, password, two-factor or authentication error, a profile, "
+        "email, username or phone change, or cancelling or pausing a subscription or plan are account."
+    ),
+    "shipping": (
+        "House rules: tickets about a delivery, parcel, tracking, address change, or a refund for a damaged, "
+        "broken, missing or lost item are shipping."
+    ),
 }
 
 
@@ -68,7 +80,7 @@ def load_suite(path: Path) -> TaskSuite:
     if unknown := {t.target for t in tasks} - set(LABEL_GUIDE):
         raise SystemExit(f"labels {sorted(unknown)} have no LABEL_GUIDE entry: add one sentence for each")
     # evolve: the loop learns from it; val: GEPA's Pareto/selection set; holdout: SEALED, read only at the end
-    return TaskSuite.from_tasks(tasks, fractions={"evolve": 0.4, "val": 0.27, "holdout": 0.33}, seed=0)
+    return TaskSuite.from_tasks(tasks, fractions={"evolve": 0.38, "val": 0.2, "holdout": 0.42}, seed=0)
 
 
 def execute(artifact: Artifact, task: Task, seed: int, llm) -> Execution:
@@ -84,12 +96,28 @@ def grade(task: Task, label: str) -> tuple[float, str]:
     return 0.0, f"{LABEL_GUIDE[task.target]} (expected {task.target!r}, got {label!r})"
 
 
+def headroom_check(score: float, delta: float, n_tasks: int, top: float = 1.0) -> str | None:
+    """Why the loop cannot show a gain on this split, or None when there is room to improve.
+
+    A kept change must beat the seed by more than delta, and one task is worth 1/n of the score, so a seed
+    within max(delta, 1/n) of the top score leaves no gain the loop could tell apart from noise."""
+    room, needed = top - score, max(delta, 1.0 / max(1, n_tasks))
+    if room <= needed:
+        return (
+            f"the seed scores {score:.3f}, only {room:.3f} below the top score {top:g}, and a kept change must gain "
+            f"more than {needed:.3f} (the noise band, or one task). Make the tasks harder or use a weaker model; "
+            "--force runs the loop anyway."
+        )
+    return None
+
+
 def main(argv: list[str] | None = None) -> dict:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--llm", default="offline", help="offline (simulated) | claude:haiku | api:sonnet | ...")
     ap.add_argument("--out", default=None, help="run directory (default: a fresh temp dir)")
     ap.add_argument("--csv", default=str(HERE / "tickets.csv"), help="labelled examples: columns text,label")
-    ap.add_argument("--budget", type=int, default=150, help="GEPA max_metric_calls (task rollouts)")
+    ap.add_argument("--budget", type=int, default=300, help="GEPA max_metric_calls (task rollouts)")
+    ap.add_argument("--force", action="store_true", help="run the loop even if the seed leaves no headroom")
     a = ap.parse_args(argv)
     out = Path(a.out or tempfile.mkdtemp(prefix="rsi-ex01-"))
     offline = a.llm == "offline"
@@ -110,6 +138,9 @@ def main(argv: list[str] | None = None) -> dict:
     base = ev.evaluate(seed, "evolve", k=3)
     delta = noise_from_trials(base.trial_matrix(), small_k_correction=True).delta
     print(f"seed on evolve: {base.score:.3f}   noise band delta: {delta:.3f}")
+    if (why := headroom_check(base.score, delta, len(base.trials), dom.score_range[1])) and not a.force:
+        print(f"\nSTOP no headroom: {why}")
+        return {"stopped": why, "seed_score": base.score, "delta": delta, "out": str(out)}
     try:
         ev.evaluate(seed, "holdout")
     except SealedSplitError:

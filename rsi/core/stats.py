@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -21,13 +22,42 @@ class NoiseEstimate:
         return self.__dict__.copy()
 
 
-def noise_from_repeats(scores: Sequence[float], z: float = 2.0) -> NoiseEstimate:
-    """delta from R >= 2 repeated evaluations of the unchanged artifact: sd(null dS) = stdev(S_r) * sqrt(2)."""
+# Student-t quantiles with the coverage of z = 2 (one-sided 97.72%), by degrees of freedom R - 1.
+_T_Z2 = {
+    1: 13.968, 2: 4.527, 3: 3.307, 4: 2.869, 5: 2.649, 6: 2.517, 7: 2.429, 8: 2.366, 9: 2.320, 10: 2.284,
+    11: 2.255, 12: 2.231, 13: 2.212, 14: 2.195, 15: 2.181, 16: 2.169, 17: 2.158, 18: 2.149, 19: 2.140,
+    20: 2.133, 21: 2.126, 22: 2.120, 23: 2.115, 24: 2.110, 25: 2.105, 26: 2.101, 27: 2.097, 28: 2.093, 29: 2.090,
+}  # fmt: skip
+MIN_RELIABLE_REPEATS = 5
+
+
+def noise_from_repeats(scores: Sequence[float], z: float = 2.0, small_sample: bool = False) -> NoiseEstimate:
+    """delta from R >= 2 repeated evaluations of the unchanged artifact: sd(null dS) = stdev(S_r) * sqrt(2).
+
+    The standard deviation of a few repeats is itself noisy: with R = 2 the estimate is below 60% of the
+    true value about 45% of the time (R = 3: 30%, R = 5: 16%, R = 10: 5%). A band that is too narrow lets
+    noise through as gains, so fewer than 5 repeats warn. ``small_sample=True`` replaces ``z = 2`` by the
+    Student-t quantile with the same coverage for R - 1 degrees of freedom (4.53 at R = 3, 2.65 at R = 6),
+    which keeps the false-keep rate near the nominal 2.3% at any R; it applies only when ``z == 2``.
+    """
     s = np.asarray(scores, float)
     if len(s) < 2:
         raise ValueError("need at least two repeated evaluations")
     sd = float(np.std(s, ddof=1)) * math.sqrt(2)
-    return NoiseEstimate(z * sd, sd, z, "repeat", len(s))
+    mult = z
+    if small_sample:
+        if z != 2.0:
+            raise ValueError("small_sample=True uses the t quantile matching z = 2; leave z at 2")
+        mult = _T_Z2.get(len(s) - 1, z)
+    elif len(s) < MIN_RELIABLE_REPEATS:
+        warnings.warn(
+            f"noise band from only {len(s)} repeated evaluations: the band itself is noisy and often too narrow "
+            f"(noise passes as gains). Use >= {MIN_RELIABLE_REPEATS} repeats, or small_sample=True for a "
+            "Student-t band",
+            UserWarning,
+            stacklevel=2,
+        )
+    return NoiseEstimate(mult * sd, sd, mult, "repeat", len(s))
 
 
 def noise_from_trials(

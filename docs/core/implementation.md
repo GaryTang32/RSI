@@ -170,6 +170,13 @@ the time instead of 2.5%. A noise band built from it (`MinGain`) lets about 9% o
 through instead of about 2.3%. Use repeated base evaluations (`noise_from_repeats`, which RRSI
 prefers when R ≥ 2) or scale by sqrt(k/(k-1)).
 
+**Few repeats.** A band from R repeats is right on average but noisy itself: the estimated width is below
+60% of the true width with probability 0.45 at R = 2, 0.30 at R = 3, 0.16 at R = 5 and 0.05 at R = 10. In
+a k = 1 null test with the band re-calibrated per replicate (120 replicates), a z = 2 band kept 8.3% of
+null candidates at R = 2, 5.8% at R = 3, 5.0% at R = 5 and 2.5% at R = 10 (nominal 2.3%); the Student-t
+band (`small_sample=True`) kept 4.2%, 1.7%, 0.8% and 1.7%. `noise_from_repeats` therefore warns below
+R = 5.
+
 ## Live smoke
 
 * **Round 1** (`tests/core/test_core_live.py`, about $0.017 per run, recorded in
