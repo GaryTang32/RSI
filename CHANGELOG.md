@@ -6,6 +6,11 @@ Before 1.0, minor versions may change the API.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-08
+
+Fixes for all 29 findings of the November 2026 code review and three follow-ups, plus README and docs
+improvements. Upgrading from 0.1.0 needs no code changes, with the exceptions listed under Changed.
+
 ### Fixed
 - Spend caps now work for every model on the API backend: prices cover all current Claude models (only Haiku was
   priced, so Sonnet and Opus calls were recorded as $0 and `max_usd` never stopped a run). An unpriced model warns.
@@ -61,8 +66,26 @@ Before 1.0, minor versions may change the API.
   trace that truncates the task), not only an exact copy; a grader score elsewhere is still a leak.
 
 ### Changed
+Behaviour that may affect code written against 0.1.0:
+- `TaskSuite` raises `ValueError` on repeated task ids; give ids a family prefix (`dates-0`, `units-0`).
+- `FunctionDomain` raises a failed model call as an `infra:` error (counted missing, retried, never cached); pass
+  `raise_on_llm_error=False` to read `LLMResponse.error` yourself.
+- Some caches re-run once: trial-cache entries of tasks that have `meta`, and model-call cache entries made with the
+  `claude` CLI's `effort` or a non-default API `max_tokens`, now have different keys.
+- `BootstrapRigor` with one sample per arm accepts only a gain beyond a supplied noise band, and `keep_rule="rigor"`
+  with `repeats < 2` warns because it rejects every candidate (the default is 3).
+- SoL-Pi's `max_iters` counts Ralph repairs, so up to `max_iters + 1` exit checks; "solved" follows the domain's
+  `score_range` (unchanged for the default 0-1 range).
+- `MultiChainLauncher` refuses concurrent chains that share an LLM when a chain has `max_usd`.
+- `Artifact.to_dir` rejects `.` / empty path components such as `d//x`, which used to be written as `d/x`.
+- SafeHub validates real-model bundles in a subprocess by default, and the in-process simulation executor no longer
+  imports `os` or `sys`.
+- Parallel autoresearch writes shadow-audit records once no run is in flight.
+
+Project:
 - The codebase is formatted and linted with ruff (CI checks both); a pre-commit config runs the same checks.
 - Slow tests are marked, so `pytest -m "not slow"` gives a quick local subset.
+- README: a new first screen (tagline, results chart, three-step quick start, results at a glance).
 
 ### Added
 - README section 5, "How to use": what to ask, the setup questions, what the skill does, the files a run writes
@@ -114,5 +137,6 @@ First tagged release.
 - Non-editable installs (`pip install` from git) now include the package's data files: seed-harness prompts, benchmark
   manifests and EvoMap's schemas.
 
-[Unreleased]: https://github.com/GaryTang32/RSI/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/GaryTang32/RSI/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/GaryTang32/RSI/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/GaryTang32/RSI/releases/tag/v0.1.0

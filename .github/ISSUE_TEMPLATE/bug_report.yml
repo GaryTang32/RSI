@@ -37,6 +37,6 @@ body:
     attributes:
       label: Versions
       description: "`rsi` version or commit, Python version, OS."
-      placeholder: "rsi 0.1.0 (or commit abc1234), Python 3.12, Ubuntu 24.04"
+      placeholder: "rsi 0.1.1 (or commit abc1234), Python 3.12, Ubuntu 24.04"
     validations:
       required: true
