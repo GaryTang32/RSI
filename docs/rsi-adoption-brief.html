@@ -1,0 +1,1653 @@
+<title>RSI Adoption Brief</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap">
+<style>
+  /* Layout: light-only technical brief (same system as the China RSI Adoption brief), fluid to 1280px. Skim path = headings, summaries, charts, conclusion;
+     depth sits in step cards, tabs and the verification ladder. Diagrams follow diagram-design rules with this brief's tokens. */
+  :root {
+    color-scheme: light;
+    --bg: #FFFFFF;
+    --paper: #FFFFFF;
+    --surface: #EEF1F6;
+    --ink: #151A26;
+    --muted: #556074;
+    --soft: #6B7487;
+    --rule: #D8DDE6;
+    --rule-strong: #B4BCCA;
+    --accent: #2D4BC8;
+    --accent-tint: #E7EBFC;
+    --check: #0D7266;
+    --check-tint: #DFF1EC;
+    --warn: #B3261E;
+    --warn-tint: #F9E5E2;
+    --amber: #8A5A00;
+    --amber-tint: #FBEFD5;
+    --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --font-cond: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+    --violet: #5B3FB0;
+    --violet-tint: #EEEAFA;
+    --part: var(--accent);
+    --part-tint: var(--accent-tint);
+    --motion-fast: 160ms;
+    --motion-step: 480ms;
+    --motion-hold: 720ms;
+    --motion-total: 7200ms;
+    --motion-ease: cubic-bezier(.2,.8,.2,1);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body);
+    font-size: clamp(15px, 14px + 0.2vw, 16.5px); line-height: 1.55;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px;
+  }
+  main { width: 100%; max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: clamp(24px, 2.6vw, 34px); }
+  section, header { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  p { margin: 0; max-width: 100ch; }
+  a { color: var(--accent); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+  strong { font-weight: 600; }
+
+  /* Part colours: Repo blue, Trials teal, Evaluation amber, Adoption violet */
+  #repo, [id^="rp-"] { --part: var(--accent); --part-tint: var(--accent-tint); }
+  #trials, [id^="tr-"] { --part: var(--check); --part-tint: var(--check-tint); }
+  #eval, [id^="ev-"] { --part: var(--amber); --part-tint: var(--amber-tint); }
+  #adopt, [id^="ad-"] { --part: var(--violet); --part-tint: var(--violet-tint); }
+
+  .eyebrow { font-family: var(--font-cond); font-weight: 600; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+  .hero { background: var(--accent-tint); border-top: 4px solid var(--accent); padding: 16px 22px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .hero .eyebrow { color: var(--accent); }
+  .hero-meta { margin: 2px 0 0; display: flex; flex-wrap: wrap; font-family: var(--font-cond); font-weight: 500; font-size: 0.84rem; color: var(--muted); }
+  .hero-meta span + span::before { content: "·"; margin: 0 10px; color: var(--rule-strong); }
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+  h1 { font-size: clamp(2rem, 3.4vw, 2.75rem); line-height: 1.08; }
+  h2 { font-size: clamp(1.55rem, 2.4vw, 2rem); line-height: 1.15; }
+  h3 { font-size: clamp(1.2rem, 1.6vw, 1.4rem); line-height: 1.25; display: flex; gap: 10px; align-items: center; }
+  h3 .no { font-family: var(--font-mono); font-size: 0.82rem; font-weight: 500; color: var(--part); }
+  h4 { margin: 4px 0 0; font-family: var(--font-cond); font-weight: 600; font-size: 0.84rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
+  h4:not(.sd-h) { display: flex; align-items: center; gap: 8px; }
+  h4:not(.sd-h)::before { content: ""; flex: none; width: 16px; height: 3px; border-radius: 1px; background: var(--part); }
+  .dek { font-family: var(--font-display); font-size: 1.16rem; line-height: 1.45; color: #2A3142; max-width: 100ch; }
+  .lead-in { color: #3B4354; font-family: var(--font-display); font-style: italic; font-size: 1.08rem; line-height: 1.45; }
+  .meta { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .note { font-size: 0.82rem; color: var(--muted); }
+  ul.plain { margin: 0; padding-left: 1.15em; display: flex; flex-direction: column; gap: 5px; max-width: 90ch; }
+  ul.plain li::marker { color: var(--muted); }
+
+  .brief { background: var(--surface); border-left: 3px solid var(--accent); border-radius: 2px; padding: 10px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .brief .rec strong { color: var(--accent); }
+  .brief .k { font-family: var(--font-cond); font-weight: 600; font-size: 0.82rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+  .brief .rec { font-size: 0.94rem; padding-top: 7px; border-top: 1px solid var(--rule-strong); }
+
+  details.glossary { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 7px 14px; }
+  details.glossary summary { cursor: pointer; font-family: var(--font-cond); font-weight: 600; font-size: 0.9rem; letter-spacing: 0.05em; text-transform: uppercase; }
+  details.glossary dl { margin: 8px 0 0; display: grid; grid-template-columns: minmax(150px, 220px) minmax(0, 1fr); gap: 6px 18px; font-size: 0.92rem; }
+  details.glossary dt { font-family: var(--font-display); font-weight: 600; font-size: 1rem; }
+  details.glossary dd { margin: 0; color: var(--muted); }
+
+  .toc { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--rule); }
+  .toc > div { padding: 10px 14px; display: flex; flex-direction: column; gap: 3px; min-width: 0; border-left: 1px solid var(--rule); border-top: 3px solid var(--part); }
+  .toc > div:first-child { border-left: 0; padding-left: 0; }
+  .toc > div:nth-child(2) { --part: var(--check); --part-tint: var(--check-tint); }
+  .toc > div:nth-child(3) { --part: var(--amber); --part-tint: var(--amber-tint); }
+  .toc > div:nth-child(4) { --part: var(--violet); --part-tint: var(--violet-tint); }
+  .toc .part { font-family: var(--font-cond); font-weight: 600; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--part); }
+  .toc .ttl { font-family: var(--font-display); font-weight: 600; font-size: 1.24rem; line-height: 1.2; color: var(--ink); text-decoration: none; }
+  .toc .ttl:hover { color: var(--part); }
+  .toc .gist { font-size: 0.8rem; color: var(--muted); line-height: 1.4; }
+  .toc ol { list-style: none; margin: 3px 0 0; padding: 6px 0 0; border-top: 1px solid var(--rule); display: flex; flex-direction: column; gap: 1px; font-size: 0.86rem; }
+  .toc li { display: flex; gap: 8px; }
+  .toc li span { font-family: var(--font-mono); font-size: 0.76rem; color: var(--muted); min-width: 2em; padding-top: 1px; }
+
+  .banner { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 18px; row-gap: 2px; border-top: 4px solid var(--part); padding-top: 12px; }
+  .banner::before { content: attr(data-pn); grid-column: 1; grid-row: 1 / span 3; align-self: center; font-family: var(--font-display); font-weight: 600; font-size: clamp(2.6rem, 4.2vw, 3.6rem); line-height: 0.9; letter-spacing: -0.03em; color: var(--part); }
+  .banner > * { grid-column: 2; }
+  .banner .tag { font-family: var(--font-cond); font-weight: 600; font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--part); }
+
+  .summary { margin: 0; background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; display: grid; grid-template-columns: minmax(130px, 160px) minmax(0, 1fr); }
+  .summary dt, .summary dd { margin: 0; padding: 7px 14px; border-bottom: 1px solid var(--rule); }
+  .summary dt { font-family: var(--font-cond); font-weight: 600; font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--part); background: var(--part-tint); padding-top: 8px; }
+  .summary dd { font-size: 0.94rem; }
+  .summary dt:last-of-type, .summary dd:last-of-type { border-bottom: 0; }
+  .summary dd.bottom { font-family: var(--font-display); font-size: 1.08rem; font-weight: 600; color: var(--part); }
+
+  /* ---------- Diagram skin ---------- */
+  figure { margin: 0; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .diagram { overflow-x: auto; background: var(--paper); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 8px 0; }
+  svg.dg { display: block; width: 100%; height: auto; margin-inline: 0; }
+  figcaption { font-size: 0.8rem; color: var(--muted); line-height: 1.45; max-width: 110ch; }
+  .hint { display: none; font-style: italic; }
+  .bgp, .mk { fill: var(--paper); }
+  .nb { fill: var(--paper); stroke: var(--rule-strong); stroke-width: 1; }
+  .nb-check { fill: var(--check-tint); stroke: var(--check); stroke-width: 1; }
+  .nb-focal { fill: var(--accent-tint); stroke: var(--accent); stroke-width: 1.2; }
+  .nb-dash { fill: var(--paper); stroke: var(--muted); stroke-width: 1; stroke-dasharray: 5 4; }
+  .tg { fill: none; stroke: var(--rule-strong); stroke-width: 0.8; }
+  .tg-t { fill: var(--muted); font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.08em; }
+  .n-name { fill: var(--ink); font-family: var(--font-body); font-size: 13px; font-weight: 600; }
+  .n-sub { fill: var(--muted); font-family: var(--font-mono); font-size: 10.5px; }
+  .n-body { fill: var(--ink); font-family: var(--font-body); font-size: 12.5px; }
+  .lane-t { fill: var(--muted); font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: 0.14em; }
+  .lane-s { fill: var(--soft); font-family: var(--font-mono); font-size: 10px; }
+  .a-lab { fill: var(--soft); font-family: var(--font-mono); font-size: 9.5px; font-weight: 500; letter-spacing: 0.06em; }
+  .a-lab-acc { fill: var(--accent); font-family: var(--font-mono); font-size: 9.5px; font-weight: 500; letter-spacing: 0.06em; }
+  .a-lab-warn { fill: var(--warn); font-family: var(--font-mono); font-size: 9.5px; font-weight: 500; letter-spacing: 0.06em; }
+  .t-acc { fill: var(--accent); font-family: var(--font-mono); font-size: 11px; }
+  .t-check { fill: var(--check); font-family: var(--font-body); font-size: 13px; font-weight: 600; }
+  .t-warn { fill: var(--warn); font-family: var(--font-body); font-size: 13px; font-weight: 600; }
+  .ar { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+  .ar-acc { stroke: var(--accent); stroke-width: 1.6; fill: none; }
+  .ar-dash { stroke: var(--muted); stroke-width: 1.4; fill: none; stroke-dasharray: 5 4; }
+  .ar-warn { stroke: var(--warn); stroke-width: 1.4; fill: none; stroke-dasharray: 5 4; }
+  .ar-thick { stroke: var(--accent); stroke-width: 5; fill: none; stroke-linecap: round; }
+  .rule-line { stroke: var(--rule); stroke-width: 1; }
+  .hd { fill: var(--muted); } .hd-acc { fill: var(--accent); } .hd-warn { fill: var(--warn); }
+  .dot { fill: var(--ink); }
+  .pill-real { fill: var(--check); }
+  .pill-real-t { fill: var(--paper); font-family: var(--font-mono); font-size: 10.5px; }
+  .pill-demo { fill: var(--paper); stroke: var(--muted); stroke-dasharray: 4 3; }
+  .pill-demo-t { fill: var(--muted); font-family: var(--font-mono); font-size: 10.5px; }
+  .chip-ok { fill: var(--check-tint); stroke: var(--check); stroke-width: 1; }
+  .chip-no { fill: var(--warn-tint); stroke: var(--warn); stroke-width: 1; }
+  .chip-ok-t { fill: var(--check); font-family: var(--font-body); font-size: 12px; font-weight: 600; }
+  .chip-no-t { fill: var(--warn); font-family: var(--font-body); font-size: 12px; font-weight: 600; }
+
+  /* Charts */
+  .chart { position: relative; }
+  .grid-l { stroke: var(--rule); stroke-width: 1; }
+  .base-l { stroke: var(--rule-strong); stroke-width: 1; }
+  .tick { fill: var(--soft); font-family: var(--font-mono); font-size: 10.5px; }
+  .bar-mut { fill: var(--muted); fill-opacity: 0.38; }
+  .bar-hi { fill: var(--check); }
+  .bar-acc { fill: var(--accent); }
+  .bar-warn { fill: var(--warn); fill-opacity: 0.85; }
+  .val { fill: var(--ink); font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+  .row { outline: none; }
+  .row .hit { fill: transparent; }
+  .row:hover .hit, .row:focus .hit { fill: var(--surface); }
+  .row:focus-visible .hit { stroke: var(--accent); stroke-width: 1.5; }
+  .tip { position: absolute; z-index: 5; transform: translate(-50%, -100%); pointer-events: none; background: var(--ink); color: var(--paper); font-family: var(--font-mono); font-size: 0.78rem; padding: 6px 10px; border-radius: 4px; max-width: 280px; line-height: 1.4; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .stat { display: flex; flex-direction: column; gap: 1px; padding-top: 6px; border-top: 2px solid var(--part); min-width: 0; }
+  .num { font-family: var(--font-display); font-size: 1.7rem; font-weight: 600; color: var(--part); font-variant-numeric: lining-nums tabular-nums; line-height: 1.1; }
+  .lbl { font-size: 0.8rem; color: var(--muted); line-height: 1.35; }
+
+  /* Buttons */
+  .btn { min-height: 36px; padding: 6px 12px; border: 1px solid var(--rule-strong); border-radius: 4px; background: var(--paper); color: var(--ink); font: 600 0.85rem/1 var(--font-body); cursor: pointer; }
+  .btn:hover { border-color: var(--accent); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+  .btn-primary:hover { background: #2440B0; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .counter { font-family: var(--font-mono); font-size: 0.82rem; color: var(--muted); }
+
+  /* MoE explorer */
+  .moe { display: grid; grid-template-columns: minmax(0, 520px) minmax(0, 1fr); gap: 20px; background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 14px; align-items: start; }
+  .moe-grid { display: grid; grid-template-columns: repeat(32, minmax(0, 1fr)); gap: 2px; }
+  .moe-grid .cell { aspect-ratio: 1; background: var(--surface); border-radius: 2px; transition: background 240ms var(--motion-ease); }
+  .moe-grid .cell.on { background: var(--accent); }
+  .moe-bar { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+  .moe-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .kv { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; font-size: 0.92rem; }
+  .kv dt { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); padding-top: 2px; }
+  .kv dd { margin: 0; font-family: var(--font-mono); font-weight: 500; }
+  .share { display: flex; flex-direction: column; gap: 4px; }
+  .share-track { height: 12px; background: var(--surface); border-radius: 2px; overflow: hidden; }
+  .share-fill { height: 100%; background: var(--accent); }
+  .why { font-size: 0.88rem; background: var(--accent-tint); border-radius: 2px; padding: 8px 12px; }
+  .why strong { color: var(--accent); }
+
+  /* ---------- Step walkthrough ---------- */
+  .stepper { display: flex; flex-direction: column; gap: 8px; }
+  .chips { display: none; flex-wrap: wrap; gap: 6px; }
+  .motion-ready .chips { display: flex; }
+  .motion-ready[data-frame="static"] .chips { display: none; }
+  .chips button { min-height: 32px; padding: 5px 10px; border: 1px solid var(--rule-strong); border-radius: 999px; background: var(--paper); color: var(--muted); font: 500 0.8rem/1 var(--font-mono); cursor: pointer; }
+  .chips button:hover { border-color: var(--accent); color: var(--ink); }
+  .motion-ready[data-step-current="0"] .chips [data-goto="0"],
+  .motion-ready[data-step-current="1"] .chips [data-goto="1"],
+  .motion-ready[data-step-current="2"] .chips [data-goto="2"],
+  .motion-ready[data-step-current="3"] .chips [data-goto="3"],
+  .motion-ready[data-step-current="4"] .chips [data-goto="4"],
+  .motion-ready[data-step-current="5"] .chips [data-goto="5"],
+  .motion-ready[data-step-current="6"] .chips [data-goto="6"] { background: var(--part); border-color: var(--part); color: var(--paper); }
+  .stepdetail { display: flex; flex-direction: column; gap: 8px; }
+  .stepdetail article { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 16px; background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--part); border-radius: 2px; padding: 10px 14px; }
+  .motion-ready .stepdetail article { display: none; }
+  .motion-ready[data-step-current="0"] .stepdetail article[data-n="0"],
+  .motion-ready[data-step-current="1"] .stepdetail article[data-n="1"],
+  .motion-ready[data-step-current="2"] .stepdetail article[data-n="2"],
+  .motion-ready[data-step-current="3"] .stepdetail article[data-n="3"],
+  .motion-ready[data-step-current="4"] .stepdetail article[data-n="4"],
+  .motion-ready[data-step-current="5"] .stepdetail article[data-n="5"],
+  .motion-ready[data-step-current="6"] .stepdetail article[data-n="6"],
+  .motion-ready[data-frame="static"] .stepdetail article { display: grid; }
+  .sd-k { font-family: var(--font-cond); font-weight: 600; font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--part); margin-bottom: 2px; }
+  .sd-h { font-family: var(--font-display); font-size: 1.24rem; line-height: 1.25; margin: 0 0 4px; font-weight: 600; text-transform: none; letter-spacing: -0.005em; color: var(--ink); }
+  .sd-main p { font-size: 0.94rem; }
+  .sd-facts { margin: 0; display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 4px 12px; font-size: 0.9rem; align-content: start; }
+  .sd-facts dt { font-family: var(--font-cond); font-weight: 600; font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); padding-top: 2px; }
+  .sd-facts dd { margin: 0; }
+  .sd-list { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
+
+  /* Motion contract (diagram-design template, re-skinned). Overview frame shows the whole diagram. */
+  .motion-ready [data-motion-item] {
+    opacity: .2; transform: translateY(8px); transform-box: fill-box; transform-origin: center;
+    transition: opacity var(--motion-step) var(--motion-ease), transform var(--motion-step) var(--motion-ease);
+  }
+  .motion-ready [data-motion-item].is-visible,
+  .motion-ready[data-frame="start"] [data-motion-item],
+  .motion-ready[data-frame="end"] [data-motion-item],
+  .motion-ready[data-frame="static"] [data-motion-item] { opacity: 1; transform: none; }
+  .motion-ready:is([data-frame="step"], [data-frame="end"]) [data-motion-item].is-current :is(.nb, .nb-check, .nb-focal) { stroke: var(--accent); stroke-width: 2.6; }
+  [data-motion-controls] { display: none; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .motion-ready [data-motion-controls] { display: flex; }
+  [data-motion-controls][hidden] { display: none !important; }
+  [data-motion-controls] button { min-width: 44px; min-height: 38px; padding: 6px 12px; border: 1px solid var(--rule-strong); border-radius: 4px; color: var(--ink); background: var(--paper); font: 600 0.82rem/1 var(--font-body); cursor: pointer; }
+  [data-motion-controls] button:hover { border-color: var(--accent); }
+  [data-motion-controls] button[data-motion-action="next"] { background: var(--part); border-color: var(--part); color: var(--paper); }
+  [data-motion-controls] button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  [data-motion-controls] button:disabled { cursor: not-allowed; opacity: .45; }
+  .keyboard-help { font-family: var(--font-mono); font-size: 0.74rem; color: var(--soft); }
+  [data-motion-status-visible] { margin-left: auto; color: var(--muted); font: 500 0.8rem/1.4 var(--font-mono); }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  html[data-motion="static"] [data-motion-controls] { display: none !important; }
+  html[data-motion="static"] [data-motion-item] { opacity: 1 !important; transform: none !important; transition: none !important; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .001ms !important; }
+    [data-motion-item] { opacity: 1 !important; transform: none !important; }
+    [data-motion-controls] { display: none !important; }
+  }
+  @media print {
+    .diagram { overflow-x: visible; }
+    svg.dg { min-width: 0 !important; }
+    [data-motion-controls], .chips { display: none !important; }
+    [data-motion-item] { opacity: 1 !important; transform: none !important; transition: none !important; }
+    .stepdetail article { display: grid !important; }
+  }
+
+  /* Tabs */
+  .tabs { display: flex; flex-direction: column; gap: 8px; }
+  .tablist { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--rule); }
+  .tablist button { min-height: 38px; padding: 6px 12px; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--muted); font: 600 0.95rem/1.2 var(--font-cond); cursor: pointer; display: flex; gap: 8px; align-items: baseline; }
+  .tablist button span { font-family: var(--font-mono); font-size: 0.76rem; }
+  .tablist button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--part); }
+  .tablist button:hover { color: var(--ink); }
+  .tabpanel { display: flex; flex-direction: column; gap: 8px; }
+  .spec { margin: 0; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 4px 16px; max-width: 100ch; }
+  .spec dt { font-family: var(--font-cond); font-weight: 600; font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+  .spec dd { margin: 0; font-size: 0.94rem; }
+
+  /* Evidence strength */
+  .str { font-family: var(--font-mono); font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; white-space: nowrap; display: inline-block; margin-right: 6px; }
+  .str-strong { background: var(--check-tint); color: var(--check); }
+  .str-outcome { background: var(--accent-tint); color: var(--accent); }
+  .str-qual { background: var(--amber-tint); color: var(--amber); }
+  .str-none { background: var(--warn-tint); color: var(--warn); }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; background: var(--paper); }
+  table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 0.86rem; }
+  th, td { text-align: left; padding: 6px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th { font-family: var(--font-cond); font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--paper); font-weight: 600; background: var(--ink); }
+  tbody th { font-weight: 600; }
+  tbody tr:nth-child(even) > * { background: #F7F8FB; }
+  tr:last-child td, tr:last-child th { border-bottom: 0; }
+  .sub { display: block; font-weight: 400; font-size: 0.82rem; color: var(--muted); }
+  .lvl { font-family: var(--font-mono); font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; white-space: nowrap; display: inline-block; margin-bottom: 4px; }
+  .lvl-low { background: var(--check-tint); color: var(--check); }
+  .lvl-med { background: var(--amber-tint); color: var(--amber); }
+  .lvl-high { background: var(--warn-tint); color: var(--warn); }
+
+  /* Simulator */
+  .sim { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .seg { display: inline-flex; border: 1px solid var(--rule-strong); border-radius: 4px; overflow: hidden; align-self: flex-start; flex-wrap: wrap; }
+  .seg button { min-height: 34px; padding: 6px 12px; border: 0; background: var(--paper); color: var(--muted); font: 600 0.85rem/1 var(--font-body); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .sim-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+  .sim-k { font-family: var(--font-cond); font-weight: 600; font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .conds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .cond { width: 100%; min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 10px; border: 1px solid var(--rule-strong); border-radius: 4px; background: var(--paper); color: var(--ink); font: 500 0.92rem/1.3 var(--font-body); text-align: left; cursor: pointer; }
+  .cond:hover { border-color: var(--accent); }
+  .cond-state { font-family: var(--font-mono); font-size: 0.72rem; padding: 3px 8px; border-radius: 999px; }
+  .cond[aria-pressed="true"] .cond-state { background: var(--check-tint); color: var(--check); }
+  .cond[aria-pressed="false"] .cond-state { background: var(--warn-tint); color: var(--warn); }
+  .cond:disabled { cursor: not-allowed; opacity: 0.6; }
+  .verdict { border-radius: 4px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; background: var(--surface); }
+  .v-label { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 500; letter-spacing: 0.04em; }
+  .sim[data-decision="accept"] .verdict { background: var(--check-tint); }
+  .sim[data-decision="accept"] .v-label { color: var(--check); }
+  .sim[data-decision="refine"] .verdict { background: var(--accent-tint); }
+  .sim[data-decision="refine"] .v-label { color: var(--accent); }
+  .sim[data-decision="restart"] .verdict { background: var(--amber-tint); }
+  .sim[data-decision="restart"] .v-label { color: var(--amber); }
+  .v-act { font-weight: 600; }
+  .ops { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+  .pips { display: inline-flex; gap: 4px; }
+  .pip { width: 18px; height: 10px; border-radius: 2px; background: var(--paper); border: 1px solid var(--rule-strong); }
+  .pip.used { background: var(--ink); border-color: var(--ink); }
+  .sim-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sim-msg { font-size: 0.86rem; color: var(--ink); min-height: 1.4em; }
+
+  /* Verification ladder */
+  .ladder { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 12px; align-items: start; }
+  .ladder-list { display: flex; flex-direction: column; gap: 6px; }
+  .ladder-list button { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border: 1px solid var(--rule-strong); border-radius: 4px; background: var(--paper); color: var(--ink); cursor: pointer; font: inherit; }
+  .ladder-list button:hover { border-color: var(--accent); }
+  .ladder-list button[aria-selected="true"] { border-color: var(--part); background: var(--part-tint); }
+  .ladder-list button strong { font-family: var(--font-display); font-size: 1.04rem; }
+  .lv-n { font-family: var(--font-cond); font-weight: 600; font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+  .rbar { display: block; height: 6px; background: var(--surface); border-radius: 2px; overflow: hidden; }
+  .rbar span { display: block; height: 100%; background: var(--check); }
+  .ladder-panel { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .ladder-panel .sd-h { margin: 0; }
+
+  /* Small multiples */
+  .minis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .mini { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .mini .diagram { border: 0; padding: 0; }
+  .mini svg.dg { max-width: 420px; }
+  .mini-h { font-family: var(--font-display); font-weight: 600; font-size: 1.08rem; line-height: 1.25; }
+  .mini-s { font-family: var(--font-mono); font-size: 0.74rem; color: var(--muted); }
+  .mini-t { font-size: 0.86rem; color: var(--muted); }
+  .pattern { align-self: flex-start; font-family: var(--font-mono); font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; }
+  .p-bad { background: var(--warn-tint); color: var(--warn); }
+  .p-mid { background: var(--amber-tint); color: var(--amber); }
+  .p-good { background: var(--check-tint); color: var(--check); }
+
+  /* Two-column comparisons */
+  .duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .duo > div { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .duo .k { font-family: var(--font-cond); font-weight: 600; font-size: 0.86rem; letter-spacing: 0.06em; text-transform: uppercase; }
+  .duo .good { border-top: 3px solid var(--check); }
+  .duo .bad { border-top: 3px solid var(--warn); }
+  .duo .good .k { color: var(--check); }
+  .duo .bad .k { color: var(--warn); }
+  .duo ul.plain { font-size: 0.9rem; list-style: none; padding-left: 0; }
+  .duo ul.plain li { position: relative; padding-left: 1.4em; }
+  .duo ul.plain li::before { position: absolute; left: 0; top: 0; font-weight: 700; }
+  .duo .good li::before { content: "✓"; color: var(--check); }
+  .duo .bad li::before { content: "✗"; color: var(--warn); }
+  .duo .ev { display: block; font-family: var(--font-mono); font-size: 0.76rem; color: var(--muted); }
+
+  .message { display: flex; flex-direction: column; gap: 10px; }
+  .lead { font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: clamp(1.3rem, 2vw, 1.6rem); line-height: 1.28; padding-left: 14px; border-left: 4px solid var(--part); max-width: 60ch; }
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .tiles div { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 9px 12px; display: flex; flex-direction: column; gap: 3px; min-width: 0; border-top: 3px solid var(--part); }
+  .tiles strong { font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; line-height: 1.25; }
+  .tiles p { font-size: 0.88rem; color: var(--muted); }
+  .implication { font-size: 0.94rem; background: var(--part-tint); border-radius: 2px; padding: 8px 12px; }
+  .implication strong { color: var(--part); font-family: var(--font-cond); font-size: 0.84rem; letter-spacing: 0.06em; text-transform: uppercase; margin-right: 4px; }
+
+  .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .cards div { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 9px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; border-top: 2px solid var(--part); }
+  .cards strong { font-family: var(--font-cond); font-weight: 600; font-size: 1rem; }
+  .cards p { font-size: 0.86rem; color: var(--muted); }
+
+  .endnote { border-top: 2px solid var(--ink); padding-top: 10px; }
+  .endnote > p:not(.note) { font-family: var(--font-display); font-size: 1.12rem; line-height: 1.5; }
+  .refs a { font-weight: 500; }
+  .refs-group { display: flex; flex-direction: column; gap: 4px; }
+  .refs { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 5px; font-size: 0.86rem; }
+  .refs li { overflow-wrap: anywhere; }
+  .refs .src { font-family: var(--font-mono); font-size: 0.76rem; color: var(--muted); }
+  .refs .desc { display: block; color: var(--muted); font-size: 0.82rem; }
+
+  /* ---------- Icons, side panel, reading progress ---------- */
+  html { scroll-behavior: smooth; }
+  [id] { scroll-margin-top: 16px; }
+  .ic { width: 1em; height: 1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.14em; }
+  .hic { width: 30px; height: 30px; padding: 6px; border-radius: 7px; background: var(--part-tint); color: var(--part); }
+  .readbar { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 50; pointer-events: none; }
+  .readbar span { display: block; height: 100%; width: 0; background: var(--now, var(--accent)); transition: width 120ms linear; }
+  .layout { display: grid; grid-template-columns: 228px minmax(0, 1fr); gap: 32px; max-width: 1540px; margin: 0 auto; align-items: start; }
+  .sidenav { position: sticky; top: 0; max-height: 100vh; overflow-y: auto; padding: 0 12px 24px 0; border-right: 1px solid var(--rule); font-size: 0.84rem; scrollbar-width: thin; }
+  .sn-top { position: sticky; top: 0; z-index: 1; background: var(--paper); display: flex; flex-direction: column; gap: 8px; padding: 10px 0; }
+  .sn-title { font-family: var(--font-display); font-weight: 600; font-size: 1.12rem; line-height: 1.2; color: var(--ink); text-decoration: none; }
+  .sn-toggle { display: none; align-items: center; gap: 6px; min-height: 34px; padding: 6px 10px; border: 1px solid var(--rule-strong); border-radius: 4px; background: var(--paper); color: var(--ink); font: 600 0.85rem/1 var(--font-cond); letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; flex: none; }
+  .sn-now { display: flex; flex-direction: column; gap: 1px; padding: 7px 10px; background: var(--surface); border-left: 3px solid var(--now, var(--accent)); border-radius: 2px; min-width: 0; }
+  .sn-now-k { font-family: var(--font-cond); font-weight: 600; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .sn-cur-part { font-family: var(--font-cond); font-weight: 600; font-size: 0.8rem; color: var(--now, var(--accent)); }
+  .sn-cur-part:empty { display: none; }
+  .sn-current { font-weight: 600; color: var(--ink); line-height: 1.3; }
+  .sn-progress { height: 4px; background: var(--surface); border-radius: 2px; overflow: hidden; }
+  .sn-progress span { display: block; height: 100%; width: 0; background: var(--now, var(--accent)); transition: width 120ms linear; }
+  .sn-list, .sn-list ol { list-style: none; margin: 0; padding: 0; }
+  .sn-list { display: flex; flex-direction: column; gap: 4px; }
+  .sn-list a { text-decoration: none; }
+  .sn-part > a { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 4px; color: var(--ink); font-family: var(--font-cond); font-weight: 600; font-size: 0.93rem; }
+  .sn-part > a b { font-family: var(--font-mono); font-weight: 500; font-size: 0.74rem; color: var(--part); margin-right: 2px; }
+  .sn-ic { width: 24px; height: 24px; padding: 4px; border-radius: 6px; background: var(--part-tint); color: var(--part); }
+  .sn-part ol { margin: 2px 0 4px 17px; padding-left: 9px; border-left: 2px solid var(--part-tint); display: flex; flex-direction: column; gap: 1px; }
+  .sn-part ol a { display: flex; align-items: center; gap: 7px; padding: 3px 6px; border-radius: 3px; color: var(--muted); line-height: 1.3; }
+  .sn-part ol a .ic { width: 14px; height: 14px; color: var(--part); }
+  .sn-part ol a i { font-style: normal; font-family: var(--font-mono); font-size: 0.72rem; color: var(--part); margin-right: 2px; }
+  .sn-list a:hover { background: var(--surface); color: var(--ink); }
+  .sn-list a.is-active { background: var(--part-tint); color: var(--part); }
+  .sn-part ol a.is-active { font-weight: 600; box-shadow: inset 2px 0 0 var(--part); }
+  .sn-part.is-active > a { color: var(--part); }
+  .sn-p0 { --part: var(--ink); --part-tint: var(--surface); }
+  .sn-p1 { --part: var(--accent); --part-tint: var(--accent-tint); }
+  .sn-p2 { --part: var(--check); --part-tint: var(--check-tint); }
+  .sn-p3 { --part: var(--amber); --part-tint: var(--amber-tint); }
+  .sn-p4 { --part: var(--violet); --part-tint: var(--violet-tint); }
+  .sn-p5 { --part: var(--muted); --part-tint: var(--surface); }
+  .sn-sep { height: 1px; background: var(--rule); margin: 4px 0; }
+
+  /* ---------- Colour accents ---------- */
+  .banner { background: linear-gradient(90deg, var(--part-tint) 0%, rgba(255, 255, 255, 0) 72%); padding: 12px 14px; }
+  .banner .tag, .toc .part, .brief .k { display: inline-flex; align-items: center; gap: 6px; }
+  .banner .tag .ic, .toc .part .ic { width: 16px; height: 16px; }
+  .brief .k .ic { width: 16px; height: 16px; }
+  .stat { background: color-mix(in srgb, var(--part-tint) 65%, white); border-top: 0; border-left: 3px solid var(--part); padding: 8px 12px; border-radius: 2px; }
+  .tiles div, .cards div { background: color-mix(in srgb, var(--part-tint) 38%, white); }
+  .duo .good { background: #F2FAF7; }
+  .duo .bad { background: #FDF5F4; }
+  .ladder-panel { border-left: 3px solid var(--part); }
+  .why .ic { color: var(--accent); margin-right: 6px; }
+  .implication .ic { color: var(--part); margin-right: 6px; }
+  details.glossary summary .ic { color: var(--accent); margin-right: 6px; }
+  .endnote h2 { display: flex; align-items: center; gap: 10px; }
+  #references { --part: var(--muted); --part-tint: var(--surface); }
+
+  /* Step-order badges in the step-by-step diagrams */
+  .stepno { fill: var(--part); }
+  .stepno-t { fill: var(--paper); font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
+
+  /* Side panel stays on the left at every width: narrower below 1280px, icon rail below 760px */
+  @media (max-width: 1279px) {
+    .layout { grid-template-columns: 196px minmax(0, 1fr); gap: 20px; }
+    .sidenav { font-size: 0.8rem; padding-right: 8px; }
+    .sn-part > a { font-size: 0.88rem; }
+  }
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 46px minmax(0, 1fr); gap: 10px; }
+    .sidenav { padding-right: 6px; }
+    .sn-title, .sn-now { display: none; }
+    .sn-top { padding: 8px 0 6px; }
+    .sn-list a > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .sn-part > a, .sn-part ol a { justify-content: center; padding: 4px 2px; }
+    .sn-part ol { margin: 2px 0 4px; padding-left: 0; border-left: 0; }
+    .sn-part ol a .ic { width: 16px; height: 16px; }
+  }
+  @media print { .sidenav, .readbar { display: none !important; } .layout { display: block; } }
+
+  @media (max-width: 1100px) {
+    .moe, .ladder { grid-template-columns: 1fr; }
+    .minis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .toc { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .toc > div:nth-child(3) { border-left: 0; padding-left: 0; }
+  }
+  @media (max-width: 900px) {
+    .cards, .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sim-body, .duo { grid-template-columns: 1fr; }
+    .stepdetail article { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .toc { grid-template-columns: 1fr; }
+    .toc > div { border-left: 0; padding-left: 0; }
+  }
+  @media (max-width: 720px) {
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .summary { grid-template-columns: 1fr; }
+    .summary dt { border-bottom: 0; padding-bottom: 2px; }
+    .spec, .sd-facts { grid-template-columns: 1fr; gap: 0; }
+    .spec dd, .sd-facts dd { margin-bottom: 8px; }
+    details.glossary dl { grid-template-columns: 1fr; gap: 2px; }
+    details.glossary dd { margin-bottom: 8px; }
+    .minis { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) { .hint { display: inline; } }
+  @media (max-width: 480px) {
+    body { padding-block: 32px 64px; }
+    .cards, .tiles { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- Additions for this brief ---------- */
+  pre.code { margin: 0; background: var(--ink); color: #E8ECF4; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.55; padding: 10px 14px; border-radius: 4px; overflow-x: auto; max-width: 100%; }
+  pre.code .c { color: #9AA6BD; }
+  code { font-family: var(--font-mono); font-size: 0.86em; background: var(--surface); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere; }
+  pre.code code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; }
+  .stats-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  @media (max-width: 1100px) { .stats-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 720px) { .stats-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8rem; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
+  .sw-warn { background: var(--warn); opacity: 0.85; } .sw-acc { background: var(--accent); } .sw-hi { background: var(--check); }
+  .sw-mut { background: var(--muted); opacity: 0.38; } .sw-amb { background: var(--amber); }
+  .bar-amb { fill: var(--amber); }
+  .ci { stroke: var(--muted); stroke-width: 2; }
+  .ci-hi { stroke: var(--check); stroke-width: 2.4; }
+  .pt { fill: var(--muted); } .pt-hi { fill: var(--check); }
+  .zero-l { stroke: var(--ink); stroke-width: 1; }
+  .nom-l { stroke: var(--accent); stroke-width: 1.4; stroke-dasharray: 4 3; }
+  .grp-t { fill: var(--ink); font-family: var(--font-cond); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; }
+  td.num-c, th.num-c { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .cell-good { background: var(--check-tint) !important; color: var(--check); font-weight: 600; }
+  .cell-mid { background: var(--amber-tint) !important; color: var(--amber); font-weight: 600; }
+  .cell-bad { background: var(--warn-tint) !important; color: var(--warn); font-weight: 600; }
+  .sig { font-family: var(--font-mono); font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; white-space: nowrap; display: inline-block; }
+  .sig-y { background: var(--check-tint); color: var(--check); }
+  .sig-n { background: var(--surface); color: var(--muted); }
+  /* Pre-flight calculator */
+  .pf { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+  .pf-in { display: flex; flex-direction: column; gap: 12px; }
+  .field { display: grid; grid-template-columns: minmax(0, 1fr) 84px; gap: 4px 12px; align-items: center; }
+  .field label { font-size: 0.9rem; font-weight: 500; }
+  .field .help { grid-column: 1 / -1; font-size: 0.78rem; color: var(--muted); }
+  .field input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--violet); }
+  .field input[type="number"] { width: 84px; min-height: 34px; padding: 4px 8px; border: 1px solid var(--rule-strong); border-radius: 4px; font: 500 0.9rem/1 var(--font-mono); color: var(--ink); background: var(--paper); text-align: right; }
+  .field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .pf .verdict .v-label { font-size: 1.15rem; }
+  .sim[data-decision="go"] .verdict { background: var(--check-tint); }
+  .sim[data-decision="go"] .v-label { color: var(--check); }
+  .sim[data-decision="stop"] .verdict { background: var(--warn-tint); }
+  .sim[data-decision="stop"] .v-label { color: var(--warn); }
+  .gauge { display: flex; flex-direction: column; gap: 4px; font-family: var(--font-mono); font-size: 0.76rem; color: var(--muted); }
+  .gauge-track { position: relative; height: 14px; background: var(--surface); border-radius: 2px; overflow: hidden; }
+  .gauge-room { position: absolute; top: 0; bottom: 0; background: var(--check); opacity: 0.75; }
+  .gauge-need { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--warn) 0 4px, transparent 4px 8px); opacity: 0.55; }
+  .rpick .seg button { min-width: 52px; }
+  .kvs { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; font-size: 0.9rem; }
+  .kvs dt { color: var(--muted); }
+  .kvs dd { margin: 0; font-family: var(--font-mono); font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
+  @media (max-width: 900px) { .pf { grid-template-columns: 1fr; } }
+  .stack { display: flex; height: 26px; border-radius: 2px; overflow: hidden; }
+  .stack span { display: block; height: 100%; }
+  .steps-ol { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; max-width: 95ch; font-size: 0.94rem; }
+</style>
+
+<svg class="sprite" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="0.5"/><path d="M9 2.5V6M15 2.5V6M9 18v3.5M15 18v3.5M2.5 9H6M2.5 15H6M18 9h3.5M18 15h3.5"/></symbol>
+  <symbol id="i-audit" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/><path d="M7.8 10.6l2 2 3.6-3.8"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7.5 15v3M12 10v8M16.5 6v12"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/></symbol>
+  <symbol id="i-steps" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l5.5 3.5-5.5 3.5z"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/><path d="M4 17h2M18 17h2M12 9v1.5"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v0.5"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path d="M12 4v16M7.5 20h9"/><path d="M5 7h14"/><path d="M5 7l-3 6.5a3 3 0 0 0 6 0z"/><path d="M19 7l-3 6.5a3 3 0 0 0 6 0z"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="18.5" r="2.5"/><circle cx="18" cy="5.5" r="2.5"/><path d="M8.5 18.5H16a3.25 3.25 0 0 0 0-6.5H8a3.25 3.25 0 0 1 0-6.5h7.5"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5"/><path d="M12 17.3v0.2"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9.5"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/></symbol>
+  <symbol id="i-brief" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M3 12.5h18"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h0.01M3.5 12h0.01M3.5 18h0.01"/></symbol>
+  <symbol id="i-repo" viewBox="0 0 24 24"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v16H7.5A2.5 2.5 0 0 0 5 20.5z"/><path d="M5 20.5A2.5 2.5 0 0 0 7.5 23H19v-5"/><path d="M9 6h6"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5.5 9.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/></symbol>
+  <symbol id="i-calc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h0.01M16 11h0.01M8 15h0.01M12 15h0.01M16 15v3M8 18h4"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.2c-.5-.8-1.5-1.2-2.5-1.2-1.5 0-2.7.8-2.7 2s1.2 1.7 2.7 2 2.7.8 2.7 2-1.2 2-2.7 2c-1 0-2-.4-2.5-1.2M12 6.5v1.5M12 16v1.5"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 4.5l-3 15"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-bug" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="13" rx="5"/><path d="M12 11v9M7 12H3M21 12h-4M7 17H4M20 17h-3M8.5 7.5L6 4M15.5 7.5L18 4"/></symbol>
+</svg>
+<div class="readbar" aria-hidden="true"><span></span></div>
+<div class="layout">
+<nav class="sidenav" id="sidenav" aria-label="Sections">
+  <div class="sn-top">
+    <button type="button" class="sn-toggle" aria-expanded="false" aria-controls="sn-list"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg>Contents</button>
+    <a class="sn-title" href="#top">RSI Adoption Brief</a>
+    <div class="sn-now"><span class="sn-now-k">Now reading</span><span class="sn-cur-part"></span><span class="sn-current">Overview</span></div>
+    <div class="sn-progress" aria-hidden="true"><span></span></div>
+  </div>
+  <ol class="sn-list" id="sn-list">
+    <li class="sn-part sn-p0" data-name="Overview"><a href="#top"><svg class="ic sn-ic" aria-hidden="true"><use href="#i-home"/></svg><span>Overview</span></a></li>
+    <li class="sn-part sn-p1" data-name="01 The repo"><a href="#repo"><svg class="ic sn-ic" aria-hidden="true"><use href="#i-repo"/></svg><span><b>01</b> The repo</span></a>
+      <ol>
+        <li><a href="#rp-summary"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg><span><i>1.1</i> Executive summary</span></a></li>
+        <li><a href="#rp-inside"><svg class="ic" aria-hidden="true"><use href="#i-layers"/></svg><span><i>1.2</i> What is inside</span></a></li>
+        <li><a href="#rp-loop"><svg class="ic" aria-hidden="true"><use href="#i-steps"/></svg><span><i>1.3</i> The guarded loop, step by step</span></a></li>
+        <li><a href="#rp-methods"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg><span><i>1.4</i> The eight methods</span></a></li>
+        <li><a href="#rp-verify"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><span><i>1.5</i> How it is verified</span></a></li>
+      </ol>
+    </li>
+    <li class="sn-part sn-p2" data-name="02 Trials"><a href="#trials"><svg class="ic sn-ic" aria-hidden="true"><use href="#i-flask"/></svg><span><b>02</b> Trials</span></a>
+      <ol>
+        <li><a href="#tr-design"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span><i>2.1</i> What we ran</span></a></li>
+        <li><a href="#tr-null"><svg class="ic" aria-hidden="true"><use href="#i-scale"/></svg><span><i>2.2</i> Do the safeguards work?</span></a></li>
+        <li><a href="#tr-repeats"><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg><span><i>2.3</i> How many repeats?</span></a></li>
+        <li><a href="#tr-house"><svg class="ic" aria-hidden="true"><use href="#i-target"/></svg><span><i>2.4</i> House-rules routing</span></a></li>
+        <li><a href="#tr-recorded"><svg class="ic" aria-hidden="true"><use href="#i-trend"/></svg><span><i>2.5</i> The repo's recorded runs</span></a></li>
+      </ol>
+    </li>
+    <li class="sn-part sn-p3" data-name="03 Evaluation"><a href="#eval"><svg class="ic sn-ic" aria-hidden="true"><use href="#i-audit"/></svg><span><b>03</b> Evaluation</span></a>
+      <ol>
+        <li><a href="#ev-understand"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg><span><i>3.1</i> Can we understand it?</span></a></li>
+        <li><a href="#ev-correct"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span><i>3.2</i> Is the method correct?</span></a></li>
+        <li><a href="#ev-effect"><svg class="ic" aria-hidden="true"><use href="#i-gauge"/></svg><span><i>3.3</i> Is it effective?</span></a></li>
+        <li><a href="#ev-fixed"><svg class="ic" aria-hidden="true"><use href="#i-bug"/></svg><span><i>3.4</i> Issues found and fixed</span></a></li>
+      </ol>
+    </li>
+    <li class="sn-part sn-p4" data-name="04 Adoption"><a href="#adopt"><svg class="ic sn-ic" aria-hidden="true"><use href="#i-flag"/></svg><span><b>04</b> Adoption</span></a>
+      <ol>
+        <li><a href="#ad-options"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg><span><i>4.1</i> Options</span></a></li>
+        <li><a href="#ad-install"><svg class="ic" aria-hidden="true"><use href="#i-code"/></svg><span><i>4.2</i> Set it up</span></a></li>
+        <li><a href="#ad-preflight"><svg class="ic" aria-hidden="true"><use href="#i-calc"/></svg><span><i>4.3</i> Pre-flight check</span></a></li>
+        <li><a href="#ad-pilot"><svg class="ic" aria-hidden="true"><use href="#i-route"/></svg><span><i>4.4</i> Pilot plan</span></a></li>
+        <li><a href="#ad-cost"><svg class="ic" aria-hidden="true"><use href="#i-coin"/></svg><span><i>4.5</i> Cost guide</span></a></li>
+        <li><a href="#ad-risks"><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg><span><i>4.6</i> Risks and mitigations</span></a></li>
+      </ol>
+    </li>
+    <li class="sn-sep" aria-hidden="true"></li>
+    <li class="sn-part sn-p1" data-name="Conclusion"><a href="#conclusion"><svg class="ic sn-ic" aria-hidden="true"><use href="#i-check"/></svg><span>Conclusion</span></a></li>
+    <li class="sn-part sn-p5" data-name="References"><a href="#references"><svg class="ic sn-ic" aria-hidden="true"><use href="#i-book"/></svg><span>References</span></a></li>
+  </ol>
+</nav>
+<main>
+  <!-- =================== HEADER =================== -->
+  <header id="top">
+    <div class="hero">
+      <p class="eyebrow">Technical brief · November 2026</p>
+      <h1>RSI Adoption Brief</h1>
+      <p class="dek">What the RSI repository is, what our trials with Claude Haiku showed, and how to adopt it safely for prompt and harness work.</p>
+      <p class="hero-meta"><span>GaryTang32/RSI · v0.1.1</span><span>8 methods · 1 guarded loop</span><span>5 trials · $7.39</span><span>Evidence to 8 Nov 2026</span></p>
+    </div>
+    <div class="brief">
+      <span class="k"><svg class="ic" aria-hidden="true"><use href="#i-brief"/></svg>Key points</span>
+      <ul class="plain">
+        <li><strong>A disciplined harness, not a gain machine.</strong> RSI rebuilds eight self-improvement methods on one loop with a locked grader, a noise band and sealed held-out tasks. The safeguards work: false keeps fall from 35–41% to 4–10%.</li>
+        <li><strong>Real gains are small and noisy.</strong> On our 94-ticket routing problem, GEPA's three seeds gained +0.04 to +0.09 on held-out tickets, none significant. A prompt with the rules written in gained +0.115, significant.</li>
+        <li><strong>It finds rules you did not write down.</strong> GEPA learned the biggest hidden rule (login errors go to account) in 3 of 3 seeds, purely from grader feedback. It also wrote a wrong rule in 2 of 3 seeds.</li>
+        <li><strong>The issues we found are fixed.</strong> The example now has headroom and stops before spending when it has none, and small noise bands warn (<a href="https://github.com/GaryTang32/RSI/pull/37">PR #37</a>).</li>
+      </ul>
+      <p class="rec"><strong>Recommendation:</strong> adopt the safeguards and the audit trail now; pilot the loops on one labelled prompt task with 3 seeds, k ≥ 2 trials and 40+ held-out tasks, and compare every result with a prompt that states the rules you already know (<a href="#adopt">Part 4</a>).</p>
+    </div>
+
+    <figure>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 960 264" style="min-width:960px;max-width:1100px" role="img" aria-labelledby="ov-title ov-desc">
+          <title id="ov-title">Why a guarded loop</title>
+          <desc id="ov-desc">A plain loop keeps any change whose score went up and so keeps 35 to 41 percent of changes that do nothing. The guarded loop keeps a change only when its gain beats the measured noise band, then checks it on sealed held-out tasks; it keeps 4 to 10 percent of null changes at two or more trials per task.</desc>
+          <defs><marker id="ov-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" class="hd"/></marker></defs>
+          <rect width="960" height="264" class="bgp"/>
+          <text x="32" y="76" class="lane-t">PLAIN LOOP</text><text x="32" y="94" class="lane-s">keep if better</text>
+          <text x="32" y="204" class="lane-t">RSI REPO</text><text x="32" y="222" class="lane-s">guarded loop</text>
+          <line x1="32" y1="144" x2="928" y2="144" class="rule-line"/>
+          <path d="M400 80 H470" class="ar" marker-end="url(#ov-a)"/>
+          <rect x="412" y="60" width="48" height="12" rx="2" class="mk"/><text x="436" y="69" text-anchor="middle" class="a-lab">SCORE</text>
+          <path d="M672 80 H742" class="ar" marker-end="url(#ov-a)"/>
+          <rect x="690" y="60" width="34" height="12" rx="2" class="mk"/><text x="707" y="69" text-anchor="middle" class="a-lab">KEEP</text>
+          <path d="M400 208 H470" class="ar" marker-end="url(#ov-a)"/>
+          <rect x="412" y="188" width="48" height="12" rx="2" class="mk"/><text x="436" y="197" text-anchor="middle" class="a-lab">SCORE</text>
+          <path d="M672 208 H742" class="ar" marker-end="url(#ov-a)"/>
+          <rect x="690" y="188" width="34" height="12" rx="2" class="mk"/><text x="707" y="197" text-anchor="middle" class="a-lab">KEEP</text>
+          <rect x="200" y="48" width="200" height="64" rx="6" class="mk"/><rect x="200" y="48" width="200" height="64" rx="6" class="nb"/>
+          <text x="300" y="76" text-anchor="middle" class="n-name">Propose a change</text><text x="300" y="94" text-anchor="middle" class="n-sub">prompt · harness · script</text>
+          <rect x="472" y="48" width="200" height="64" rx="6" class="mk"/><rect x="472" y="48" width="200" height="64" rx="6" class="nb"/>
+          <text x="572" y="76" text-anchor="middle" class="n-name">Did the score go up?</text><text x="572" y="94" text-anchor="middle" class="n-sub">one run, practice tasks</text>
+          <rect x="744" y="48" width="184" height="64" rx="6" class="mk"/><rect x="744" y="48" width="184" height="64" rx="6" class="chip-no"/>
+          <text x="836" y="76" text-anchor="middle" class="chip-no-t">Keeps 35–41%</text><text x="836" y="94" text-anchor="middle" class="n-sub">of changes that do nothing</text>
+          <rect x="200" y="176" width="200" height="64" rx="6" class="mk"/><rect x="200" y="176" width="200" height="64" rx="6" class="nb"/>
+          <text x="300" y="204" text-anchor="middle" class="n-name">Propose a change</text><text x="300" y="222" text-anchor="middle" class="n-sub">one of eight methods</text>
+          <rect x="472" y="176" width="200" height="64" rx="6" class="mk"/><rect x="472" y="176" width="200" height="64" rx="6" class="nb-focal"/>
+          <text x="572" y="204" text-anchor="middle" class="n-name">Gain bigger than noise?</text><text x="572" y="222" text-anchor="middle" class="n-sub">locked grader · band δ</text>
+          <rect x="744" y="176" width="184" height="64" rx="6" class="mk"/><rect x="744" y="176" width="184" height="64" rx="6" class="nb-check"/>
+          <text x="836" y="204" text-anchor="middle" class="chip-ok-t">Keeps 4–10%</text><text x="836" y="222" text-anchor="middle" class="n-sub">then sealed held-out check</text>
+        </svg>
+      </div>
+      <figcaption><span class="hint">Swipe to see the full diagram. </span>Rates are from our keep-rule test (T3): the share of changes that do nothing that each loop still keeps. The guarded figure is at two or three trials per task.</figcaption>
+    </figure>
+
+    <details class="glossary">
+      <summary><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg>Key terms</summary>
+      <dl>
+        <dt>Recursive self-improvement (RSI)</dt><dd>A model improving the thing that does the work (a prompt, an agent harness, a training script), and keeping the improvements for the next round.</dd>
+        <dt>Artifact</dt><dd>The files the loop may change. Everything else, including the grader, is frozen.</dd>
+        <dt>Locked grader</dt><dd>The scoring code. It lives outside the artifact, so a change cannot alter how it is scored.</dd>
+        <dt>evolve / val</dt><dd>The practice tasks the loop learns from, and (for GEPA) the tasks it selects candidates on.</dd>
+        <dt>holdout / ood</dt><dd>Sealed tasks of the same kind, and of a different kind. The loop's evaluator refuses to score them; only the final report reads them.</dd>
+        <dt>Noise band (δ)</dt><dd>How much the score moves when the unchanged artifact is scored again. A change is kept only if its gain is bigger.</dd>
+        <dt>k and R</dt><dd>k is trials per task in one evaluation; R is the number of repeated evaluations of the seed used to measure δ.</dd>
+        <dt>Transfer report</dt><dd>Seed against best on every split, with a paired 95% bootstrap interval of the gain. A gain counts when the interval excludes zero.</dd>
+        <dt>Oracle prompt</dt><dd>Our ceiling: the seed prompt with the full rulebook pasted in by a person.</dd>
+      </dl>
+    </details>
+
+    <nav class="toc" aria-label="Contents">
+      <div>
+        <span class="part"><svg class="ic" aria-hidden="true"><use href="#i-repo"/></svg>Part 1 · The repo</span>
+        <a class="ttl" href="#repo">What RSI is</a>
+        <span class="gist">A Python package, a Claude Code skill and its evidence</span>
+        <ol>
+          <li><span>1.1</span><a href="#rp-summary">Executive summary</a></li>
+          <li><span>1.2</span><a href="#rp-inside">What is inside</a></li>
+          <li><span>1.3</span><a href="#rp-loop">The guarded loop</a></li>
+          <li><span>1.4</span><a href="#rp-methods">The eight methods</a></li>
+          <li><span>1.5</span><a href="#rp-verify">How it is verified</a></li>
+        </ol>
+      </div>
+      <div>
+        <span class="part"><svg class="ic" aria-hidden="true"><use href="#i-flask"/></svg>Part 2 · Trials</span>
+        <a class="ttl" href="#trials">What we ran</a>
+        <span class="gist">Five trials, Claude Haiku, $7.39 in total</span>
+        <ol>
+          <li><span>2.1</span><a href="#tr-design">Trial design</a></li>
+          <li><span>2.2</span><a href="#tr-null">Do the safeguards work?</a></li>
+          <li><span>2.3</span><a href="#tr-repeats">How many repeats?</a></li>
+          <li><span>2.4</span><a href="#tr-house">House-rules routing</a></li>
+          <li><span>2.5</span><a href="#tr-recorded">Recorded runs</a></li>
+        </ol>
+      </div>
+      <div>
+        <span class="part"><svg class="ic" aria-hidden="true"><use href="#i-audit"/></svg>Part 3 · Evaluation</span>
+        <a class="ttl" href="#eval">Does it work?</a>
+        <span class="gist">Understandable, mostly correct, modestly effective</span>
+        <ol>
+          <li><span>3.1</span><a href="#ev-understand">Can we understand it?</a></li>
+          <li><span>3.2</span><a href="#ev-correct">Is the method correct?</a></li>
+          <li><span>3.3</span><a href="#ev-effect">Is it effective?</a></li>
+          <li><span>3.4</span><a href="#ev-fixed">Issues found and fixed</a></li>
+        </ol>
+      </div>
+      <div>
+        <span class="part"><svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg>Part 4 · Adoption</span>
+        <a class="ttl" href="#adopt">Adoption plan</a>
+        <span class="gist">Options, setup, pre-flight, pilot, cost, risks</span>
+        <ol>
+          <li><span>4.1</span><a href="#ad-options">Options</a></li>
+          <li><span>4.2</span><a href="#ad-install">Set it up</a></li>
+          <li><span>4.3</span><a href="#ad-preflight">Pre-flight check</a></li>
+          <li><span>4.4</span><a href="#ad-pilot">Pilot plan</a></li>
+          <li><span>4.5</span><a href="#ad-cost">Cost guide</a></li>
+          <li><span>4.6</span><a href="#ad-risks">Risks</a></li>
+        </ol>
+      </div>
+    </nav>
+  </header>
+
+  <!-- =================== PART 1: THE REPO =================== -->
+  <div class="banner" id="repo" data-pn="01">
+    <span class="tag"><svg class="ic" aria-hidden="true"><use href="#i-repo"/></svg>Part 1 · The repo</span>
+    <h2>What RSI is</h2>
+    <div class="meta"><span>github.com/GaryTang32/RSI</span><span>v0.1.1 · 8 Nov 2026</span><span>MIT licence</span><span>Python 3.11+</span></div>
+  </div>
+
+  <section id="rp-summary" aria-labelledby="h-rp-sum">
+    <h3 id="h-rp-sum"><svg class="ic hic" aria-hidden="true"><use href="#i-file"/></svg><span class="no">1.1</span>Executive summary</h3>
+    <dl class="summary">
+      <dt>What</dt><dd>Eight recursive self-improvement methods from 2025–2026 papers, rebuilt on one shared core and packaged as a Claude Code skill, <code>rsi-improve</code>.</dd>
+      <dt>Improves</dt><dd>Prompts, agent harnesses, training scripts, search strategies and shared strategy libraries, against your own tasks and grader.</dd>
+      <dt>Safeguards</dt><dd>Locked grader, measured noise band, sealed held-out and out-of-distribution splits, a leakage critic and a per-round audit trail.</dd>
+      <dt>Maturity</dt><dd>Alpha. A November 2026 review found 32 defects, four serious; all are fixed with regression tests in 0.1.1.</dd>
+      <dt>Bottom line</dt><dd class="bottom">Trustworthy measurement first; improvement when the task has room for it.</dd>
+    </dl>
+  </section>
+
+  <section id="rp-inside" aria-labelledby="h-rp-in">
+    <h3 id="h-rp-in"><svg class="ic hic" aria-hidden="true"><use href="#i-layers"/></svg><span class="no">1.2</span>What is inside</h3>
+    <p class="lead-in">Three parts: a package that runs the methods, a skill that tells Claude how to apply them, and evidence that both match the papers.</p>
+    <div class="stats stats-5">
+      <div class="stat"><span class="num">8</span><span class="lbl">methods on one core</span></div>
+      <div class="stat"><span class="num">59k</span><span class="lbl">lines in the <code>rsi</code> package, 225 modules</span></div>
+      <div class="stat"><span class="num">1,320</span><span class="lbl">offline tests, run in CI on 3.11–3.13</span></div>
+      <div class="stat"><span class="num">2,410</span><span class="lbl">skill claims matched to verbatim quotes</span></div>
+      <div class="stat"><span class="num">475</span><span class="lbl">paper claims tested against the code</span></div>
+    </div>
+    <div class="cards">
+      <div><strong>The <code>rsi</code> package</strong><p><code>rsi.core</code> holds the model backends (the <code>claude</code> CLI, the Anthropic API, an offline simulator) with a reply cache, task suites with sealed splits, the evaluator, the statistics and the keep rules. One sub-package per method. <code>rsi.improve()</code> and the <code>rsi</code> command run any of them.</p></div>
+      <div><strong>The <code>rsi-improve</code> skill</strong><p>Instructions for Claude Code: check the environment, agree the artifact, tasks and grader, measure the noise, pick a method, run it with a spend cap, and report on sealed tasks. One reference file per method, checked against its paper.</p></div>
+      <div><strong>The evidence</strong><p>A claim ledger pairing every factual sentence in the skill with a quote from its paper or code (<code>check.py</code> re-checks it in CI), a 475-claim paper audit, recorded live runs and a 66-chart gallery.</p></div>
+    </div>
+  </section>
+
+  <section id="rp-loop" aria-labelledby="h-rp-loop">
+    <h3 id="h-rp-loop"><svg class="ic hic" aria-hidden="true"><use href="#i-steps"/></svg><span class="no">1.3</span>The guarded loop, step by step</h3>
+    <p class="lead-in">Every method runs inside the same six steps. Use Next and Previous, or jump to a step; each one shows what happens, where it lives in the code and which safeguard it adds.</p>
+    <div class="stepper" data-motion-root data-step-count="6" data-step-current="5" data-frame="static">
+      <div class="chips" role="group" aria-label="Jump to a step">
+        <button type="button" data-goto="0">1 Define</button><button type="button" data-goto="1">2 Split and seal</button><button type="button" data-goto="2">3 Measure noise</button><button type="button" data-goto="3">4 Propose</button><button type="button" data-goto="4">5 Keep or discard</button><button type="button" data-goto="5">6 Report</button>
+      </div>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 980 330" style="min-width:980px;max-width:1040px" role="img" aria-labelledby="lp-title lp-desc">
+          <title id="lp-title">The guarded loop, step by step</title>
+          <desc id="lp-desc">Define the artifact, tasks and a locked grader; split the tasks and seal the held-out splits; score the seed several times to measure the noise band and check headroom; propose a change; keep it only if its gain on practice tasks beats the band, and repeat; after the run, unseal the held-out tasks and write a transfer report with paired intervals.</desc>
+          <defs>
+            <marker id="lp-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" class="hd"/></marker>
+            <marker id="lp-acc" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" class="hd-acc"/></marker>
+          </defs>
+          <rect width="980" height="330" class="bgp"/>
+          <text x="32" y="28" class="lane-t">BEFORE THE LOOP</text><text x="736" y="28" class="lane-t">EACH ROUND</text>
+          <text x="264" y="316" class="lane-t">AFTER THE RUN</text>
+          <g data-motion-item data-step="1" aria-label="Step 1: define the artifact, the tasks and a locked grader"><rect x="32" y="40" width="176" height="84" rx="6" class="mk"/><rect x="32" y="40" width="176" height="84" rx="6" class="nb"/><rect x="40" y="48" width="45" height="14" rx="2" class="tg"/><text x="63" y="58" text-anchor="middle" class="tg-t">DOMAIN</text><text x="120" y="82" text-anchor="middle" class="n-name">Define the problem</text><text x="120" y="99" text-anchor="middle" class="n-sub">artifact · tasks</text><text x="120" y="113" text-anchor="middle" class="n-sub">locked grader</text><circle cx="192" cy="56" r="10" class="stepno"/><text x="192" y="60" text-anchor="middle" class="stepno-t">1</text></g>
+          <g data-motion-item data-step="2" aria-label="Step 2: split the tasks and seal the held-out splits"><path d="M208 82 H262" class="ar" marker-end="url(#lp-a)"/><rect x="264" y="40" width="176" height="84" rx="6" class="mk"/><rect x="264" y="40" width="176" height="84" rx="6" class="nb"/><rect x="272" y="48" width="39" height="14" rx="2" class="tg"/><text x="292" y="58" text-anchor="middle" class="tg-t">SUITE</text><text x="352" y="82" text-anchor="middle" class="n-name">Split and seal</text><text x="352" y="99" text-anchor="middle" class="n-sub">evolve · val</text><text x="352" y="113" text-anchor="middle" class="n-sub">holdout · ood sealed</text><circle cx="424" cy="56" r="10" class="stepno"/><text x="424" y="60" text-anchor="middle" class="stepno-t">2</text><path d="M352 124 V206" class="ar-dash" marker-end="url(#lp-a)"/><rect x="329" y="159" width="46" height="12" rx="2" class="mk"/><text x="352" y="168" text-anchor="middle" class="a-lab">SEALED</text><rect x="264" y="208" width="176" height="84" rx="6" class="mk"/><rect x="264" y="208" width="176" height="84" rx="6" class="nb-dash"/><rect x="272" y="216" width="39" height="14" rx="2" class="tg"/><text x="292" y="226" text-anchor="middle" class="tg-t">STORE</text><text x="352" y="250" text-anchor="middle" class="n-name">Sealed tasks</text><text x="352" y="267" text-anchor="middle" class="n-sub">loop cannot read</text><text x="352" y="281" text-anchor="middle" class="n-sub">SealedSplitError</text></g>
+          <g data-motion-item data-step="3" aria-label="Step 3: score the seed several times to measure the noise band and check headroom"><path d="M440 82 H494" class="ar" marker-end="url(#lp-a)"/><rect x="496" y="40" width="176" height="84" rx="6" class="mk"/><rect x="496" y="40" width="176" height="84" rx="6" class="nb-focal"/><rect x="504" y="48" width="39" height="14" rx="2" class="tg"/><text x="524" y="58" text-anchor="middle" class="tg-t">STATS</text><text x="584" y="82" text-anchor="middle" class="n-name">Measure the noise</text><text x="584" y="99" text-anchor="middle" class="n-sub">seed × k trials or R</text><text x="584" y="113" text-anchor="middle" class="n-sub">→ band δ, headroom</text><circle cx="656" cy="56" r="10" class="stepno"/><text x="656" y="60" text-anchor="middle" class="stepno-t">3</text></g>
+          <g data-motion-item data-step="4" aria-label="Step 4: propose a change with the chosen method"><path d="M672 82 H734" class="ar" marker-end="url(#lp-a)"/><rect x="736" y="40" width="176" height="84" rx="6" class="mk"/><rect x="736" y="40" width="176" height="84" rx="6" class="nb"/><rect x="744" y="48" width="45" height="14" rx="2" class="tg"/><text x="767" y="58" text-anchor="middle" class="tg-t">METHOD</text><text x="824" y="82" text-anchor="middle" class="n-name">Propose a change</text><text x="824" y="99" text-anchor="middle" class="n-sub">reflect · analyse · code</text><text x="824" y="113" text-anchor="middle" class="n-sub">leakage critic</text><circle cx="896" cy="56" r="10" class="stepno"/><text x="896" y="60" text-anchor="middle" class="stepno-t">4</text></g>
+          <g data-motion-item data-step="5" aria-label="Step 5: keep the change only if its gain beats the band, then repeat"><path d="M824 124 V206" class="ar" marker-end="url(#lp-a)"/><rect x="773" y="159" width="102" height="12" rx="2" class="mk"/><text x="824" y="168" text-anchor="middle" class="a-lab">SCORE ON EVOLVE</text><rect x="736" y="208" width="176" height="84" rx="6" class="mk"/><rect x="736" y="208" width="176" height="84" rx="6" class="nb-check"/><rect x="744" y="216" width="33" height="14" rx="2" class="tg"/><text x="760" y="226" text-anchor="middle" class="tg-t">GATE</text><text x="824" y="250" text-anchor="middle" class="n-name">Keep or discard</text><text x="824" y="267" text-anchor="middle" class="n-sub">gain &gt; δ ?</text><text x="824" y="281" text-anchor="middle" class="n-sub">TRACE.md row</text><circle cx="896" cy="224" r="10" class="stepno"/><text x="896" y="228" text-anchor="middle" class="stepno-t">5</text><path d="M912 250 H948 V82 H914" class="ar-dash" marker-end="url(#lp-a)"/><rect x="942" y="128" width="12" height="80" rx="2" class="mk"/><text x="952" y="168" text-anchor="middle" class="a-lab" transform="rotate(-90 952 168)">NEXT ROUND</text></g>
+          <g data-motion-item data-step="6" aria-label="Step 6: unseal the held-out tasks and write the transfer report"><path d="M736 250 H674" class="ar-acc" marker-end="url(#lp-acc)"/><rect x="688" y="231" width="33" height="12" rx="2" class="mk"/><text x="705" y="240" text-anchor="middle" class="a-lab-acc">BEST</text><path d="M440 250 H494" class="ar-dash" marker-end="url(#lp-a)"/><rect x="450" y="231" width="33" height="12" rx="2" class="mk"/><text x="467" y="240" text-anchor="middle" class="a-lab">OPEN</text><rect x="496" y="208" width="176" height="84" rx="6" class="mk"/><rect x="496" y="208" width="176" height="84" rx="6" class="nb-focal"/><rect x="504" y="216" width="45" height="14" rx="2" class="tg"/><text x="527" y="226" text-anchor="middle" class="tg-t">REPORT</text><text x="584" y="250" text-anchor="middle" class="n-name">Transfer report</text><text x="584" y="267" text-anchor="middle" class="n-sub">seed vs best, sealed</text><text x="584" y="281" text-anchor="middle" class="n-sub">paired 95% CI</text><circle cx="656" cy="224" r="10" class="stepno"/><text x="656" y="228" text-anchor="middle" class="stepno-t">6</text></g>
+        </svg>
+      </div>
+      <div data-motion-controls>
+        <button type="button" data-motion-action="prev">Previous</button>
+        <button type="button" data-motion-action="next">Next</button>
+        <button type="button" data-motion-action="all">Show all</button>
+        <span class="keyboard-help">← → keys</span>
+        <span data-motion-status-visible>Step 1 of 6</span>
+        <span class="sr-only" data-motion-status aria-live="polite"></span>
+      </div>
+      <div class="stepdetail">
+        <article data-n="0">
+          <div class="sd-main"><p class="sd-k">Step 1 · Before the loop</p><h4 class="sd-h">Define the problem</h4>
+            <p>The artifact is the only set of files the loop may change. The tasks are inputs with a target. The grader turns an output into a score and a line of feedback, and it lives outside the artifact, so no edit can make grading easier.</p></div>
+          <dl class="sd-facts"><dt>In the code</dt><dd><code>Domain</code> or <code>FunctionDomain(suite, execute, grade)</code>, <code>Artifact</code></dd><dt>Safeguard</dt><dd>Locked grader</dd><dt>Watch for</dt><dd>A grader that can be gamed, such as a model judging its own answers</dd></dl>
+        </article>
+        <article data-n="1">
+          <div class="sd-main"><p class="sd-k">Step 2 · Before the loop</p><h4 class="sd-h">Split and seal</h4>
+            <p>Tasks are divided into practice splits (<code>evolve</code>, and <code>val</code> for GEPA) and sealed splits (<code>holdout</code>, <code>ood</code>, <code>test</code>). The loop's evaluator raises <code>SealedSplitError</code> if anything asks it to score a sealed task.</p></div>
+          <dl class="sd-facts"><dt>In the code</dt><dd><code>TaskSuite.from_tasks(tasks, fractions=…, by_family=…)</code></dd><dt>Safeguard</dt><dd>Sealed splits; task ids must be unique (fixed in 0.1.1)</dd><dt>Watch for</dt><dd>Fewer than about 40 held-out tasks: intervals get too wide to read</dd></dl>
+        </article>
+        <article data-n="2">
+          <div class="sd-main"><p class="sd-k">Step 3 · Before the loop</p><h4 class="sd-h">Measure the noise</h4>
+            <p>The unchanged seed is scored again, either k ≥ 2 trials per task (bootstrap band) or R repeated evaluations. The band δ is z = 2 times the spread of the difference between two scorings. If the seed is already within δ of the top score, nothing the loop keeps can be told from noise.</p></div>
+          <dl class="sd-facts"><dt>In the code</dt><dd><code>noise_from_trials(…, small_k_correction=True)</code>, <code>noise_from_repeats(…, small_sample=True)</code></dd><dt>Safeguard</dt><dd>Noise band; headroom check in example 01</dd><dt>Watch for</dt><dd>R &lt; 5 repeats: the band is often too narrow (now warns)</dd></dl>
+        </article>
+        <article data-n="3">
+          <div class="sd-main"><p class="sd-k">Step 4 · Each round</p><h4 class="sd-h">Propose a change</h4>
+            <p>The method decides how. GEPA reflects on failing traces and rewrites one prompt. RRSI's analyst proposes a few small edits. Meta-Harness lets a coding agent read every past candidate. A leakage critic rejects edits that copy task text or answers.</p></div>
+          <dl class="sd-facts"><dt>In the code</dt><dd><code>rsi.improve(dom, seed, method=…, llm_task=…, llm_propose=…)</code></dd><dt>Safeguard</dt><dd>Leakage critic; the proposer sees only practice traces</dd><dt>Watch for</dt><dd>A proposer that writes a plausible but wrong rule</dd></dl>
+        </article>
+        <article data-n="4">
+          <div class="sd-main"><p class="sd-k">Step 5 · Each round</p><h4 class="sd-h">Keep or discard</h4>
+            <p>The candidate is scored on practice tasks and kept only if it beats the incumbent by more than δ (RRSI also checks cost; SoL-Pi checks capability and efficiency together). Every round writes the proposal, the actual diff, per-task scores and the arithmetic of the decision.</p></div>
+          <dl class="sd-facts"><dt>In the code</dt><dd>Keep rules in <code>rsi.core.gates</code>; GEPA <code>acceptance="noise_margin"</code>; autoresearch <code>keep_rule="rigor"</code></dd><dt>Safeguard</dt><dd>Noise band; audit trail (<code>trace.jsonl</code> → <code>TRACE.md</code>)</dd><dt>Watch for</dt><dd>Methods whose default has no band (Meta-Harness keeps every candidate)</dd></dl>
+        </article>
+        <article data-n="5">
+          <div class="sd-main"><p class="sd-k">Step 6 · After the run</p><h4 class="sd-h">Transfer report</h4>
+            <p>Only now are the sealed tasks scored, with fresh trials, for the seed and the best artifact. The report gives the paired difference per split with a 95% bootstrap interval. Trust the held-out line over the practice score: the loop chose its best artifact on the practice tasks.</p></div>
+          <dl class="sd-facts"><dt>In the code</dt><dd><code>rsi.transfer_report(dom, llm, {"seed": …, "best": …}, k=2)</code>, <code>transfer.json</code></dd><dt>Safeguard</dt><dd>Unbiased final estimate</dd><dt>Watch for</dt><dd>Validation scores that look better than held-out (we saw 0.97–1.00 vs 0.92–0.97)</dd></dl>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="rp-methods" aria-labelledby="h-rp-m">
+    <h3 id="h-rp-m"><svg class="ic hic" aria-hidden="true"><use href="#i-grid"/></svg><span class="no">1.4</span>The eight methods</h3>
+    <p class="lead-in">Pick by what changes and how it is judged. The live-result line is what the repo or our trials measured with Claude Haiku, not what the paper reports.</p>
+    <div class="tabs" data-tabs data-default="0">
+      <div class="tablist" role="tablist" aria-label="Methods">
+        <button type="button" role="tab" id="tab-rrsi" aria-controls="p-rrsi" aria-selected="true">RRSI <span>Sep 2026</span></button>
+        <button type="button" role="tab" id="tab-gepa" aria-controls="p-gepa" aria-selected="false">GEPA <span>Jul 2025</span></button>
+        <button type="button" role="tab" id="tab-ar" aria-controls="p-ar" aria-selected="false">autoresearch <span>Mar 2026</span></button>
+        <button type="button" role="tab" id="tab-mh" aria-controls="p-mh" aria-selected="false">Meta-Harness <span>Mar 2026</span></button>
+        <button type="button" role="tab" id="tab-sp" aria-controls="p-sp" aria-selected="false">SoL-Pi <span>Sep 2026</span></button>
+        <button type="button" role="tab" id="tab-dr" aria-controls="p-dr" aria-selected="false">Dream-RSI <span>Sep 2026</span></button>
+        <button type="button" role="tab" id="tab-em" aria-controls="p-em" aria-selected="false">EvoMap <span>Feb 2026</span></button>
+        <button type="button" role="tab" id="tab-h2" aria-controls="p-h2" aria-selected="false">Harness² <span>Oct 2026</span></button>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="p-rrsi" aria-labelledby="tab-rrsi"><dl class="spec">
+        <dt>Improves</dt><dd>An agent harness: prompts, control flow and tools.</dd>
+        <dt>Keep rule</dt><dd>Beats the incumbent by more than the noise band, pays for its cost, and passes a leakage critic. The band is on by default.</dd>
+        <dt>Use when</dt><dd>Harness edits must transfer to new tasks. The safe default.</dd>
+        <dt>Proposed by</dt><dd>Google Cloud AI Research, with Stanford, WashU and UNC · arXiv 2609.24972 · 21 Sep 2026</dd>
+        <dt>Live result</dt><dd>AgentQA held-out 0.50 → 0.94 ($2.76). Hard AgentQA: kept the seed. BBEH (120 examples): +0.021 [+0.004, +0.042], the only significant gain there.</dd></dl></div>
+      <div class="tabpanel" role="tabpanel" id="p-gepa" aria-labelledby="tab-gepa" hidden><dl class="spec">
+        <dt>Improves</dt><dd>Prompts inside a single- or multi-step system.</dd>
+        <dt>Keep rule</dt><dd>Paper: a child that beats its parent on a 3-example minibatch joins a Pareto pool. Pass <code>acceptance="noise_margin"</code> to require a real gain.</dd>
+        <dt>Use when</dt><dd>Only prompts change, rollouts are limited, and the grader can explain failures in words.</dd>
+        <dt>Proposed by</dt><dd>UC Berkeley and Stanford, with Databricks, MIT, Notre Dame and BespokeLabs.ai · arXiv 2507.19457 · July 2025</dd>
+        <dt>Live result</dt><dd>Our T4: +0.04 to +0.09 held-out over 3 seeds, none significant. Example 01 after the fix: +0.090, significant (one run). BBEH: no change.</dd></dl></div>
+      <div class="tabpanel" role="tabpanel" id="p-ar" aria-labelledby="tab-ar" hidden><dl class="spec">
+        <dt>Improves</dt><dd>One script under a fixed compute budget, for example <code>train.py</code>.</dd>
+        <dt>Keep rule</dt><dd>Upstream: the metric improves on one run. Here also <code>keep_rule="rigor"</code> with repeated runs.</dd>
+        <dt>Use when</dt><dd>One file, one metric, many cheap runs.</dd>
+        <dt>Proposed by</dt><dd>Andrej Karpathy · <code>karpathy/autoresearch</code> · first commit 6 Mar 2026</dd>
+        <dt>Live result</dt><dd>tinylm hidden test 2.905 → 2.682 bits per byte (lower is better), 3 runs with non-overlapping ranges ($0.70).</dd></dl></div>
+      <div class="tabpanel" role="tabpanel" id="p-mh" aria-labelledby="tab-mh" hidden><dl class="spec">
+        <dt>Improves</dt><dd>Harness code end to end, written by a coding agent that reads every past candidate and trace.</dd>
+        <dt>Keep rule</dt><dd>None: every valid candidate is stored; the answer comes from a Pareto frontier of accuracy against context cost.</dd>
+        <dt>Use when</dt><dd>You have a strong coding agent and rich execution traces.</dd>
+        <dt>Proposed by</dt><dd>Stanford, MIT and KRAFTON · arXiv 2603.28052 · 30 Mar 2026</dd>
+        <dt>Live result</dt><dd>AgentQA held-out 0.31 → 0.75 ($1.71), the weakest of four runs. Hard AgentQA 0.58 → 0.92, not significant, and its best harness copied practice answers. BBEH: no change.</dd></dl></div>
+      <div class="tabpanel" role="tabpanel" id="p-sp" aria-labelledby="tab-sp" hidden><dl class="spec">
+        <dt>Improves</dt><dd>Token-saving mechanisms in a harness.</dd>
+        <dt>Keep rule</dt><dd>Dual gate: every capability metric within tolerance and tokens or cost better by more than 2%, then a pass/fail held-out firewall.</dd>
+        <dt>Use when</dt><dd>Tokens or dollars are the bottleneck, not accuracy.</dd>
+        <dt>Proposed by</dt><dd>NVIDIA (NVlabs), with NTU and MIT · arXiv 2609.20519 · 17 Sep 2026</dd>
+        <dt>Live result</dt><dd>No live headline result in the README; checked offline and in the step-by-step validation.</dd></dl></div>
+      <div class="tabpanel" role="tabpanel" id="p-dr" aria-labelledby="tab-dr" hidden><dl class="spec">
+        <dt>Improves</dt><dd>The search strategy itself, as code, by replaying recorded searches.</dd>
+        <dt>Keep rule</dt><dd>Deploy the policy version that replays best over all recorded search trees (the current one is a candidate). No new agent calls while "dreaming".</dd>
+        <dt>Use when</dt><dd>Long discovery searches with many attempts.</dd>
+        <dt>Proposed by</dt><dd>Google and Google DeepMind, with UMD and UVA · arXiv 2609.14858 · 14 Sep 2026</dd>
+        <dt>Live result</dt><dd>No live headline result in the README. The paper's quality claim did not reproduce in our runs; use <code>selector="guarded"</code>.</dd></dl></div>
+      <div class="tabpanel" role="tabpanel" id="p-em" aria-labelledby="tab-em" hidden><dl class="spec">
+        <dt>Improves</dt><dd>A shared library of small strategy "genes"; the harness itself never changes.</dd>
+        <dt>Keep rule</dt><dd>Per-task validation, then hub ranking (naive self-report, or SafeHub's verified uplift).</dd>
+        <dt>Use when</dt><dd>Many agents should share what they learn.</dd>
+        <dt>Proposed by</dt><dd>Infinite Evolution Lab, EvoMap · <code>evolver</code> engine 1 Feb 2026 · arXiv 2604.15097, April 2026</dd>
+        <dt>Live result</dt><dd>Live Haiku run: held-out 1.0 → 1.0. The seed already solved the tasks, so no genes were written.</dd></dl></div>
+      <div class="tabpanel" role="tabpanel" id="p-h2" aria-labelledby="tab-h2" hidden><dl class="spec">
+        <dt>Improves</dt><dd>An agent harness per task, with no grader and no labels in the loop.</dd>
+        <dt>Keep rule</dt><dd>None read inside the loop: probes contrast executions, an anonymised selector picks the deliverable, and a library carries lessons forward.</dd>
+        <dt>Use when</dt><dd>Open-ended tasks with no grader, labels or validation set.</dd>
+        <dt>Proposed by</dt><dd>Google Cloud AI Research and Northwestern University · arXiv 2610.14224 · 9 Oct 2026</dd>
+        <dt>Live result</dt><dd>20-task AgentQA stream: 0.50 → 0.95 at k = 3 ($13.83). BBEH: +0.028, not significant, while plain best-of-n reached +0.139 (also not significant).</dd></dl></div>
+    </div>
+    <p class="note">Not sure which to use? <code>rsi.recommend(what_changes="prompt", prompts_only=True)</code> returns a ranked suggestion with its reason.</p>
+  </section>
+
+  <section id="rp-verify" aria-labelledby="h-rp-v">
+    <h3 id="h-rp-v"><svg class="ic hic" aria-hidden="true"><use href="#i-shield"/></svg><span class="no">1.5</span>How it is verified</h3>
+    <p class="lead-in">Four independent checks, each with its failures reported as failures.</p>
+    <h4>Paper claims tested against the code</h4>
+    <div class="stack" role="img" aria-label="475 paper claims: 257 reproduce, 80 partly, 7 do not, 7 contradicted, 124 untestable here"><span style="width:54.11%;background:var(--check)" title="Reproduce: 257"></span><span style="width:16.84%;background:color-mix(in srgb, var(--check) 45%, white)" title="Partly: 80"></span><span style="width:1.47%;background:var(--amber)" title="Do not reproduce: 7"></span><span style="width:1.47%;background:var(--warn)" title="Contradicted: 7"></span><span style="width:26.11%;background:var(--rule-strong)" title="Untestable here: 124"></span></div><div class="legend"><span><i style="background:var(--check)"></i>Reproduce 257</span><span><i style="background:color-mix(in srgb, var(--check) 45%, white)"></i>Partly 80</span><span><i style="background:var(--amber)"></i>Do not reproduce 7</span><span><i style="background:var(--warn)"></i>Contradicted 7</span><span><i style="background:var(--rule-strong)"></i>Untestable here 124</span></div>
+    <p class="note">475 claims from the eight papers. "Untestable here" needs GPUs, frontier models or the original benchmarks. Most contradictions come from the paper's own data or code.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Check</th><th>Scope</th><th>Outcome</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Claims audit</th><td>475 paper claims, each tested against our code and experiments</td><td>257 reproduce, 80 partly, 7 do not, 7 contradicted, 124 untestable here</td></tr>
+          <tr><th scope="row">Step-by-step validation</th><td>Every method run from its seed, offline and live; every step re-derived by independent auditors</td><td>2,195 of 2,370 steps verified; no keep decision miscomputed</td></tr>
+          <tr><th scope="row">Skill claim ledger</th><td>Every factual sentence in the skill, paired with a verbatim quote</td><td>2,410 of 2,410 match; <code>check.py</code> re-checks them in CI</td></tr>
+          <tr><th scope="row">Code review</th><td>November 2026 review of the whole package</td><td>29 findings and 3 follow-ups, all fixed with regression tests in 0.1.1</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- =================== PART 2: TRIALS =================== -->
+  <div class="banner" id="trials" data-pn="02">
+    <span class="tag"><svg class="ic" aria-hidden="true"><use href="#i-flask"/></svg>Part 2 · Trials</span>
+    <h2>What we ran</h2>
+    <div class="meta"><span>Outside data-scientist review</span><span>Claude Haiku via the claude CLI</span><span>7–8 Nov 2026</span></div>
+  </div>
+
+  <section id="tr-design" aria-labelledby="h-tr-d">
+    <h3 id="h-tr-d"><svg class="ic hic" aria-hidden="true"><use href="#i-list"/></svg><span class="no">2.1</span>Trial design</h3>
+    <p class="lead-in">Four trials as an outside reviewer, then one more to verify the fixes. Haiku was both the task model and the proposer.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Trial</th><th>Question</th><th>Setup</th><th>Model</th><th class="num-c">Cost</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">T1</th><td>Does the bundled example run?</td><td>Example 01 (ticket intents), offline</td><td>simulated</td><td class="num-c">$0.00</td></tr>
+          <tr><th scope="row">T2</th><td>Does it help with a real model?</td><td>Same example live: 30 tickets, 10 held out</td><td>Haiku</td><td class="num-c">$0.37</td></tr>
+          <tr><th scope="row">T3</th><td>Do the keep rules stop noise?</td><td>Score an unchanged artifact against itself 80 times per setting; count false keeps</td><td>simulated AgentQA</td><td class="num-c">$0.00</td></tr>
+          <tr><th scope="row">T4</th><td>Does it help on our kind of problem?</td><td>94 support tickets routed by three house rules; 36 practice, 19 validation, 39 sealed; GEPA × 3 seeds against the seed and an oracle prompt</td><td>Haiku</td><td class="num-c">$5.50</td></tr>
+          <tr><th scope="row">T5</th><td>Do the fixes work?</td><td>The new example 01 (T4's tickets, label-level feedback, headroom check), one run</td><td>Haiku</td><td class="num-c">$1.52</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="num">94</span><span class="lbl">tickets in the routing problem</span></div>
+      <div class="stat"><span class="num">39</span><span class="lbl">sealed held-out tickets</span></div>
+      <div class="stat"><span class="num">300</span><span class="lbl">GEPA rollouts per run</span></div>
+      <div class="stat"><span class="num">$7.39</span><span class="lbl">total spend, all five trials</span></div>
+    </div>
+  </section>
+
+  <section id="tr-null" aria-labelledby="h-tr-n">
+    <h3 id="h-tr-n"><svg class="ic hic" aria-hidden="true"><use href="#i-scale"/></svg><span class="no">2.2</span>Do the safeguards work?</h3>
+    <p class="lead-in">T3 asks the simplest question: if nothing changed, how often does each rule say "keep"? Hover or focus a bar for its value.</p>
+    <figure class="chart">
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 760 358" style="min-width:760px;max-width:900px" role="img" aria-labelledby="t3-title t3-desc">
+          <title id="t3-title">False keeps of an unchanged artifact, by keep rule</title>
+          <desc id="t3-desc">With one trial per task, keeping on any score increase keeps 35% of unchanged artifacts and a noise band from 3 repeats keeps 22%. With two trials: 41%, 10% and 5% with the corrected bootstrap band. With three trials: 36%, 7.5% and 3.8%. The nominal rate is 2.3%.</desc>
+          <rect width="760" height="358" class="bgp"/><text x="250.0" y="16" text-anchor="middle" class="tick">0%</text><line x1="250.0" y1="22" x2="250.0" y2="350" class="grid-l"/><text x="338.0" y="16" text-anchor="middle" class="tick">10%</text><line x1="338.0" y1="22" x2="338.0" y2="350" class="grid-l"/><text x="426.0" y="16" text-anchor="middle" class="tick">20%</text><line x1="426.0" y1="22" x2="426.0" y2="350" class="grid-l"/><text x="514.0" y="16" text-anchor="middle" class="tick">30%</text><line x1="514.0" y1="22" x2="514.0" y2="350" class="grid-l"/><text x="602.0" y="16" text-anchor="middle" class="tick">40%</text><line x1="602.0" y1="22" x2="602.0" y2="350" class="grid-l"/><text x="690.0" y="16" text-anchor="middle" class="tick">50%</text><line x1="690.0" y1="22" x2="690.0" y2="350" class="grid-l"/><text x="16" y="56" class="grp-t">1 TRIAL PER TASK (k = 1)</text><g class="row" tabindex="0" data-tip="k = 1, keep if the score went up: 35% of unchanged artifacts kept"><rect x="0" y="62" width="760" height="28" class="hit"/><text x="238" y="79" text-anchor="end" class="n-body">Keep if the score went up</text><rect x="250" y="66" width="308.0" height="20" rx="2" class="bar-warn"/><text x="566.0" y="80" class="val">35%</text></g><g class="row" tabindex="0" data-tip="k = 1, noise band from 3 repeats: 22% of unchanged artifacts kept"><rect x="0" y="90" width="760" height="28" class="hit"/><text x="238" y="107" text-anchor="end" class="n-body">Noise band from 3 repeats</text><rect x="250" y="94" width="193.6" height="20" rx="2" class="bar-acc"/><text x="451.6" y="108" class="val">22%</text></g><text x="16" y="140" class="grp-t">2 TRIALS PER TASK (k = 2)</text><g class="row" tabindex="0" data-tip="k = 2, keep if the score went up: 41% of unchanged artifacts kept"><rect x="0" y="146" width="760" height="28" class="hit"/><text x="238" y="163" text-anchor="end" class="n-body">Keep if the score went up</text><rect x="250" y="150" width="360.8" height="20" rx="2" class="bar-warn"/><text x="618.8" y="164" class="val">41%</text></g><g class="row" tabindex="0" data-tip="k = 2, noise band from 3 repeats: 10% of unchanged artifacts kept"><rect x="0" y="174" width="760" height="28" class="hit"/><text x="238" y="191" text-anchor="end" class="n-body">Noise band from 3 repeats</text><rect x="250" y="178" width="88.0" height="20" rx="2" class="bar-acc"/><text x="346.0" y="192" class="val">10%</text></g><g class="row" tabindex="0" data-tip="k = 2, corrected bootstrap band: 5% of unchanged artifacts kept"><rect x="0" y="202" width="760" height="28" class="hit"/><text x="238" y="219" text-anchor="end" class="n-body">Corrected bootstrap band</text><rect x="250" y="206" width="44.0" height="20" rx="2" class="bar-hi"/><text x="302.0" y="220" class="val">5%</text></g><text x="16" y="252" class="grp-t">3 TRIALS PER TASK (k = 3)</text><g class="row" tabindex="0" data-tip="k = 3, keep if the score went up: 36% of unchanged artifacts kept"><rect x="0" y="258" width="760" height="28" class="hit"/><text x="238" y="275" text-anchor="end" class="n-body">Keep if the score went up</text><rect x="250" y="262" width="316.8" height="20" rx="2" class="bar-warn"/><text x="574.8" y="276" class="val">36%</text></g><g class="row" tabindex="0" data-tip="k = 3, noise band from 3 repeats: 7.5% of unchanged artifacts kept"><rect x="0" y="286" width="760" height="28" class="hit"/><text x="238" y="303" text-anchor="end" class="n-body">Noise band from 3 repeats</text><rect x="250" y="290" width="66.0" height="20" rx="2" class="bar-acc"/><text x="324.0" y="304" class="val">7.5%</text></g><g class="row" tabindex="0" data-tip="k = 3, corrected bootstrap band: 3.8% of unchanged artifacts kept"><rect x="0" y="314" width="760" height="28" class="hit"/><text x="238" y="331" text-anchor="end" class="n-body">Corrected bootstrap band</text><rect x="250" y="318" width="33.4" height="20" rx="2" class="bar-hi"/><text x="291.4" y="332" class="val">3.8%</text></g><line x1="270.2" y1="22" x2="270.2" y2="350" class="nom-l"/><rect x="274.2" y="25" width="96" height="13" rx="2" class="mk"/><text x="278.2" y="35" class="a-lab-acc">NOMINAL 2.3%</text>
+        </svg>
+      </div>
+      <div class="tip" hidden></div>
+      <figcaption><span class="hint">Swipe to see the full chart. </span>Share of 80 null comparisons per setting that were kept. Red: keep if the score went up. Blue: noise band from 3 repeated evaluations. Teal: within-run bootstrap band with the small-k correction. Drawn to scale.</figcaption>
+    </figure>
+    <div class="duo">
+      <div class="good"><span class="k">What holds</span><ul class="plain">
+        <li>The plain rule keeps a third or more of null changes, as the repo warns (it measures 45–52%; ties count as no keep here).<span class="ev">T3 · 35–41%</span></li>
+        <li>With k ≥ 2 trials, the bands bring false keeps to 4–10%, close to the repo's stated 2–9%.<span class="ev">T3 · 3.8–10%</span></li>
+      </ul></div>
+      <div class="bad"><span class="k">What did not</span><ul class="plain">
+        <li>At k = 1 with a band from only 3 repeats, about 1 in 5 null changes still got through in this single calibration.<span class="ev">T3 · 22%</span></li>
+        <li>Averaged over many calibrations the rate is lower (next section): the problem is how much the band varies, not its average.<span class="ev">null_repeats · 5.8% at R = 3</span></li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section id="tr-repeats" aria-labelledby="h-tr-r">
+    <h3 id="h-tr-r"><svg class="ic hic" aria-hidden="true"><use href="#i-chart"/></svg><span class="no">2.3</span>How many repeats?</h3>
+    <p class="lead-in">We re-ran the k = 1 test with the band re-estimated in each of 120 replicates. A z = 2 band from few repeats lets two to three times the nominal rate through; a Student-t band fixes it.</p>
+    <figure class="chart">
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 760 370" style="min-width:760px;max-width:900px" role="img" aria-labelledby="rr-title rr-desc">
+          <title id="rr-title">False keeps at one trial per task, by number of repeats</title>
+          <desc id="rr-desc">With the band re-estimated for each of 120 replicates, a z = 2 band kept 8.3% of null candidates at R = 2, 5.8% at R = 3, 5.0% at R = 5 and 2.5% at R = 10. The Student-t band kept 4.2%, 1.7%, 0.8% and 1.7%.</desc>
+          <rect width="760" height="370" class="bgp"/><text x="250.0" y="16" text-anchor="middle" class="tick">0%</text><line x1="250.0" y1="22" x2="250.0" y2="362" class="grid-l"/><text x="338.0" y="16" text-anchor="middle" class="tick">2%</text><line x1="338.0" y1="22" x2="338.0" y2="362" class="grid-l"/><text x="426.0" y="16" text-anchor="middle" class="tick">4%</text><line x1="426.0" y1="22" x2="426.0" y2="362" class="grid-l"/><text x="514.0" y="16" text-anchor="middle" class="tick">6%</text><line x1="514.0" y1="22" x2="514.0" y2="362" class="grid-l"/><text x="602.0" y="16" text-anchor="middle" class="tick">8%</text><line x1="602.0" y1="22" x2="602.0" y2="362" class="grid-l"/><text x="690.0" y="16" text-anchor="middle" class="tick">10%</text><line x1="690.0" y1="22" x2="690.0" y2="362" class="grid-l"/><text x="16" y="56" class="grp-t">R = 2 REPEATS</text><g class="row" tabindex="0" data-tip="R = 2, z = 2 band (old default): 8.3% of null candidates kept"><rect x="0" y="62" width="760" height="26" class="hit"/><text x="238" y="78" text-anchor="end" class="n-body">z = 2 band (old default)</text><rect x="250" y="66" width="365.2" height="18" rx="2" class="bar-acc"/><text x="623.2" y="79" class="val">8.3%</text></g><g class="row" tabindex="0" data-tip="R = 2, small_sample=True (Student-t): 4.2% of null candidates kept"><rect x="0" y="88" width="760" height="26" class="hit"/><text x="238" y="104" text-anchor="end" class="n-body">small_sample=True (Student-t)</text><rect x="250" y="92" width="184.8" height="18" rx="2" class="bar-hi"/><text x="442.8" y="105" class="val">4.2%</text></g><text x="16" y="136" class="grp-t">R = 3 REPEATS</text><g class="row" tabindex="0" data-tip="R = 3, z = 2 band (old default): 5.8% of null candidates kept"><rect x="0" y="142" width="760" height="26" class="hit"/><text x="238" y="158" text-anchor="end" class="n-body">z = 2 band (old default)</text><rect x="250" y="146" width="255.2" height="18" rx="2" class="bar-acc"/><text x="513.2" y="159" class="val">5.8%</text></g><g class="row" tabindex="0" data-tip="R = 3, small_sample=True (Student-t): 1.7% of null candidates kept"><rect x="0" y="168" width="760" height="26" class="hit"/><text x="238" y="184" text-anchor="end" class="n-body">small_sample=True (Student-t)</text><rect x="250" y="172" width="74.8" height="18" rx="2" class="bar-hi"/><text x="332.8" y="185" class="val">1.7%</text></g><text x="16" y="216" class="grp-t">R = 5 REPEATS</text><g class="row" tabindex="0" data-tip="R = 5, z = 2 band (old default): 5% of null candidates kept"><rect x="0" y="222" width="760" height="26" class="hit"/><text x="238" y="238" text-anchor="end" class="n-body">z = 2 band (old default)</text><rect x="250" y="226" width="220.0" height="18" rx="2" class="bar-acc"/><text x="478.0" y="239" class="val">5%</text></g><g class="row" tabindex="0" data-tip="R = 5, small_sample=True (Student-t): 0.8% of null candidates kept"><rect x="0" y="248" width="760" height="26" class="hit"/><text x="238" y="264" text-anchor="end" class="n-body">small_sample=True (Student-t)</text><rect x="250" y="252" width="35.2" height="18" rx="2" class="bar-hi"/><text x="293.2" y="265" class="val">0.8%</text></g><text x="16" y="296" class="grp-t">R = 10 REPEATS</text><g class="row" tabindex="0" data-tip="R = 10, z = 2 band (old default): 2.5% of null candidates kept"><rect x="0" y="302" width="760" height="26" class="hit"/><text x="238" y="318" text-anchor="end" class="n-body">z = 2 band (old default)</text><rect x="250" y="306" width="110.0" height="18" rx="2" class="bar-acc"/><text x="368.0" y="319" class="val">2.5%</text></g><g class="row" tabindex="0" data-tip="R = 10, small_sample=True (Student-t): 1.7% of null candidates kept"><rect x="0" y="328" width="760" height="26" class="hit"/><text x="238" y="344" text-anchor="end" class="n-body">small_sample=True (Student-t)</text><rect x="250" y="332" width="74.8" height="18" rx="2" class="bar-hi"/><text x="332.8" y="345" class="val">1.7%</text></g><line x1="351.2" y1="22" x2="351.2" y2="362" class="nom-l"/><rect x="355.2" y="25" width="96" height="13" rx="2" class="mk"/><text x="359.2" y="35" class="a-lab-acc">NOMINAL 2.3%</text>
+        </svg>
+      </div>
+      <div class="tip" hidden></div>
+      <figcaption><span class="hint">Swipe to see the full chart. </span>False-keep rate at one trial per task. Blue: δ = 2 × sd. Teal: δ = t × sd with the t quantile that has the coverage of z = 2 (now <code>noise_from_repeats(…, small_sample=True)</code>). The band's own estimate is below 60% of the true width with probability 0.45 at R = 2, 0.30 at R = 3, 0.16 at R = 5 and 0.05 at R = 10.</figcaption>
+    </figure>
+    <p class="implication"><svg class="ic" aria-hidden="true"><use href="#i-bulb"/></svg><strong>Implication</strong> Use at least 5 repeats, or k ≥ 2 trials with the corrected bootstrap, or pass <code>small_sample=True</code>. The package now warns below 5 repeats (on main, listed under Unreleased).</p>
+  </section>
+
+  <section id="tr-house" aria-labelledby="h-tr-h">
+    <h3 id="h-tr-h"><svg class="ic hic" aria-hidden="true"><use href="#i-target"/></svg><span class="no">2.4</span>House-rules routing</h3>
+    <p class="lead-in">Our own problem: route support tickets to billing, technical, account or shipping. Three company rules decide the hard cases, and the seed prompt states none of them.</p>
+    <div class="cards">
+      <div><strong>Damaged-item refunds → shipping</strong><p>Refunds for damaged, missing or lost items go to the logistics claims team, not billing.</p></div>
+      <div><strong>Login and 2FA errors → account</strong><p>Any login, password or two-factor error is account, even when it looks technical.</p></div>
+      <div><strong>Cancel or pause → account</strong><p>Cancelling or pausing a subscription goes to the retention team, not billing.</p></div>
+    </div>
+    <figure class="chart">
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 800 248" style="min-width:800px;max-width:940px" role="img" aria-labelledby="fp-title fp-desc">
+          <title id="fp-title">Held-out gain over the original prompt, with paired 95% intervals</title>
+          <desc id="fp-desc">On 39 sealed held-out tickets, the oracle prompt gained 0.115 (interval 0.026 to 0.218). GEPA seeds 0, 1 and 2 gained 0.077, 0.038 and 0.090, and all three intervals include zero. Example 01 after the fix, one run, gained 0.090 (interval 0.013 to 0.179).</desc>
+          <rect width="800" height="248" class="bgp"/><text x="300.0" y="16" text-anchor="middle" class="tick">-0.10</text><line x1="300.0" y1="22" x2="300.0" y2="242" class="grid-l"/><text x="365.7" y="16" text-anchor="middle" class="tick">-0.05</text><line x1="365.7" y1="22" x2="365.7" y2="242" class="grid-l"/><text x="431.4" y="16" text-anchor="middle" class="tick">0</text><line x1="431.4" y1="22" x2="431.4" y2="242" class="grid-l"/><text x="497.1" y="16" text-anchor="middle" class="tick">+0.05</text><line x1="497.1" y1="22" x2="497.1" y2="242" class="grid-l"/><text x="562.9" y="16" text-anchor="middle" class="tick">+0.10</text><line x1="562.9" y1="22" x2="562.9" y2="242" class="grid-l"/><text x="628.6" y="16" text-anchor="middle" class="tick">+0.15</text><line x1="628.6" y1="22" x2="628.6" y2="242" class="grid-l"/><text x="694.3" y="16" text-anchor="middle" class="tick">+0.20</text><line x1="694.3" y1="22" x2="694.3" y2="242" class="grid-l"/><text x="760.0" y="16" text-anchor="middle" class="tick">+0.25</text><line x1="760.0" y1="22" x2="760.0" y2="242" class="grid-l"/><line x1="431.4" y1="22" x2="431.4" y2="242" class="zero-l"/><g class="row" tabindex="0" data-tip="Oracle prompt with the full rulebook: +0.115 [+0.026, +0.218], significant"><rect x="0" y="30" width="800" height="40" class="hit"/><text x="286" y="46" text-anchor="end" class="n-body">Rulebook pasted in (oracle)</text><text x="286" y="61" text-anchor="end" class="n-sub">T4 · 0.885 → 1.000</text><line x1="465.6" y1="50" x2="717.9" y2="50" class="ci-hi"/><line x1="465.6" y1="44" x2="465.6" y2="56" class="ci-hi"/><line x1="717.9" y1="44" x2="717.9" y2="56" class="ci-hi"/><circle cx="582.6" cy="50" r="5.5" class="pt-hi"/></g><g class="row" tabindex="0" data-tip="GEPA seed 0: +0.077 [-0.038, +0.192], interval includes zero"><rect x="0" y="72" width="800" height="40" class="hit"/><text x="286" y="88" text-anchor="end" class="n-body">GEPA, seed 0</text><text x="286" y="103" text-anchor="end" class="n-sub">T4 · 0.885 → 0.962</text><line x1="381.5" y1="92" x2="683.8" y2="92" class="ci"/><line x1="381.5" y1="86" x2="381.5" y2="98" class="ci"/><line x1="683.8" y1="86" x2="683.8" y2="98" class="ci"/><circle cx="532.6" cy="92" r="5.5" class="pt"/></g><g class="row" tabindex="0" data-tip="GEPA seed 1: +0.038 [-0.064, +0.154], interval includes zero"><rect x="0" y="114" width="800" height="40" class="hit"/><text x="286" y="130" text-anchor="end" class="n-body">GEPA, seed 1</text><text x="286" y="145" text-anchor="end" class="n-sub">T4 · 0.885 → 0.923</text><line x1="347.3" y1="134" x2="633.8" y2="134" class="ci"/><line x1="347.3" y1="128" x2="347.3" y2="140" class="ci"/><line x1="633.8" y1="128" x2="633.8" y2="140" class="ci"/><circle cx="481.4" cy="134" r="5.5" class="pt"/></g><g class="row" tabindex="0" data-tip="GEPA seed 2: +0.090 [-0.013, +0.205], interval includes zero"><rect x="0" y="156" width="800" height="40" class="hit"/><text x="286" y="172" text-anchor="end" class="n-body">GEPA, seed 2</text><text x="286" y="187" text-anchor="end" class="n-sub">T4 · 0.885 → 0.974</text><line x1="414.3" y1="176" x2="700.9" y2="176" class="ci"/><line x1="414.3" y1="170" x2="414.3" y2="182" class="ci"/><line x1="700.9" y1="170" x2="700.9" y2="182" class="ci"/><circle cx="549.7" cy="176" r="5.5" class="pt"/></g><g class="row" tabindex="0" data-tip="Example 01 after PR #37, one run: +0.090 [+0.013, +0.179], significant"><rect x="0" y="198" width="800" height="40" class="hit"/><text x="286" y="214" text-anchor="end" class="n-body">Example 01 after the fix</text><text x="286" y="229" text-anchor="end" class="n-sub">T5 · 0.910 → 1.000 · one run</text><line x1="448.5" y1="218" x2="666.7" y2="218" class="ci-hi"/><line x1="448.5" y1="212" x2="448.5" y2="224" class="ci-hi"/><line x1="666.7" y1="212" x2="666.7" y2="224" class="ci-hi"/><circle cx="549.7" cy="218" r="5.5" class="pt-hi"/></g>
+        </svg>
+      </div>
+      <div class="tip" hidden></div>
+      <figcaption><span class="hint">Swipe to see the full chart. </span>Gain on the 39 sealed tickets over the original prompt, with paired 95% bootstrap intervals. Teal: interval excludes zero. T5 used label-level feedback and its own trial seeds, so its baseline (0.910) differs from T4's (0.885).</figcaption>
+    </figure>
+    <h4>Accuracy by rule, held-out tickets</h4>
+    <div class="tbl-wrap">
+      <table style="min-width:720px">
+        <thead><tr><th>Rule</th><th class="num-c">Original</th><th class="num-c">GEPA seed 0</th><th class="num-c">GEPA seed 1</th><th class="num-c">GEPA seed 2</th><th class="num-c">Oracle</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Login / 2FA → account</th><td class="num-c cell-bad">0.25</td><td class="num-c cell-good">1.00</td><td class="num-c cell-good">1.00</td><td class="num-c cell-good">1.00</td><td class="num-c cell-good">1.00</td></tr>
+          <tr><th scope="row">Damaged-item refund → shipping</th><td class="num-c cell-mid">0.67</td><td class="num-c cell-good">1.00</td><td class="num-c cell-mid">0.67</td><td class="num-c cell-good">1.00</td><td class="num-c cell-good">1.00</td></tr>
+          <tr><th scope="row">Cancellation → account</th><td class="num-c cell-mid">0.93</td><td class="num-c cell-mid">0.93</td><td class="num-c cell-bad">0.79</td><td class="num-c cell-mid">0.93</td><td class="num-c cell-good">1.00</td></tr>
+          <tr><th scope="row">Crashes → technical</th><td class="num-c cell-good">1.00</td><td class="num-c cell-mid">0.90</td><td class="num-c cell-mid">0.95</td><td class="num-c cell-mid">0.95</td><td class="num-c cell-good">1.00</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="plain">
+      <li><strong>The biggest hidden rule was learned every time</strong>, from grader feedback alone: login errors went from 0.25 to 1.00 in all three seeds.</li>
+      <li><strong>The refund rule was learned in 2 of 3 seeds</strong>, and two seeds wrote a rule that contradicts house policy ("refunds → billing"). Read the kept prompt before deploying it.</li>
+      <li><strong>No seed learned the cancellation rule</strong>, and all three regressed slightly on crash tickets.</li>
+      <li><strong>Validation overstates the gain.</strong> All seeds scored 0.97–1.00 on the 19 validation tickets but 0.92–0.97 on held-out. Only the sealed split gives the true number.</li>
+      <li><strong>No memorisation.</strong> No kept prompt contained ticket text or ids.</li>
+      <li><strong>After the fix (T5)</strong>, with feedback that states each label's house rule, the one run wrote out all three rules and reached 1.000 on held-out (+0.090 [+0.013, +0.179]). One run is not a replicate.</li>
+    </ul>
+  </section>
+
+  <section id="tr-recorded" aria-labelledby="h-tr-rec">
+    <h3 id="h-tr-rec"><svg class="ic hic" aria-hidden="true"><use href="#i-trend"/></svg><span class="no">2.5</span>The repo's recorded runs</h3>
+    <p class="lead-in">We re-read the repo's own live evidence. It points the same way: large gains on small, easy task sets; small or no gains on the largest test.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Task</th><th>Method</th><th>Held-out, seed → best</th><th>Significant?</th><th class="num-c">Cost</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">AgentQA, standard<span class="sub">8 held-out tasks</span></th><td>RRSI</td><td>0.50 → 0.94</td><td><span class="sig sig-y">yes</span></td><td class="num-c">$2.76</td></tr>
+          <tr><th scope="row">AgentQA, standard</th><td>Meta-Harness</td><td>0.31 → 0.75 <span class="sub">weakest of 4 runs; replicates 1–3 reached 1.00</span></td><td><span class="sig sig-y">yes</span></td><td class="num-c">$1.71</td></tr>
+          <tr><th scope="row">AgentQA, hard</th><td>Meta-Harness</td><td>0.58 → 0.92 <span class="sub">best harness copied practice answers</span></td><td><span class="sig sig-n">no</span></td><td class="num-c">$8.80</td></tr>
+          <tr><th scope="row">AgentQA, hard</th><td>RRSI</td><td>0.50 → 0.50 <span class="sub">kept the seed</span></td><td><span class="sig sig-n">no</span></td><td class="num-c">$7.19</td></tr>
+          <tr><th scope="row">tinylm training script<span class="sub">bits per byte, lower is better</span></th><td>autoresearch</td><td>2.905 → 2.682</td><td><span class="sig sig-y">yes</span></td><td class="num-c">$0.70</td></tr>
+          <tr><th scope="row">AgentQA stream, no grader<span class="sub">20 tasks</span></th><td>Harness² k = 3</td><td>0.50 → 0.95</td><td><span class="sig sig-y">yes</span></td><td class="num-c">$13.83</td></tr>
+          <tr><th scope="row">BBEH<span class="sub">120 examples, the largest test</span></th><td>RRSI · GEPA · Meta-Harness</td><td>+0.021 · 0 · 0</td><td><span class="sig sig-y">RRSI only</span></td><td class="num-c">—</td></tr>
+          <tr><th scope="row">BBEH</th><td>Harness² · best-of-n</td><td>+0.028 · +0.139</td><td><span class="sig sig-n">no</span></td><td class="num-c">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">From the README and the <code>data</code> branch. Most splits hold 6–12 tasks, so intervals are wide; the repo itself calls these demonstrations, not benchmarks.</p>
+  </section>
+
+  <!-- =================== PART 3: EVALUATION =================== -->
+  <div class="banner" id="eval" data-pn="03">
+    <span class="tag"><svg class="ic" aria-hidden="true"><use href="#i-audit"/></svg>Part 3 · Evaluation</span>
+    <h2>Does it work?</h2>
+    <div class="meta"><span>Understandability</span><span>Correctness</span><span>Effectiveness</span><span>Follow-up fixes</span></div>
+  </div>
+
+  <section id="ev-understand" aria-labelledby="h-ev-u">
+    <h3 id="h-ev-u"><svg class="ic hic" aria-hidden="true"><use href="#i-eye"/></svg><span class="no">3.1</span>Can we understand the results?</h3>
+    <div class="duo">
+      <div class="good"><span class="k">Easy to follow</span><ul class="plain">
+        <li>Every run writes the proposal, the diff, per-task scores and the keep arithmetic. We traced every T4 decision in <code>TRACE.md</code>.<span class="ev">audit trail</span></li>
+        <li>Reports lead with held-out intervals and label non-significant gains as such.<span class="ev">transfer.json</span></li>
+        <li>"No change beat the noise; your original is kept" is a reported outcome, not a failure.<span class="ev">skill report</span></li>
+      </ul></div>
+      <div class="bad"><span class="k">Harder for a newcomer</span><ul class="plain">
+        <li>Much vocabulary: evolve, val, holdout, OOD, δ, k, R.<span class="ev">glossary above</span></li>
+        <li>Eight methods with subtle differences in keep rules and defaults; the per-method references are long.<span class="ev">methods/*.md</span></li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section id="ev-correct" aria-labelledby="h-ev-c">
+    <h3 id="h-ev-c"><svg class="ic hic" aria-hidden="true"><use href="#i-check"/></svg><span class="no">3.2</span>Is the method correct?</h3>
+    <dl class="summary">
+      <dt>Safeguards</dt><dd>Work as designed: sealed splits refuse access, the grader is outside the artifact, and the noise band cuts false keeps (T3). Paired bootstrap intervals are the right test.</dd>
+      <dt>Faithfulness</dt><dd>Partial and documented: 257 of 475 paper claims reproduce, 80 partly; every place the code differs from a paper is written down.</dd>
+      <dt>Maturity</dt><dd>Alpha. The review found a spend cap that did nothing for Sonnet and Opus, and duplicate task ids that moved held-out tasks into practice. Both are fixed with tests.</dd>
+      <dt>Statistics</dt><dd>The main limit is sample size: most recorded splits have 6–12 tasks, and per-rule cells in T4 have about 4 tickets.</dd>
+      <dt>Verdict</dt><dd class="bottom">Correct where it matters; read small-sample results as demonstrations.</dd>
+    </dl>
+  </section>
+
+  <section id="ev-effect" aria-labelledby="h-ev-e">
+    <h3 id="h-ev-e"><svg class="ic hic" aria-hidden="true"><use href="#i-gauge"/></svg><span class="no">3.3</span>Is it effective?</h3>
+    <div class="message">
+      <p class="lead">The gains are real but small, and a person who writes the rules down still wins.</p>
+      <div class="tiles">
+        <div><strong>+0.04 to +0.09</strong><p>GEPA's held-out gain over three seeds on 39 tickets; none significant.</p></div>
+        <div><strong>+0.115</strong><p>The oracle prompt with the rules written in: significant, faster and cheaper.</p></div>
+        <div><strong>5 points</strong><p>How far the three seeds disagreed on held-out. One run is not a result.</p></div>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table style="min-width:640px">
+        <thead><tr><th>Use it for</th><th>Do not expect</th></tr></thead>
+        <tbody>
+          <tr><td>Finding which hidden rules a prompt misses, from labelled data and grader feedback</td><td>Big automatic gains: typically 0 to +9 points, often not significant</td></tr>
+          <tr><td>A disciplined, auditable record of prompt and harness experiments, including honest "no gain" results</td><td>To beat a domain expert who writes the rules down</td></tr>
+          <tr><td>Sealed held-out evaluation and noise checks, worth adopting even without the loops</td><td>Reliability from one run: seeds disagreed by 5 points</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="ev-fixed" aria-labelledby="h-ev-f">
+    <h3 id="h-ev-f"><svg class="ic hic" aria-hidden="true"><use href="#i-bug"/></svg><span class="no">3.4</span>Issues found and fixed</h3>
+    <p class="lead-in">We reported three issues back. All three were fixed, tested and merged on 8 November 2026.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Issue we found</th><th>Fix</th><th>Verified by</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">The ticket example has no headroom<span class="sub">Haiku scored 1.0 with the seed prompt (T2)</span></th><td>94 tickets with three house rules the seed prompt does not state; the label guide states the rules as grader feedback; budget 150 → 300 rollouts</td><td>T5 live: seed 0.917 on practice, held-out 0.910 → 1.000</td></tr>
+          <tr><th scope="row">The example spends even when there is nothing to gain<span class="sub">$0.37 wasted in T2</span></th><td><code>headroom_check</code>: stop before the loop when the seed is within max(δ, 1/n) of the top score; <code>--force</code> overrides</td><td>Unit tests; a test that the loop never starts on a perfect seed</td></tr>
+          <tr><th scope="row">A band from few repeats is weak<span class="sub">22% false keeps in one T3 calibration</span></th><td><code>noise_from_repeats</code> warns below 5 repeats; opt-in <code>small_sample=True</code> uses the Student-t quantile; the skill now advises R ≥ 5 or k ≥ 2</td><td>Table checked against <code>scipy.stats.t</code>; replicate test in 2.3</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note"><a href="https://github.com/GaryTang32/RSI/pull/37">GaryTang32/RSI#37</a>: 1,297 quick tests pass locally, CI green on Python 3.11, 3.12 and 3.13, claim ledger 0 failures.</p>
+  </section>
+
+  <!-- =================== PART 4: ADOPTION =================== -->
+  <div class="banner" id="adopt" data-pn="04">
+    <span class="tag"><svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg>Part 4 · Adoption</span>
+    <h2>Adoption plan</h2>
+    <div class="meta"><span>Options</span><span>Setup</span><span>Pre-flight</span><span>Pilot</span><span>Cost</span><span>Risks</span></div>
+  </div>
+
+  <section id="ad-options" aria-labelledby="h-ad1">
+    <h3 id="h-ad1"><svg class="ic hic" aria-hidden="true"><use href="#i-sliders"/></svg><span class="no">4.1</span>Options</h3>
+    <div class="tbl-wrap">
+      <table style="min-width:960px">
+        <thead><tr><th>Option</th><th>Effort</th><th>Risk</th><th>What you get</th><th>Recommendation</th></tr></thead>
+        <tbody>
+          <tr>
+            <th scope="row">Adopt the safeguards only<span class="sub"><code>TaskSuite</code>, noise band, <code>transfer_report</code></span></th>
+            <td><span class="lvl lvl-low">Low</span></td><td><span class="lvl lvl-low">Low</span><span class="sub">No loop, no proposer</span></td>
+            <td>Sealed held-out scoring and noise-aware comparisons for prompt changes people already make</td>
+            <td><strong>Start here.</strong> Useful whatever the pilot shows.</td>
+          </tr>
+          <tr>
+            <th scope="row">Install the plugin<span class="sub"><code>/plugin install rsi --marketplace GaryTang32/RSI</code></span></th>
+            <td><span class="lvl lvl-low">Low</span></td><td><span class="lvl lvl-med">Medium</span><span class="sub">Tracks a public repo</span></td>
+            <td>The skill as <code>/rsi:rsi-improve</code>; installs the package on first use</td>
+            <td><strong>Use for the pilot</strong> on non-sensitive data.</td>
+          </tr>
+          <tr>
+            <th scope="row">Slim core in a private repo<span class="sub">skill + <code>rsi/</code> + <code>pyproject.toml</code> + LICENSE</span></th>
+            <td><span class="lvl lvl-med">Low–medium</span><span class="sub">3 edits after copying</span></td><td><span class="lvl lvl-low">Low</span><span class="sub">Pinned, reviewable</span></td>
+            <td>All eight methods on your own <code>Domain</code>; about 2.3 MB; demo problems trimmed</td>
+            <td><strong>Use after the pilot</strong>, for production work.</td>
+          </tr>
+          <tr>
+            <th scope="row">Full copy<span class="sub">plus experiments, examples, tests, method docs</span></th>
+            <td><span class="lvl lvl-med">Medium</span></td><td><span class="lvl lvl-low">Low</span></td>
+            <td>Templates, the paper notes the skill links to, and the test suite to check the copy</td>
+            <td><strong>Only if</strong> you will extend the methods.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="ad-install" aria-labelledby="h-ad2">
+    <h3 id="h-ad2"><svg class="ic hic" aria-hidden="true"><use href="#i-code"/></svg><span class="no">4.2</span>Set it up</h3>
+    <div class="tabs" data-tabs data-default="0">
+      <div class="tablist" role="tablist" aria-label="Setup options">
+        <button type="button" role="tab" id="tab-s1" aria-controls="p-s1" aria-selected="true">Try it <span>2 min</span></button>
+        <button type="button" role="tab" id="tab-s2" aria-controls="p-s2" aria-selected="false">Slim core <span>private repo</span></button>
+        <button type="button" role="tab" id="tab-s3" aria-controls="p-s3" aria-selected="false">Your own problem <span>Python</span></button>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="p-s1" aria-labelledby="tab-s1">
+        <p>In Claude Code, install the plugin and ask in your own words. Without Claude Code, run the loop offline.</p>
+        <pre class="code"><code>/plugin install rsi --marketplace GaryTang32/RSI
+<span class="c"># then: "Self-improve the prompts in prompts/ against data/eval.csv. Keep the spend under $5."</span>
+
+pip install "rsi @ git+https://github.com/GaryTang32/RSI"
+rsi improve --method rrsi --problem agentqa --llm sim --out runs/demo   <span class="c"># ~10 s, simulated</span>
+rsi inspect runs/demo                                                   <span class="c"># audit trail -&gt; TRACE.md</span></code></pre>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="p-s2" aria-labelledby="tab-s2" hidden>
+        <p>Copy four items, trim the demo problems, make three edits (<code>[project.urls]</code> in <code>pyproject.toml</code>; the install command in SKILL.md step 0; the links at the top and bottom of SKILL.md), then check offline.</p>
+        <pre class="code"><code>DEST=../my-project
+mkdir -p "$DEST/.claude/skills"
+cp -r .claude/skills/rsi-improve "$DEST/.claude/skills/"
+cp -r rsi pyproject.toml LICENSE "$DEST/"
+cd "$DEST/rsi/domains" &amp;&amp; ls | grep -vE '^(__init__.py|agentqa|memoclassify)$' | xargs rm -rf
+cd "$DEST" &amp;&amp; pip install -e ".[science]"
+rsi improve --method rrsi --problem agentqa --llm sim --out runs/check</code></pre>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="p-s3" aria-labelledby="tab-s3" hidden>
+        <p>Two functions make a domain. Seal at least 40 tasks, measure the noise, run, then read the transfer report.</p>
+        <pre class="code"><code>import rsi
+from rsi.core import Artifact, FunctionDomain, Task, TaskSuite, Evaluator, noise_from_trials
+
+suite = TaskSuite.from_tasks(tasks, fractions={"evolve": 0.38, "val": 0.2, "holdout": 0.42}, seed=0)
+dom = FunctionDomain(suite, execute, grade, name="ticket-routing")       <span class="c"># grade returns (score, feedback)</span>
+llm = rsi.get_llm("claude:haiku", cache_dir=".rsi_cache/routing")
+base = Evaluator(dom, llm, workers=4).evaluate(seed, "evolve", k=3)
+delta = noise_from_trials(base.trial_matrix(), small_k_correction=True).delta
+res = rsi.improve(dom, seed, method="gepa", llm_task=llm, llm_propose=llm,
+                  config={"max_metric_calls": 300, "acceptance": "noise_margin", "noise_margin": delta, "seed": 0})
+print(rsi.transfer_report(dom, llm, {"seed": res.baseline, "gepa": res.best}, splits=("evolve", "val", "holdout"), k=2))</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="ad-preflight" aria-labelledby="h-ad3">
+    <h3 id="h-ad3"><svg class="ic hic" aria-hidden="true"><use href="#i-calc"/></svg><span class="no">4.3</span>Pre-flight check</h3>
+    <p class="lead-in">Two checks before spending on a loop. The first is the rule example 01 now applies; the second shows what the number of seed repeats does to the noise band.</p>
+    <div class="sim" id="pf" data-decision="go">
+      <div class="seg" role="group" aria-label="Load a case">
+        <button type="button" data-preset="1.000,0.000,10" aria-pressed="false">T2: old example</button>
+        <button type="button" data-preset="0.917,0.038,36" aria-pressed="true">T5: new example</button>
+        <button type="button" data-preset="0.970,0.050,36" aria-pressed="false">Inside the band</button>
+      </div>
+      <div class="pf">
+        <div class="pf-in">
+          <div class="field"><label for="pf-score">Seed score on practice tasks</label><input type="number" id="pf-score" min="0" max="1" step="0.001" value="0.917"><input type="range" id="pf-score-r" min="0" max="1" step="0.001" value="0.917" aria-label="Seed score slider"><span class="help">Mean over k trials, on a 0–1 scale with 1 the top score.</span></div>
+          <div class="field"><label for="pf-delta">Noise band δ</label><input type="number" id="pf-delta" min="0" max="0.5" step="0.001" value="0.038"><input type="range" id="pf-delta-r" min="0" max="0.3" step="0.001" value="0.038" aria-label="Noise band slider"><span class="help">From <code>noise_from_trials</code> or <code>noise_from_repeats</code>.</span></div>
+          <div class="field"><label for="pf-n">Practice tasks n</label><input type="number" id="pf-n" min="1" max="1000" step="1" value="36"><input type="range" id="pf-n-r" min="1" max="200" step="1" value="36" aria-label="Practice tasks slider"><span class="help">One task is worth 1/n of the score.</span></div>
+        </div>
+        <div class="verdict">
+          <span class="sim-k">Verdict</span>
+          <span class="v-label" id="pf-label">GO</span>
+          <span class="v-act" id="pf-act"></span>
+          <span class="sim-msg" id="pf-why"></span>
+          <div class="gauge">
+            <span>Room to the top <b id="pf-room">0.083</b> (solid) against the gain needed <b id="pf-need">0.038</b> (hatched), axis 0–0.30</span>
+            <div class="gauge-track"><div class="gauge-room"></div><div class="gauge-need"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sim rpick" id="rpick">
+      <span class="sim-k">How many repeats of the seed? (k = 1)</span>
+      <div class="seg" role="group" aria-label="Number of repeats R">
+        <button type="button" data-r="2" aria-pressed="false">R = 2</button><button type="button" data-r="3" aria-pressed="true">R = 3</button><button type="button" data-r="5" aria-pressed="false">R = 5</button><button type="button" data-r="10" aria-pressed="false">R = 10</button><button type="button" data-r="20" aria-pressed="false">R = 20</button>
+      </div>
+      <div class="sim-body">
+        <dl class="kvs">
+          <dt>Band multiplier, z = 2 → small_sample=True</dt><dd id="rp-mult"></dd>
+          <dt>Chance the band is under 60% of its true width</dt><dd id="rp-risk"></dd>
+          <dt>False keeps, z = 2 band</dt><dd id="rp-fk-z"></dd>
+          <dt>False keeps, Student-t band</dt><dd id="rp-fk-t"></dd>
+          <dt>Package warns</dt><dd id="rp-warn"></dd>
+        </dl>
+        <p class="why" id="rp-note"></p>
+      </div>
+    </div>
+    <p class="note">The verdict reproduces <code>headroom_check</code> in <code>examples/01_prompt_from_csv/improve_prompt.py</code>. The repeat figures are the measured values from 2.3 (R = 20 false keeps were not measured); multipliers are the table in <code>rsi/core/stats.py</code>.</p>
+  </section>
+
+  <section id="ad-pilot" aria-labelledby="h-ad4">
+    <h3 id="h-ad4"><svg class="ic hic" aria-hidden="true"><use href="#i-route"/></svg><span class="no">4.4</span>Pilot plan</h3>
+    <p class="lead-in">One labelled prompt task, five phases, one decision gate. The team sets the dates; three weeks is a guide.</p>
+    <figure>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 990 176" style="min-width:990px;max-width:1100px" role="img" aria-labelledby="pp-title pp-desc">
+          <title id="pp-title">Pilot plan</title>
+          <desc id="pp-desc">Five phases over three weeks: label a baseline and seal 40 held-out tasks; write the rules you already know as an oracle prompt; run the pre-flight checks; run three seeds with a spend cap; read the result and decide at a gate.</desc>
+          <defs><marker id="pp-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" class="hd"/></marker></defs>
+          <rect width="990" height="176" class="bgp"/><rect x="32" y="40" width="156" height="84" rx="6" class="mk"/><rect x="32" y="40" width="156" height="84" rx="6" class="nb"/><rect x="40" y="48" width="45" height="14" rx="2" class="tg"/><text x="63" y="58" text-anchor="middle" class="tg-t">WEEK 1</text><text x="110" y="82" text-anchor="middle" class="n-name">Baseline</text><text x="110" y="99" text-anchor="middle" class="n-sub">label 60+ tasks</text><text x="110" y="113" text-anchor="middle" class="n-sub">seal 40 held out</text><circle cx="172" cy="56" r="10" class="stepno"/><text x="172" y="60" text-anchor="middle" class="stepno-t">1</text><path d="M188 82 H206" class="ar" marker-end="url(#pp-a)"/><rect x="208" y="40" width="156" height="84" rx="6" class="mk"/><rect x="208" y="40" width="156" height="84" rx="6" class="nb"/><rect x="216" y="48" width="45" height="14" rx="2" class="tg"/><text x="239" y="58" text-anchor="middle" class="tg-t">WEEK 1</text><text x="286" y="82" text-anchor="middle" class="n-name">Write known rules</text><text x="286" y="99" text-anchor="middle" class="n-sub">oracle prompt</text><text x="286" y="113" text-anchor="middle" class="n-sub">the bar to beat</text><circle cx="348" cy="56" r="10" class="stepno"/><text x="348" y="60" text-anchor="middle" class="stepno-t">2</text><path d="M364 82 H382" class="ar" marker-end="url(#pp-a)"/><rect x="384" y="40" width="156" height="84" rx="6" class="mk"/><rect x="384" y="40" width="156" height="84" rx="6" class="nb"/><rect x="392" y="48" width="45" height="14" rx="2" class="tg"/><text x="415" y="58" text-anchor="middle" class="tg-t">WEEK 2</text><text x="462" y="82" text-anchor="middle" class="n-name">Pre-flight</text><text x="462" y="99" text-anchor="middle" class="n-sub">R ≥ 5 or k ≥ 2</text><text x="462" y="113" text-anchor="middle" class="n-sub">headroom check</text><circle cx="524" cy="56" r="10" class="stepno"/><text x="524" y="60" text-anchor="middle" class="stepno-t">3</text><path d="M540 82 H558" class="ar" marker-end="url(#pp-a)"/><rect x="560" y="40" width="156" height="84" rx="6" class="mk"/><rect x="560" y="40" width="156" height="84" rx="6" class="nb"/><rect x="568" y="48" width="45" height="14" rx="2" class="tg"/><text x="591" y="58" text-anchor="middle" class="tg-t">WEEK 2</text><text x="638" y="82" text-anchor="middle" class="n-name">Run 3 seeds</text><text x="638" y="99" text-anchor="middle" class="n-sub">$2 smoke first</text><text x="638" y="113" text-anchor="middle" class="n-sub">spend cap set</text><circle cx="700" cy="56" r="10" class="stepno"/><text x="700" y="60" text-anchor="middle" class="stepno-t">4</text><path d="M716 82 H734" class="ar" marker-end="url(#pp-a)"/><rect x="736" y="40" width="156" height="84" rx="6" class="mk"/><rect x="736" y="40" width="156" height="84" rx="6" class="nb-focal"/><rect x="744" y="48" width="45" height="14" rx="2" class="tg"/><text x="767" y="58" text-anchor="middle" class="tg-t">WEEK 3</text><text x="814" y="82" text-anchor="middle" class="n-name">Read and decide</text><text x="814" y="99" text-anchor="middle" class="n-sub">diff best_artifact</text><text x="814" y="113" text-anchor="middle" class="n-sub">held-out CI</text><circle cx="876" cy="56" r="10" class="stepno"/><text x="876" y="60" text-anchor="middle" class="stepno-t">5</text><path d="M892 82 H906" class="ar" marker-end="url(#pp-a)"/><rect x="908" y="44" width="64" height="76" rx="6" class="mk"/><rect x="908" y="44" width="64" height="76" rx="6" class="nb-check"/><text x="940" y="78" text-anchor="middle" class="chip-ok-t">GO</text><text x="940" y="96" text-anchor="middle" class="n-sub">or stop</text><text x="32" y="160" class="n-sub">Gate: held-out interval excludes zero · kept rules match policy · matches or beats the oracle prompt</text>
+        </svg>
+      </div>
+      <figcaption><span class="hint">Swipe to see the full diagram. </span>The oracle prompt in phase 2 is the bar the loop must beat to be worth its upkeep.</figcaption>
+    </figure>
+    <ol class="steps-ol">
+      <li><strong>Baseline.</strong> Label at least 60 real examples; seal 40 or more as held-out, grouped by rule so each rule has several examples.</li>
+      <li><strong>Write the rules you know.</strong> Put them in a prompt and score it on held-out. In T4 this alone gave +0.115.</li>
+      <li><strong>Pre-flight.</strong> Measure δ with k ≥ 2 or R ≥ 5, and run the headroom check. Stop if it says stop.</li>
+      <li><strong>Run three seeds</strong> with a spend cap (<code>max_usd</code>), after a $2 smoke run. Keep the cache so a rerun replays for free.</li>
+      <li><strong>Read and decide.</strong> Diff <code>best_artifact/</code> against the seed, check every rule it wrote against policy, and adopt only if the held-out interval excludes zero.</li>
+    </ol>
+    <h4>Metrics</h4>
+    <div class="tbl-wrap">
+      <table style="min-width:640px">
+        <thead><tr><th>Metric</th><th>Target</th><th>Where to read it</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Held-out gain over the seed</th><td>95% interval excludes zero</td><td><code>transfer.json</code></td></tr>
+          <tr><th scope="row">Gain against the oracle prompt</th><td>Matches or beats it</td><td>Transfer report with both arms</td></tr>
+          <tr><th scope="row">Seed agreement</th><td>Three seeds within the noise band of each other</td><td>Held-out scores per seed</td></tr>
+          <tr><th scope="row">Per-rule accuracy</th><td>No rule regresses</td><td>Per-family rows of the report</td></tr>
+          <tr><th scope="row">Policy check</th><td>No kept rule contradicts policy; no copied task text</td><td>Diff of <code>best_artifact/</code></td></tr>
+          <tr><th scope="row">Cost per run</th><td>Under the agreed cap</td><td><code>summary.json</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="ad-cost" aria-labelledby="h-ad5">
+    <h3 id="h-ad5"><svg class="ic hic" aria-hidden="true"><use href="#i-coin"/></svg><span class="no">4.5</span>Cost guide</h3>
+    <p class="lead-in">Measured spend with Claude Haiku through the <code>claude</code> CLI. A rerun with the same cache replays finished calls at $0.</p>
+    <div class="tbl-wrap">
+      <table style="min-width:640px">
+        <thead><tr><th>Run</th><th>Size</th><th class="num-c">Cost</th><th>Time</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Example 01, live (T5)</th><td>94 tickets, 300 rollouts, one run</td><td class="num-c">$1.52</td><td>about 50 min</td></tr>
+          <tr><th scope="row">House-rules trial (T4)</th><td>3 GEPA runs × 300 rollouts, oracle, report</td><td class="num-c">$5.50</td><td>over 90 min</td></tr>
+          <tr><th scope="row">Autoresearch, tinylm</th><td>training script</td><td class="num-c">$0.70</td><td>—</td></tr>
+          <tr><th scope="row">RRSI, AgentQA</th><td>6 rounds plus report</td><td class="num-c">$2.76</td><td>—</td></tr>
+          <tr><th scope="row">Harness² k = 3</th><td>20-task stream, 12 rollouts per task</td><td class="num-c">$13.83</td><td>—</td></tr>
+          <tr><th scope="row">Offline check</th><td>simulated model</td><td class="num-c">$0.00</td><td>about 10 s</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">GEPA runs rollouts one at a time, so a live CLI run takes tens of minutes. Spend caps (<code>max_usd</code>) meter every current Claude model since 0.1.1.</p>
+  </section>
+
+  <section id="ad-risks" aria-labelledby="h-ad6">
+    <h3 id="h-ad6"><svg class="ic hic" aria-hidden="true"><use href="#i-alert"/></svg><span class="no">4.6</span>Risks and mitigations</h3>
+    <div class="tbl-wrap">
+      <table style="min-width:760px">
+        <thead><tr><th>Risk</th><th>Level</th><th>Mitigation</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">A kept prompt encodes a wrong rule<span class="sub">2 of 3 seeds in T4</span></th><td><span class="lvl lvl-high">High</span></td><td>A person reviews every rule in <code>best_artifact/</code> before deployment; per-rule held-out rows</td></tr>
+          <tr><th scope="row">Small samples overstate gains<span class="sub">validation 0.97–1.00 vs held-out 0.92–0.97</span></th><td><span class="lvl lvl-high">High</span></td><td>40+ held-out tasks; decide on held-out intervals only; 3 seeds</td></tr>
+          <tr><th scope="row">Noise read as progress</th><td><span class="lvl lvl-med">Medium</span></td><td>Noise band on (<code>noise_margin</code>, <code>rigor</code>); R ≥ 5 or k ≥ 2; heed the new warning</td></tr>
+          <tr><th scope="row">Spend on a task with no headroom<span class="sub">$0.37 in T2</span></th><td><span class="lvl lvl-med">Medium</span></td><td>Pre-flight check; <code>max_usd</code>; $2 smoke run first</td></tr>
+          <tr><th scope="row">Data leaves the company<span class="sub">tasks and traces go to the model provider</span></th><td><span class="lvl lvl-med">Medium</span></td><td>Pilot on non-sensitive data; route production use through the usual data review</td></tr>
+          <tr><th scope="row">Alpha software</th><td><span class="lvl lvl-med">Medium</span></td><td>Pin a version in a private slim copy; run its tests; read the changelog before upgrading</td></tr>
+          <tr><th scope="row">Leakage of answers into prompts<span class="sub">seen in hard Meta-Harness run</span></th><td><span class="lvl lvl-low">Low–medium</span></td><td>Leakage critic (RRSI); diff review for task text and ids</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="endnote" id="conclusion" aria-labelledby="h-concl">
+    <h2 id="h-concl"><svg class="ic hic" aria-hidden="true"><use href="#i-check"/></svg>Conclusion</h2>
+    <p>RSI is a careful, honest and well-instrumented harness for self-improvement experiments. Its safeguards do what they claim: a locked grader, sealed held-out tasks and a measured noise band cut the share of do-nothing changes it keeps from over a third to under a tenth, and every decision is written down where a reviewer can check it.</p>
+    <p>The improvements it finds on problems like ours are real but small. GEPA learned the largest hidden routing rule every time, yet across three seeds its held-out gains were not significant, and a prompt that simply stated the rules did better. Adopt the measurement discipline now, pilot the loops where labelled data hides rules nobody wrote down, and compare every result with the rules you already know.</p>
+    <p class="note">Based on trials run 7–8 November 2026 with Claude Haiku and on the repository at v0.1.1 plus PR #37. Small samples throughout; intervals are paired 95% bootstrap.</p>
+  </section>
+
+  <section class="endnote" id="references" aria-labelledby="h-refs">
+    <h2 id="h-refs"><svg class="ic hic" aria-hidden="true"><use href="#i-book"/></svg>References</h2>
+    <div class="refs-group">
+      <h4>The repository</h4>
+      <ol class="refs">
+        <li><a href="https://github.com/GaryTang32/RSI">GaryTang32/RSI</a> <span class="src">GitHub · MIT</span><span class="desc">Package, skill, evidence, examples and the changelog.</span></li>
+        <li><a href="https://garytang32.github.io/RSI/">RSI documentation site</a> <span class="src">GitHub Pages</span><span class="desc">Getting started, methodology, every method's docs and the API reference.</span></li>
+        <li><a href="https://github.com/GaryTang32/RSI/pull/37">PR #37: few-repeat noise band, example 01 headroom</a> <span class="src">GaryTang32/RSI#37 · merged 8 Nov 2026</span><span class="desc">The fixes for the issues this evaluation found.</span></li>
+        <li><a href="https://github.com/GaryTang32/RSI/tree/data">data branch</a> <span class="src">GaryTang32/RSI</span><span class="desc">Recorded runs, validation and the live-run demo.</span></li>
+      </ol>
+    </div>
+    <div class="refs-group">
+      <h4>Method papers</h4>
+      <ol class="refs">
+        <li><a href="https://arxiv.org/abs/2609.24972">Regularized Recursive Self-Improvement of Agent Harnesses (RRSI)</a> <span class="src">Xia et al. · arXiv 2609.24972</span></li>
+        <li><a href="https://arxiv.org/abs/2507.19457">GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</a> <span class="src">Agrawal et al. · ICLR 2026 · arXiv 2507.19457</span></li>
+        <li><a href="https://github.com/karpathy/autoresearch">autoresearch</a> <span class="src">Karpathy · repository</span></li>
+        <li><a href="https://arxiv.org/abs/2603.28052">Meta-Harness: End-to-End Optimization of Model Harnesses</a> <span class="src">Lee et al. · arXiv 2603.28052</span></li>
+        <li><a href="https://arxiv.org/abs/2609.20519">SoL-Pi: Recursively Scaling Auto-Research Loops for Efficient Agent Harness</a> <span class="src">Liu, Ye et al. · arXiv 2609.20519</span></li>
+        <li><a href="https://arxiv.org/abs/2609.14858">Dream-RSI: Recursive Self-Improvement through Evolving Worlds</a> <span class="src">Zheng, Wu, Zhang et al. · arXiv 2609.14858</span></li>
+        <li><a href="https://arxiv.org/abs/2604.15097">From Procedural Skills to Strategy Genes (EvoMap)</a> <span class="src">Wang, Ren, Zhang · arXiv 2604.15097</span></li>
+        <li><a href="https://arxiv.org/abs/2610.14224">Harness²: Recursive Agent Harnessing for an Open World</a> <span class="src">Xu et al. · arXiv 2610.14224</span></li>
+      </ol>
+    </div>
+    <div class="refs-group">
+      <h4>Benchmarks</h4>
+      <ol class="refs">
+        <li><a href="https://github.com/suzgunmirac/BIG-Bench-Hard">BIG-Bench Hard</a> <span class="src">MIT</span></li>
+        <li><a href="https://github.com/google-deepmind/bbeh">BIG-Bench Extra Hard</a> <span class="src">CC-BY 4.0 data · Apache 2.0 code</span></li>
+      </ol>
+    </div>
+  </section>
+</main>
+</div>
+
+<script>
+  (() => {
+    /* ---------- Step walkthrough: chips and Previous / Next drive one current step ---------- */
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelectorAll('[data-motion-root]').forEach((root) => {
+      const count = Number(root.dataset.stepCount);
+      const items = [...root.querySelectorAll('[data-motion-item]')];
+      const prev = root.querySelector('[data-motion-action="prev"]');
+      const next = root.querySelector('[data-motion-action="next"]');
+      const all = root.querySelector('[data-motion-action="all"]');
+      const status = root.querySelector('[data-motion-status-visible]');
+      const live = root.querySelector('[data-motion-status]');
+      let step = 1;
+      const show = (n, frame) => {
+        step = Math.max(1, Math.min(count, n));
+        root.dataset.frame = frame || 'step';
+        root.dataset.stepCurrent = String(step - 1);
+        items.forEach((item) => {
+          const s = Number(item.dataset.step);
+          item.classList.toggle('is-visible', root.dataset.frame === 'static' || s <= step);
+          item.classList.toggle('is-current', root.dataset.frame !== 'static' && s === step);
+        });
+        prev.disabled = root.dataset.frame !== 'static' && step === 1;
+        next.disabled = root.dataset.frame !== 'static' && step === count;
+        const text = root.dataset.frame === 'static' ? `All ${count} steps` : `Step ${step} of ${count}`;
+        status.textContent = text;
+        if (live) live.textContent = text;
+      };
+      if (reduce) { show(1, 'static'); return; }
+      root.classList.add('motion-ready');
+      prev.addEventListener('click', () => show(root.dataset.frame === 'static' ? 1 : step - 1));
+      next.addEventListener('click', () => show(root.dataset.frame === 'static' ? 1 : step + 1));
+      all.addEventListener('click', () => show(step, 'static'));
+      root.querySelectorAll('[data-goto]').forEach((chip) => chip.addEventListener('click', () => show(Number(chip.dataset.goto) + 1)));
+      root.addEventListener('keydown', (event) => {
+        if (event.target.closest('input, textarea')) return;
+        if (event.key === 'ArrowRight') { show(step + 1); }
+        if (event.key === 'ArrowLeft') { show(step - 1); }
+      });
+      show(1);
+    });
+
+    /* ---------- Chart tooltips ---------- */
+    document.querySelectorAll('.chart').forEach((chart) => {
+      const tip = chart.querySelector('.tip');
+      if (!tip) return;
+      const place = (x, y) => {
+        const w = chart.clientWidth;
+        tip.style.left = Math.max(70, Math.min(w - 70, x)) + 'px';
+        tip.style.top = Math.max(28, y) + 'px';
+      };
+      chart.addEventListener('pointermove', (event) => {
+        const row = event.target.closest('[data-tip]');
+        if (!row || !chart.contains(row)) { tip.hidden = true; return; }
+        const c = chart.getBoundingClientRect();
+        tip.textContent = row.dataset.tip;
+        tip.hidden = false;
+        place(event.clientX - c.left, event.clientY - c.top - 14);
+      });
+      chart.addEventListener('pointerleave', () => { tip.hidden = true; });
+      chart.addEventListener('focusin', (event) => {
+        const row = event.target.closest('[data-tip]');
+        if (!row) return;
+        const c = chart.getBoundingClientRect();
+        const r = row.getBoundingClientRect();
+        tip.textContent = row.dataset.tip;
+        tip.hidden = false;
+        place(r.left - c.left + r.width / 2, r.top - c.top - 6);
+      });
+      chart.addEventListener('focusout', () => { tip.hidden = true; });
+    });
+
+    /* ---------- Tabs ---------- */
+    document.querySelectorAll('[data-tabs]').forEach((root) => {
+      const tabs = [...root.querySelectorAll('[role="tab"]')];
+      const panels = tabs.map((tab) => document.getElementById(tab.getAttribute('aria-controls')));
+      const select = (index, focus) => {
+        tabs.forEach((tab, j) => {
+          const on = index === j;
+          tab.setAttribute('aria-selected', String(on));
+          tab.tabIndex = on ? 0 : -1;
+          if (panels[j]) panels[j].hidden = !on;
+        });
+        if (focus) tabs[index].focus();
+      };
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => select(i, false));
+        tab.addEventListener('keydown', (event) => {
+          let n = null;
+          if (event.key === 'ArrowRight') n = (i + 1) % tabs.length;
+          if (event.key === 'ArrowLeft') n = (i - 1 + tabs.length) % tabs.length;
+          if (event.key === 'Home') n = 0;
+          if (event.key === 'End') n = tabs.length - 1;
+          if (n !== null) { event.preventDefault(); select(n, true); }
+        });
+      });
+      select(Number(root.dataset.default || 0), false);
+    });
+
+    /* ---------- Pre-flight: the headroom check from examples/01 (headroom_check) ---------- */
+    const pf = document.getElementById('pf');
+    if (pf) {
+      const ids = ['pf-score', 'pf-delta', 'pf-n'];
+      const pairs = ids.map((id) => [document.getElementById(id), document.getElementById(id + '-r')]);
+      const label = document.getElementById('pf-label');
+      const act = document.getElementById('pf-act');
+      const why = document.getElementById('pf-why');
+      const room = pf.querySelector('.gauge-room');
+      const need = pf.querySelector('.gauge-need');
+      const roomOut = document.getElementById('pf-room');
+      const needOut = document.getElementById('pf-need');
+      const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+      const read = () => {
+        const score = clamp(parseFloat(pairs[0][0].value) || 0, 0, 1);
+        const delta = clamp(parseFloat(pairs[1][0].value) || 0, 0, 0.5);
+        const n = clamp(Math.round(parseFloat(pairs[2][0].value) || 1), 1, 1000);
+        return { score, delta, n };
+      };
+      const render = () => {
+        const { score, delta, n } = read();
+        const roomV = 1 - score;
+        const needV = Math.max(delta, 1 / n);
+        const go = roomV > needV;
+        pf.dataset.decision = go ? 'go' : 'stop';
+        label.textContent = go ? 'GO' : 'STOP';
+        act.textContent = go ? 'Run the loop: a kept change can be told apart from noise.' : 'Do not spend on the loop yet. Make the tasks harder or use a weaker model.';
+        why.textContent = `Room to the top: ${roomV.toFixed(3)}. A kept change must gain more than ${needV.toFixed(3)} (${delta >= 1 / n ? 'the noise band δ' : 'one task, 1/n'}).`;
+        const scale = 0.3;
+        room.style.left = '0'; room.style.width = Math.min(100, (roomV / scale) * 100) + '%';
+        need.style.left = '0'; need.style.width = Math.min(100, (needV / scale) * 100) + '%';
+        roomOut.textContent = roomV.toFixed(3);
+        needOut.textContent = needV.toFixed(3);
+      };
+      pairs.forEach(([num, range]) => {
+        num.addEventListener('input', () => { range.value = num.value; render(); });
+        range.addEventListener('input', () => { num.value = range.value; render(); });
+      });
+      pf.querySelectorAll('[data-preset]').forEach((btn) => btn.addEventListener('click', () => {
+        const [s, d, n] = btn.dataset.preset.split(',');
+        [s, d, n].forEach((v, i) => { pairs[i][0].value = v; pairs[i][1].value = v; });
+        pf.querySelectorAll('[data-preset]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+        render();
+      }));
+      render();
+    }
+
+    /* ---------- How many repeats? Values measured in the evaluation; t quantiles from rsi.core.stats ---------- */
+    const rp = document.getElementById('rpick');
+    if (rp) {
+      const T = { 1: 13.968, 2: 4.527, 4: 2.869, 9: 2.32, 19: 2.14 };
+      const RISK = { 2: '45%', 3: '30%', 5: '16%', 10: '5%', 20: '0%' };
+      const FK = { 2: ['8.3%', '4.2%'], 3: ['5.8%', '1.7%'], 5: ['5.0%', '0.8%'], 10: ['2.5%', '1.7%'], 20: ['not measured', 'not measured'] };
+      const out = (id, v) => { document.getElementById(id).textContent = v; };
+      const show = (R) => {
+        rp.querySelectorAll('[data-r]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.r) === R)));
+        out('rp-mult', `2.00 → ${T[R - 1].toFixed(2)}`);
+        out('rp-risk', RISK[R]);
+        out('rp-fk-z', FK[R][0]);
+        out('rp-fk-t', FK[R][1]);
+        out('rp-warn', R < 5 ? 'yes' : 'no');
+        out('rp-note', R < 5
+          ? 'Fewer than 5 repeats: the band itself is noisy. Pass small_sample=True, add repeats, or use k ≥ 2 trials and the corrected bootstrap.'
+          : 'Five or more repeats: the plain z = 2 band is usable. small_sample=True is still slightly stricter.');
+      };
+      rp.querySelectorAll('[data-r]').forEach((b) => b.addEventListener('click', () => show(Number(b.dataset.r))));
+      show(3);
+    }
+  })();
+
+</script>
+<script>
+  /* Side panel: highlights the section in view, shows reading progress, collapses to a top bar on narrow screens */
+  (() => {
+    const nav = document.getElementById('sidenav');
+    if (!nav) return;
+    const list = nav.querySelector('.sn-list');
+    const links = [...list.querySelectorAll('a[href^="#"]')];
+    const pairs = links.map((a) => [a, document.getElementById(a.getAttribute('href').slice(1))]).filter((p) => p[1]);
+    links.forEach((a) => { a.title = a.textContent.replace(/\s+/g, ' ').trim(); });
+    const curPart = nav.querySelector('.sn-cur-part');
+    const current = nav.querySelector('.sn-current');
+    const fill = nav.querySelector('.sn-progress span');
+    const readbar = document.querySelector('.readbar span');
+    const toggle = nav.querySelector('.sn-toggle');
+    let activeLink = null;
+    let ticking = false;
+
+    const update = () => {
+      ticking = false;
+      const line = Math.min(160, window.innerHeight * 0.3);
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      let pick = pairs[0];
+      for (const p of pairs) {
+        if (p[1].getBoundingClientRect().top - line <= 0) pick = p; else break;
+      }
+      if (max > 0 && window.scrollY >= max - 2) pick = pairs[pairs.length - 1];
+      const pct = max > 0 ? Math.min(100, Math.max(0, (window.scrollY / max) * 100)) : 0;
+      fill.style.width = pct + '%';
+      if (readbar) readbar.style.width = pct + '%';
+      if (!pick || pick[0] === activeLink) return;
+      if (activeLink) { activeLink.classList.remove('is-active'); activeLink.removeAttribute('aria-current'); }
+      activeLink = pick[0];
+      activeLink.classList.add('is-active');
+      activeLink.setAttribute('aria-current', 'location');
+      const partLi = activeLink.closest('.sn-part');
+      nav.querySelectorAll('.sn-part').forEach((p) => p.classList.toggle('is-active', p === partLi));
+      const isSub = activeLink.closest('ol') !== list;
+      curPart.textContent = isSub && partLi ? partLi.dataset.name : '';
+      current.textContent = activeLink.textContent.replace(/\s+/g, ' ').trim();
+      const colour = partLi ? getComputedStyle(partLi).getPropertyValue('--part').trim() : '';
+      if (colour) document.documentElement.style.setProperty('--now', colour);
+      if (getComputedStyle(list).display !== 'none' && nav.scrollHeight > nav.clientHeight + 4) {
+        const n = nav.getBoundingClientRect();
+        const r = activeLink.getBoundingClientRect();
+        if (r.top < n.top + 150 || r.bottom > n.bottom - 24) nav.scrollTop += r.top - n.top - n.height / 2;
+      }
+    };
+
+    toggle.addEventListener('click', () => {
+      const open = !nav.classList.contains('is-open');
+      nav.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+    });
+    list.addEventListener('click', (event) => {
+      if (event.target.closest('a') && nav.classList.contains('is-open')) {
+        nav.classList.remove('is-open');
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+    window.addEventListener('scroll', () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  })();
+</script>
