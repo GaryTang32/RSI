@@ -1,6 +1,6 @@
 {
   "name": "rsi",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Apply recursive self-improvement methods (RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI, EvoMap, Harness²) to your own prompts, agent harness or training script, with a locked grader, a measured noise band and held-out evaluation.",
   "author": {
     "name": "GaryTang32",

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rsi"
-version = "0.1.1"
+version = "0.1.2"
 description = "Recursive Self-Improvement Agent Skills: eight RSI papers (RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI, EvoMap, Harness²) turned into tested code and agent skills on one guarded propose-measure-keep loop."
 readme = "README.md"
 license = "MIT"
