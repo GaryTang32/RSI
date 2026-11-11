@@ -6,12 +6,20 @@ Before 1.0, minor versions may change the API.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-11
+
+Fixes for the three issues an outside evaluation found: example 01 had nothing to learn with a real model, it spent
+its budget anyway, and a noise band from a few repeats was too narrow too often. Upgrading from 0.1.1 needs no code
+changes; `noise_from_repeats` with fewer than 5 repeats now warns.
+
 ### Added
 - `noise_from_repeats(..., small_sample=True)` uses the Student-t quantile with the coverage of z = 2 for R - 1
   degrees of freedom (4.53 at R = 3), so a noise band from a few repeats keeps the false-keep rate near the
   nominal 2.3%.
 - Example 01 checks headroom before the loop: if the seed scores within `max(delta, 1/n)` of the top score, it prints
   `STOP no headroom` and exits before spending anything (`--force` runs the loop anyway).
+- `docs/rsi-adoption-brief.html`: a brief on the repository, the evaluation's five trials with Claude Haiku and a
+  pilot plan for adopting it (also on the docs site).
 
 ### Changed
 - `noise_from_repeats` warns with fewer than 5 repeats. The band is right on average but noisy itself: with R = 2 its
@@ -154,6 +162,7 @@ First tagged release.
 - Non-editable installs (`pip install` from git) now include the package's data files: seed-harness prompts, benchmark
   manifests and EvoMap's schemas.
 
-[Unreleased]: https://github.com/GaryTang32/RSI/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/GaryTang32/RSI/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/GaryTang32/RSI/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/GaryTang32/RSI/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/GaryTang32/RSI/releases/tag/v0.1.0
