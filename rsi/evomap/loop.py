@@ -6,6 +6,7 @@ import random
 from pathlib import Path
 
 from rsi.core import LLM, Artifact, Budget, Domain, Evaluator, ImprovementResult, Ledger, transfer_report
+from rsi.core.llm import merged_usage
 from rsi.trace import RunTracer, ShadowMonitor
 
 from .agent import AgentNode
@@ -14,32 +15,6 @@ from .inject import GeneRoutedDomain, Injector, library_artifact
 from .signals import TaskSignalExtractor
 from .store import LocalStore
 from .tracing import eval_payload, library_fingerprint, loop_genes
-
-
-def _zero_usage() -> dict:
-    return {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}
-
-
-def merged_usage(*llms: LLM | None) -> dict:
-    """Per-role usage summed over distinct LLM objects, plus ``_total`` (cached roles excluded)."""
-    out: dict = {}
-    seen = set()
-    for llm in llms:
-        if llm is None or id(llm) in seen:
-            continue
-        seen.add(id(llm))
-        for role, u in llm.meter.snapshot().items():
-            if role != "_total":
-                cur = out.setdefault(role, _zero_usage())
-                for k in cur:
-                    cur[k] += u.get(k, 0)
-    tot = _zero_usage()
-    for r, u in out.items():
-        if not r.endswith(":cached"):
-            for k in tot:
-                tot[k] += u[k]
-    out["_total"] = tot
-    return out
 
 
 def run(
