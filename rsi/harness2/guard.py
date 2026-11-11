@@ -45,15 +45,6 @@ def markers_for(domain: Domain | None) -> tuple[str, ...]:
     return SPEC_MARKERS + RSI_MARKERS + tuple(m for m in extra if m)
 
 
-def find_marker(text: str, markers: Iterable[str]) -> str | None:
-    """The first grader-verdict marker in ``text``, or None."""
-    text = str(text or "")
-    hit = next((m for m in markers if m in text), None)
-    if hit is None and (m := _GRADED_KEY.search(text)):
-        hit = m.group(0)
-    return hit
-
-
 def without_own(text: str, own: Iterable[str] = ()) -> str:
     """``text`` with every verbatim copy of the task's own text cut out (longest first, each cut leaves a newline).
 
