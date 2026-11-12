@@ -353,3 +353,35 @@ def test_extract_tag():
 def test_llm_response_ok():
     assert LLMResponse("x", Usage(), "m").ok
     assert not LLMResponse("", Usage(), "m", error="e").ok
+
+
+@pytest.mark.parametrize("package", ["rsi.evomap", "rsi.harness2"])
+def test_merged_usage_sums_distinct_llms_and_leaves_cached_roles_out_of_the_total(package):
+    import importlib
+
+    merged_usage = importlib.import_module(package).merged_usage
+    assert merged_usage is llm_mod.merged_usage  # one definition, re-exported by both methods
+    a, b = MockLLM(), MockLLM()
+    a.meter.add("task", Usage(1, 10, 5, 0.25, 1.0))
+    a.meter.add("task:cached", Usage(4, 40, 20, 0.0, 0.0))
+    b.meter.add("task", Usage(2, 20, 10, 0.5, 2.0))
+    b.meter.add("propose", Usage(1, 7, 3, 0.125, 0.5))
+    out = merged_usage(a, None, b, a)  # None is skipped; the second `a` is the same object and counts once
+    assert out["task"] == {
+        "calls": 3,
+        "input_tokens": 30,
+        "output_tokens": 15,
+        "cost_usd": 0.75,
+        "latency_s": 3.0,
+        "total_tokens": 45,
+    }
+    assert out["task:cached"]["calls"] == 4  # shown per role
+    assert out["_total"] == {
+        "calls": 4,
+        "input_tokens": 37,
+        "output_tokens": 18,
+        "cost_usd": 0.875,
+        "latency_s": 3.5,
+        "total_tokens": 55,
+    }
+    assert merged_usage() == {"_total": dict.fromkeys(out["_total"], 0)}

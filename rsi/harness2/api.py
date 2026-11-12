@@ -25,7 +25,7 @@ from pathlib import Path
 from ..core.artifact import Artifact
 from ..core.domain import Domain
 from ..core.ledger import Ledger, Node
-from ..core.llm import LLM
+from ..core.llm import LLM, merged_usage
 from ..core.run import Budget, ImprovementResult
 from ..core.stats import bootstrap_ci, paired_diff_ci
 from ..core.tasks import SEALED_SPLITS, Task
@@ -125,32 +125,6 @@ def editable_surface(domain: Domain, seed: Artifact, editable: Sequence[str] | N
     comps = getattr(domain, "components", None) or {}
     globs = [g for gs in comps.values() for g in gs] if isinstance(comps, dict) else []
     return sorted(set(editable_globs(seed, None)) | set(globs))
-
-
-def _zero() -> dict:
-    return {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}
-
-
-def merged_usage(*llms: LLM | None) -> dict:
-    """Per-role usage summed over distinct LLM objects, plus ``_total`` (cached roles excluded)."""
-    out: dict = {}
-    seen = set()
-    for llm in llms:
-        if llm is None or id(llm) in seen:
-            continue
-        seen.add(id(llm))
-        for role, u in llm.meter.snapshot().items():
-            if role != "_total":
-                cur = out.setdefault(role, _zero())
-                for k in cur:
-                    cur[k] += u.get(k, 0)
-    tot = _zero()
-    for r, u in out.items():
-        if not r.endswith(":cached"):
-            for k in tot:
-                tot[k] += u[k]
-    out["_total"] = tot
-    return out
 
 
 def run(

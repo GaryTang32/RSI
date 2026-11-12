@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass, field
 
@@ -259,8 +258,3 @@ class MockImprover(LLM):
         return LLMResponse(
             text=text, usage=Usage(1, estimate_tokens((system or "") + prompt), estimate_tokens(text)), model=self.name
         )
-
-
-def adoption_of(prompt: str) -> dict:
-    """The reflector's ``context/adoption.json`` (for tests)."""
-    return json.loads(C.parse(prompt).get("context/adoption.json", "{}"))

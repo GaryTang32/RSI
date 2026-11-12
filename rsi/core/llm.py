@@ -122,6 +122,32 @@ class LLM:
         return f"{type(self).__name__}({self.name})"
 
 
+def _zero_usage() -> dict:
+    return {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}
+
+
+def merged_usage(*llms: LLM | None) -> dict:
+    """Per-role usage summed over distinct LLM objects, plus ``_total`` (cached roles excluded)."""
+    out: dict = {}
+    seen = set()
+    for llm in llms:
+        if llm is None or id(llm) in seen:
+            continue
+        seen.add(id(llm))
+        for role, u in llm.meter.snapshot().items():
+            if role != "_total":
+                cur = out.setdefault(role, _zero_usage())
+                for k in cur:
+                    cur[k] += u.get(k, 0)
+    tot = _zero_usage()
+    for r, u in out.items():
+        if not r.endswith(":cached"):
+            for k in tot:
+                tot[k] += u[k]
+    out["_total"] = tot
+    return out
+
+
 class MockLLM(LLM):
     """Deterministic LLM: ``responder(prompt, system, seed, call_index) -> str``; tokens estimated from text."""
 

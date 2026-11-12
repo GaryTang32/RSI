@@ -6,6 +6,14 @@ Before 1.0, minor versions may change the API.
 
 ## [Unreleased]
 
+### Changed
+- `merged_usage` is defined once, in `rsi.core.llm`. `rsi.evomap` and `rsi.harness2` each carried an identical copy;
+  both still export the name, so imports keep working.
+
+### Removed
+- `rsi.harness2.guard.find_marker` and `rsi.harness2.mocks.adoption_of`. Nothing in the package, the tests, the
+  experiments or the docs used either.
+
 ## [0.1.2] - 2026-11-11
 
 Fixes for the three issues an outside evaluation found: example 01 had nothing to learn with a real model, it spent
